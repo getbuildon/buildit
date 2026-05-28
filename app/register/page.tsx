@@ -16,7 +16,7 @@ import { useAuth } from "@/context/AuthContextSupabase"
 
 function RegisterPage() {
   const router = useRouter()
-  const { authMode, refreshSession } = useAuth()
+  const { refreshSession } = useAuth()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -99,12 +99,6 @@ function RegisterPage() {
       if (result.error) {
         setError(result.error)
         setGoogleLoading(false)
-        return
-      }
-      if (authMode === "mock") {
-        await refreshSession()
-        router.push("/home")
-        router.refresh()
         return
       }
     } catch {

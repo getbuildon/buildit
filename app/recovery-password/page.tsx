@@ -14,7 +14,6 @@ import {
   requestPasswordResetClient,
   updatePasswordClient,
 } from "@/lib/auth/clientAuth"
-import { isSupabaseConfigured } from "@/lib/auth/config"
 import {
   LOGIN_COLORS,
   LOGIN_TYPE,
@@ -32,8 +31,8 @@ type Phase =
 function RecoveryPasswordPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, loading: authLoading, authMode } = useAuth()
-  const supabase = useMemo(() => (isSupabaseConfigured() ? createClient() : null), [])
+  const { user, loading: authLoading } = useAuth()
+  const supabase = useMemo(() => createClient(), [])
 
   const paso = searchParams.get("paso")
   const tokenHash = searchParams.get("token_hash")
@@ -60,19 +59,9 @@ function RecoveryPasswordPage() {
   const [updateLoading, setUpdateLoading] = useState(false)
 
   useEffect(() => {
-    if (!isSupabaseConfigured() || !supabase) {
-      setPhase("request")
-      return
-    }
-
     let cancelled = false
 
     async function verify() {
-      if (!supabase) {
-        setPhase("request")
-        return
-      }
-
       if (tokenHash && typeParam) {
         const { error: verifyError } = await supabase.auth.verifyOtp({
           type: typeParam as
@@ -216,14 +205,6 @@ function RecoveryPasswordPage() {
 
   const passwordInputClassName = cn(inputClassName, "pr-10")
 
-  const belowCard =
-    authMode === "mock" && phase === "request" ? (
-      <p className="text-center text-xs leading-relaxed text-[#bedbff]/90">
-        Modo demo: no se envía correo real. Con Supabase configurado, el enlace llegará al email
-        ingresado.
-      </p>
-    ) : null
-
   if (phase === "verifying" || (phase === "request" && (authLoading || user))) {
     return (
       <AuthSplitLayout>
@@ -269,7 +250,7 @@ function RecoveryPasswordPage() {
 
   if (phase === "email-sent") {
     return (
-      <AuthSplitLayout belowCard={belowCard}>
+      <AuthSplitLayout>
         <AuthFormCard>
           <h2 className={LOGIN_TYPE.cardTitle} style={{ color: LOGIN_COLORS.title }}>
             Revisá tu correo
@@ -455,7 +436,7 @@ function RecoveryPasswordPage() {
   }
 
   return (
-    <AuthSplitLayout belowCard={belowCard}>
+    <AuthSplitLayout>
       <AuthFormCard>
         <h2 className={LOGIN_TYPE.cardTitle} style={{ color: LOGIN_COLORS.title }}>
           Recuperar contraseña

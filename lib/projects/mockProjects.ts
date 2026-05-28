@@ -1,5 +1,4 @@
 import type { UserProjectListItem } from "@/lib/projects/types"
-import { MOCK_AUTH_EMAIL } from "@/lib/auth/config"
 
 export const MOCK_USER_PROJECTS: UserProjectListItem[] = [
   {
@@ -34,7 +33,6 @@ export function getProjectByIdMock(projectId: string): UserProjectListItem | nul
 
 export function displayNameFromEmail(email?: string | null): string {
   if (!email) return "Usuario"
-  if (email.toLowerCase() === MOCK_AUTH_EMAIL.toLowerCase()) return "Carlos"
   const local = email.split("@")[0]?.trim()
   if (!local) return "Usuario"
   return local.charAt(0).toUpperCase() + local.slice(1)
@@ -46,15 +44,6 @@ export function userProfileFromEmail(email?: string | null): {
   initials: string
   role: string
 } {
-  if (email?.toLowerCase() === MOCK_AUTH_EMAIL.toLowerCase()) {
-    return {
-      displayName: "Carlos",
-      fullName: "Carlos Mendoza",
-      initials: "CM",
-      role: "Administrador",
-    }
-  }
-
   const displayName = displayNameFromEmail(email)
   const initials = displayName.slice(0, 2).toUpperCase()
   return {

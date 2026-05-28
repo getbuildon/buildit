@@ -12,25 +12,31 @@ import {
   getClientSessionUser,
   signOutClient,
 } from "@/lib/auth/clientAuth"
-import { isSupabaseConfigured } from "@/lib/auth/config"
+import { injectClientSupabaseConfig } from "@/lib/auth/clientSupabaseConfig"
+import type { PublicSupabaseConfig } from "@/lib/auth/publicSupabaseConfig"
 import type { AppUser } from "@/lib/auth/types"
 import { createClient } from "@/utils/supabase/client"
 
 export type AuthContextValue = {
   user: AppUser | null
   loading: boolean
-  authMode: "mock" | "supabase"
   logOut: () => Promise<void>
   refreshSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+type AuthProviderProps = {
+  children: ReactNode
+  supabasePublicConfig: PublicSupabaseConfig
+}
+
+export function AuthProvider({ children, supabasePublicConfig }: AuthProviderProps) {
+  injectClientSupabaseConfig(supabasePublicConfig)
+
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
   const [user, setUser] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
-  const authMode = isSupabaseConfigured() ? "supabase" : "mock"
 
   const refreshSession = async () => {
     const sessionUser = await getClientSessionUser()
@@ -38,11 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      void refreshSession().finally(() => setLoading(false))
-      return
-    }
-
     try {
       setSupabase(createClient())
     } catch {
@@ -85,9 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider
-      value={{ user, loading, authMode, logOut, refreshSession }}
-    >
+    <AuthContext.Provider value={{ user, loading, logOut, refreshSession }}>
       {children}
     </AuthContext.Provider>
   )

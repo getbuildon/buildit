@@ -14,10 +14,6 @@ import {
   signInWithGoogleClient,
   signInWithPasswordClient,
 } from "@/lib/auth/clientAuth"
-import {
-  MOCK_AUTH_EMAIL,
-  MOCK_AUTH_PASSWORD,
-} from "@/lib/auth/config"
 import { BRAND_NAME } from "@/lib/brand"
 import { useAuth } from "@/context/AuthContextSupabase"
 import {
@@ -33,7 +29,7 @@ import { cn } from "@/lib/utils"
 function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { authMode, refreshSession } = useAuth()
+  const { refreshSession } = useAuth()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -46,7 +42,9 @@ function LoginPage() {
   const mergedBanner =
     callbackError === "callback"
       ? "No pudimos completar el inicio de sesión. Intentá de nuevo."
-      : ""
+      : callbackError === "config"
+        ? "Supabase no está configurado en el servidor."
+        : ""
 
   const validateForm = useCallback(() => {
     const errors = { email: "", password: "" }
@@ -97,12 +95,6 @@ function LoginPage() {
       if (result.error) {
         setError(result.error)
         setGoogleLoading(false)
-        return
-      }
-      if (authMode === "mock") {
-        await refreshSession()
-        router.push("/home")
-        router.refresh()
         return
       }
     } catch {
@@ -342,12 +334,6 @@ function LoginPage() {
                   Registrarse
                 </Link>
               </p>
-
-              {authMode === "mock" ? (
-                <p className="text-center text-xs leading-relaxed text-[#bedbff]/90">
-                  Demo: {MOCK_AUTH_EMAIL} / {MOCK_AUTH_PASSWORD}
-                </p>
-              ) : null}
             </div>
           </div>
         </section>

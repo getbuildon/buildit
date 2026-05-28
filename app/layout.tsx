@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import { SupabaseConfigMissing } from "@/components/auth/SupabaseConfigMissing"
 import { AuthProvider } from "@/context/AuthContextSupabase"
 import { BRAND_NAME } from "@/lib/brand"
+import { readPublicSupabaseConfigFromEnv } from "@/lib/auth/publicSupabaseConfig"
 import "./globals.css"
 
 const inter = Inter({
@@ -20,10 +22,18 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const supabasePublicConfig = readPublicSupabaseConfigFromEnv()
+
   return (
     <html lang="es" className="dark scroll-smooth">
       <body className={`${inter.variable} font-sans antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+        {supabasePublicConfig ? (
+          <AuthProvider supabasePublicConfig={supabasePublicConfig}>
+            {children}
+          </AuthProvider>
+        ) : (
+          <SupabaseConfigMissing />
+        )}
       </body>
     </html>
   )

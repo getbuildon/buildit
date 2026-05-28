@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { isSupabaseConfigured } from "@/lib/auth/config"
+import { readPublicSupabaseConfigFromEnv } from "@/lib/auth/publicSupabaseConfig"
 import { createClient } from "@/utils/supabase/server"
 
 function safeNextPath(raw: string | null): string {
@@ -8,11 +8,13 @@ function safeNextPath(raw: string | null): string {
 }
 
 export async function GET(request: Request) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.redirect(new URL("/home", request.url))
+  const config = readPublicSupabaseConfigFromEnv()
+  const { searchParams, origin } = new URL(request.url)
+
+  if (!config) {
+    return NextResponse.redirect(`${origin}/login?error=config`)
   }
 
-  const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
   const next = safeNextPath(searchParams.get("next"))
 

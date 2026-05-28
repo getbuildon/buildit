@@ -4,14 +4,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/context/AuthContextSupabase"
 import withAuth from "@/hoc/withAuth"
 import { HOME_GRADIENT } from "@/lib/home/designTokens"
 import { LOGIN_COLORS } from "@/lib/login/designTokens"
 
 function NewProjectPage() {
   const router = useRouter()
-  const { authMode } = useAuth()
 
   return (
     <div
@@ -27,7 +25,6 @@ function NewProjectPage() {
         </h1>
         <p className="mt-3 text-sm leading-relaxed" style={{ color: LOGIN_COLORS.cardDescription }}>
           El flujo de alta estará disponible cuando definamos el modelo en Supabase.
-          {authMode === "mock" ? " Por ahora es un placeholder." : ""}
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Button
