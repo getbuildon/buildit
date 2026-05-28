@@ -8,10 +8,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { withGuestAuth } from "@/hoc/withGuestAuth"
 import {
+  getClientSessionUser,
   signInWithGoogleClient,
   signUpClient,
 } from "@/lib/auth/clientAuth"
 import { BRAND_NAME } from "@/lib/brand"
+import { AuthHealthBanner } from "@/components/auth/AuthHealthBanner"
 import { useAuth } from "@/context/AuthContextSupabase"
 
 function RegisterPage() {
@@ -81,7 +83,21 @@ function RegisterPage() {
         setSuccess("Revisá tu correo para confirmar la cuenta antes de ingresar.")
         return
       }
+      if (!result.signedIn) {
+        setError("No pudimos completar el registro. Intentá de nuevo.")
+        return
+      }
+
       await refreshSession()
+      const sessionUser = await getClientSessionUser()
+      const registeredEmail = email.trim().toLowerCase()
+      if (!sessionUser || sessionUser.email.toLowerCase() !== registeredEmail) {
+        setError(
+          "La cuenta se creó pero no pudimos iniciar sesión automáticamente. Probá ingresar desde login.",
+        )
+        return
+      }
+
       router.push("/home")
       router.refresh()
     } catch {
@@ -140,6 +156,8 @@ function RegisterPage() {
             {success}
           </p>
         ) : null}
+
+        <AuthHealthBanner className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800" />
 
         <form className="mt-6 space-y-4" noValidate onSubmit={handleSubmit}>
           <div className="space-y-2">

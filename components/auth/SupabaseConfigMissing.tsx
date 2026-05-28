@@ -17,8 +17,7 @@ export function SupabaseConfigMissing() {
           <code className="rounded bg-white/10 px-1.5 py-0.5 text-[#e2e8f0]">
             NEXT_PUBLIC_SUPABASE_ANON_KEY
           </code>{" "}
-          en tu entorno (local: <code className="text-[#e2e8f0]">.env.local</code>, producción:
-          Vercel) y volvé a desplegar.
+          (publishable/anon, no la secret key) en tu entorno y volvé a desplegar.
         </p>
       </div>
     </div>

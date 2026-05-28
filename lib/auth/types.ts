@@ -6,4 +6,5 @@ export type AppUser = {
 export type AuthResult = {
   error?: string
   needsEmailConfirmation?: boolean
+  signedIn?: boolean
 }

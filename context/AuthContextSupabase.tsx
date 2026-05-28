@@ -13,6 +13,7 @@ import {
   signOutClient,
 } from "@/lib/auth/clientAuth"
 import { injectClientSupabaseConfig } from "@/lib/auth/clientSupabaseConfig"
+import { withAuthTimeout } from "@/lib/auth/mapAuthError"
 import type { PublicSupabaseConfig } from "@/lib/auth/publicSupabaseConfig"
 import type { AppUser } from "@/lib/auth/types"
 import { createClient } from "@/utils/supabase/client"
@@ -39,7 +40,9 @@ export function AuthProvider({ children, supabasePublicConfig }: AuthProviderPro
   const [loading, setLoading] = useState(true)
 
   const refreshSession = async () => {
-    const sessionUser = await getClientSessionUser()
+    const sessionUser = await withAuthTimeout(getClientSessionUser(), 10000).catch(
+      () => null,
+    )
     setUser(sessionUser)
   }
 

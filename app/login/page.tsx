@@ -6,11 +6,13 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useState } from "react"
 import { Lock, Mail } from "lucide-react"
 import { BuiltItIsoIcon } from "@/components/brand/BuiltItIsoIcon"
+import { AuthHealthBanner } from "@/components/auth/AuthHealthBanner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { withGuestAuth } from "@/hoc/withGuestAuth"
 import {
+  getClientSessionUser,
   signInWithGoogleClient,
   signInWithPasswordClient,
 } from "@/lib/auth/clientAuth"
@@ -77,7 +79,19 @@ function LoginPage() {
         setError(result.error)
         return
       }
+      if (!result.signedIn) {
+        setError("No pudimos iniciar sesión. Intentá de nuevo.")
+        return
+      }
+
       await refreshSession()
+      const sessionUser = await getClientSessionUser()
+      const loginEmail = email.trim().toLowerCase()
+      if (!sessionUser || sessionUser.email.toLowerCase() !== loginEmail) {
+        setError("No pudimos validar la sesión. Intentá de nuevo.")
+        return
+      }
+
       router.push("/home")
       router.refresh()
     } catch {
@@ -208,6 +222,8 @@ function LoginPage() {
                     {error || mergedBanner}
                   </p>
                 ) : null}
+
+                <AuthHealthBanner className="rounded-[10px] border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800" />
 
                 <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
                   <div className="flex flex-col gap-1.5">
