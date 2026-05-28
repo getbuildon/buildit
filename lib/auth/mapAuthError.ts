@@ -36,6 +36,9 @@ function mapSupabaseMessage(message: string, fallback: string): string {
   if (msg.includes("user already registered")) {
     return "Ya existe una cuenta con ese correo. Probá iniciar sesión."
   }
+  if (msg.includes("rate limit") || msg.includes("too many requests")) {
+    return "Se alcanzó el límite de envío de correos. Esperá unos minutos e intentá de nuevo."
+  }
   if (msg.includes("invalid api key") || msg.includes("api key")) {
     return "La clave de Supabase configurada no es válida. Revisá NEXT_PUBLIC_SUPABASE_ANON_KEY en Vercel."
   }

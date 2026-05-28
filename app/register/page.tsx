@@ -14,7 +14,6 @@ import {
 } from "@/lib/auth/clientAuth"
 import { BRAND_NAME } from "@/lib/brand"
 import { AuthHealthBanner } from "@/components/auth/AuthHealthBanner"
-import { useAuth } from "@/context/AuthContextSupabase"
 
 function RegisterPage() {
   const router = useRouter()
