@@ -17,7 +17,6 @@ import {
   signInWithPasswordClient,
 } from "@/lib/auth/clientAuth"
 import { BRAND_NAME } from "@/lib/brand"
-import { useAuth } from "@/context/AuthContextSupabase"
 import {
   LOGIN_CARD,
   LOGIN_COLORS,
@@ -31,7 +30,6 @@ import { cn } from "@/lib/utils"
 function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { refreshSession } = useAuth()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -84,7 +82,6 @@ function LoginPage() {
         return
       }
 
-      await refreshSession()
       const sessionUser = await getClientSessionUser()
       const loginEmail = email.trim().toLowerCase()
       if (!sessionUser || sessionUser.email.toLowerCase() !== loginEmail) {
@@ -92,8 +89,7 @@ function LoginPage() {
         return
       }
 
-      router.push("/home")
-      router.refresh()
+      router.replace("/home")
     } catch {
       setError("Error al iniciar sesión")
     } finally {

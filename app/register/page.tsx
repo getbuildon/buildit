@@ -18,7 +18,6 @@ import { useAuth } from "@/context/AuthContextSupabase"
 
 function RegisterPage() {
   const router = useRouter()
-  const { refreshSession } = useAuth()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -88,7 +87,6 @@ function RegisterPage() {
         return
       }
 
-      await refreshSession()
       const sessionUser = await getClientSessionUser()
       const registeredEmail = email.trim().toLowerCase()
       if (!sessionUser || sessionUser.email.toLowerCase() !== registeredEmail) {
@@ -98,8 +96,7 @@ function RegisterPage() {
         return
       }
 
-      router.push("/home")
-      router.refresh()
+      router.replace("/home")
     } catch {
       setError("Error al registrarse")
     } finally {

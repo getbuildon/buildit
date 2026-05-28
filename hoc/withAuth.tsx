@@ -7,6 +7,20 @@ import { Spinner } from "@/components/ui/spinner"
 
 const LOGIN_PATH = "/login"
 
+function RedirectingFallback({ message }: { message: string }) {
+  return (
+    <div
+      className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background text-foreground"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <Spinner className="size-8 text-muted-foreground" />
+      <span className="text-sm text-muted-foreground">{message}</span>
+    </div>
+  )
+}
+
 export default function withAuth<P extends object>(Component: ComponentType<P>) {
   function WithAuthGuard(props: P) {
     const { user, loading } = useAuth()
@@ -18,21 +32,11 @@ export default function withAuth<P extends object>(Component: ComponentType<P>) 
     }, [user, loading, router])
 
     if (loading) {
-      return (
-        <div
-          className="flex min-h-[50vh] flex-col items-center justify-center gap-3 bg-background text-foreground"
-          role="status"
-          aria-live="polite"
-          aria-busy="true"
-        >
-          <Spinner className="size-8 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Cargando sesión…</span>
-        </div>
-      )
+      return <RedirectingFallback message="Cargando sesión…" />
     }
 
     if (!user) {
-      return null
+      return <RedirectingFallback message="Redirigiendo al inicio de sesión…" />
     }
 
     return <Component {...props} />
