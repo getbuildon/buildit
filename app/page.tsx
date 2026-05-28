@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { BRAND_NAME } from "@/lib/brand"
 
 export default function LandingPage() {
   return (
@@ -9,7 +10,7 @@ export default function LandingPage() {
 
       <main className="relative z-10 flex max-w-2xl flex-col items-center text-center">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
-          Build It
+          {BRAND_NAME}
         </p>
         <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">
           Seguimiento de obra para desarrolladoras

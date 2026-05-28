@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { AuthProvider } from "@/context/AuthContextSupabase"
+import { BRAND_NAME } from "@/lib/brand"
 import "./globals.css"
 
 const inter = Inter({
@@ -9,7 +10,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Build It — Seguimiento de obra",
+  title: `${BRAND_NAME} — Seguimiento de obra`,
   description:
     "Plataforma multitenant de seguimiento de obra para desarrolladoras inmobiliarias.",
 }

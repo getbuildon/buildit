@@ -1,12 +1,13 @@
 "use server"
 
+import { redirect } from "next/navigation"
 import { getServerSessionUser } from "@/lib/auth/serverAuth"
 
 export async function requireAuthenticatedUser() {
   const user = await getServerSessionUser()
 
   if (!user) {
-    throw new Error("Unauthorized: No authenticated user")
+    redirect("/login")
   }
 
   return user

@@ -12,6 +12,8 @@ import type { AppUser, AuthResult } from "@/lib/auth/types"
 import { createClient } from "@/utils/supabase/client"
 import { isSupabaseConfigured } from "@/lib/auth/config"
 
+export const RECOVERY_PASSWORD_NEXT = "/recovery-password?paso=nueva"
+
 function readMockUserFromDocumentCookie(): AppUser | null {
   if (typeof document === "undefined") return null
   const match = document.cookie
@@ -132,12 +134,24 @@ export async function requestPasswordResetClient(email: string): Promise<AuthRes
   if (isSupabaseConfigured()) {
     const supabase = createClient()
     const origin = typeof window !== "undefined" ? window.location.origin : ""
+    const next = encodeURIComponent(RECOVERY_PASSWORD_NEXT)
     const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-      redirectTo: `${origin}/recovery-password?paso=nueva`,
+      redirectTo: `${origin}/auth/callback?next=${next}`,
     })
     if (error) return { error: error.message }
     return { needsEmailConfirmation: true }
   }
 
   return { needsEmailConfirmation: true }
+}
+
+export async function updatePasswordClient(password: string): Promise<AuthResult> {
+  if (!isSupabaseConfigured()) {
+    return { error: "La recuperación de contraseña requiere Supabase configurado." }
+  }
+
+  const supabase = createClient()
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) return { error: error.message }
+  return {}
 }

@@ -1,6 +1,7 @@
 import Image from "next/image"
 import type { ReactNode } from "react"
-import { BuildItIsoIcon } from "@/components/brand/BuildItIsoIcon"
+import { BuiltItIsoIcon } from "@/components/brand/BuiltItIsoIcon"
+import { BRAND_NAME } from "@/lib/brand"
 import {
   LOGIN_CARD,
   LOGIN_COLORS,
@@ -43,9 +44,9 @@ export function AuthSplitLayout({ children, belowCard }: AuthSplitLayoutProps) {
               <div className="w-full max-w-[576px]">
                 <div className="mb-10 flex items-center gap-3">
                   <div className="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-white/10 px-2.5">
-                    <BuildItIsoIcon className="size-7 text-white" />
+                    <BuiltItIsoIcon className="size-7 text-white" />
                   </div>
-                  <span className={LOGIN_TYPE.brand}>Built-it</span>
+                  <span className={LOGIN_TYPE.brand}>{BRAND_NAME}</span>
                 </div>
 
                 <div className="flex flex-col gap-6">
@@ -83,9 +84,9 @@ export function AuthSplitLayout({ children, belowCard }: AuthSplitLayoutProps) {
           >
             <div className="mb-6 flex items-center gap-3 self-start lg:hidden">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-white/10 px-2.5">
-                <BuildItIsoIcon className="size-7 text-white" />
+                <BuiltItIsoIcon className="size-7 text-white" />
               </div>
-              <span className={LOGIN_TYPE.brand}>Built-it</span>
+              <span className={LOGIN_TYPE.brand}>{BRAND_NAME}</span>
             </div>
 
             {children}

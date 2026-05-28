@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import type { ReactNode } from "react"
 import { Bell, ChevronDown, LogOut } from "lucide-react"
-import { BuildItIsoIcon } from "@/components/brand/BuildItIsoIcon"
+import { BuiltItIsoIcon } from "@/components/brand/BuiltItIsoIcon"
 import { useAuth } from "@/context/AuthContextSupabase"
 import {
   PROJECT_ICON_GRADIENT,
@@ -69,7 +69,7 @@ export function ProjectSidebar({ project }: ProjectSidebarProps) {
           }}
           aria-label="Volver a mis obras"
         >
-          <BuildItIsoIcon className="size-5 text-white" />
+          <BuiltItIsoIcon className="size-5 text-white" />
         </Link>
         <div className="min-w-0">
           <p className={cn("truncate", SHELL_TYPE.orgName)} style={{ color: SHELL_COLORS.orgName }}>

@@ -11,6 +11,7 @@ import {
   signInWithGoogleClient,
   signUpClient,
 } from "@/lib/auth/clientAuth"
+import { BRAND_NAME } from "@/lib/brand"
 import { useAuth } from "@/context/AuthContextSupabase"
 
 function RegisterPage() {
@@ -117,7 +118,7 @@ function RegisterPage() {
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-xl">
         <div className="space-y-1">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">
-            Build It
+            {BRAND_NAME}
           </p>
           <h1 className="text-2xl font-bold">Crear cuenta</h1>
           <p className="text-sm text-muted-foreground">

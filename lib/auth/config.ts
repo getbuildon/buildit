@@ -1,4 +1,4 @@
-export const MOCK_AUTH_EMAIL = "demo@buildit.com"
+export const MOCK_AUTH_EMAIL = "demo@built-it.com"
 export const MOCK_AUTH_PASSWORD = "demo123456"
 export const MOCK_AUTH_USER_ID = "mock-user-demo"
 

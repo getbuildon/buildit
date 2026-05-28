@@ -1,10 +1,10 @@
 import { cn } from "@/lib/utils"
 
-type BuildItIsoIconProps = {
+type BuiltItIsoIconProps = {
   className?: string
 }
 
-export function BuildItIsoIcon({ className }: BuildItIsoIconProps) {
+export function BuiltItIsoIcon({ className }: BuiltItIsoIconProps) {
   return (
     <svg
       width="28"
