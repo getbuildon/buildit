@@ -1,21 +1,21 @@
 export const SHELL_COLORS = {
-  sidebarBg: "#0f172b",
-  sidebarBorder: "rgba(148, 163, 184, 0.12)",
-  mainBg: "#f8fafc",
+  sidebarBg: "#fefcfb",
+  sidebarBorder: "#f0eeec",
+  mainBg: "#fefcfb",
   headerBg: "#ffffff",
-  headerBorder: "#e2e8f0",
-  navText: "#94a3b8",
-  navHoverBg: "rgba(255, 255, 255, 0.06)",
-  navHoverText: "#f1f5f9",
-  navActiveBg: "#155dfc",
+  headerBorder: "#e8e9eb",
+  navText: "#18191b",
+  navHoverBg: "#f5f3f1",
+  navHoverText: "#18191b",
+  navActiveBg: "#18191b",
   navActiveText: "#ffffff",
-  orgName: "#f8fafc",
-  projectName: "#94a3b8",
-  userCardBg: "#1a2332",
-  userName: "#f1f5f9",
-  userRole: "#94a3b8",
-  avatarBg: "rgba(21, 93, 252, 0.2)",
-  avatarText: "#2b7fff",
+  orgName: "#18191b",
+  projectName: "#494e55",
+  userCardBg: "#f3f3f5",
+  userName: "#18191b",
+  userRole: "#494e55",
+  avatarBg: "#ff7433",
+  avatarText: "#ffffff",
   iconButtonBorder: "#e2e8f0",
   iconButtonText: "#64748b",
   notificationDot: "#155dfc",
@@ -31,9 +31,10 @@ export const SHELL_COLORS = {
 } as const
 
 export const SHELL_LAYOUT = {
-  sidebarWidth: "256px",
-  sidebarBrandHeight: "77px",
-  sidebarBrandPadding: "20px",
+  sidebarWidth: "254px",
+  sidebarMargin: "12px",
+  sidebarBrandHeight: "76px",
+  sidebarBrandPadding: "16px",
   headerHeight: "65px",
   headerPaddingX: "24px",
   headerActionsGap: "12px",
@@ -66,7 +67,7 @@ export const PROJECT_ICON_GRADIENT =
 export const PROJECT_ICON_SHADOW =
   "0px 10px 7.5px rgba(0, 0, 0, 0.1), 0px 4px 3px rgba(0, 0, 0, 0.1)"
 
-/** Figma node 558:6394 — nav link selected (blue bg, white text) */
+/** Figma node 1228:12933 — sidebar nav link selected (black pill 229x40, r12) */
 export const SIDEBAR_NAV_ACTIVE_LINK_STYLE = {
   height: "40px",
   width: "100%",
@@ -76,14 +77,13 @@ export const SIDEBAR_NAV_ACTIVE_LINK_STYLE = {
   gap: "12px",
   paddingLeft: "12px",
   paddingRight: "12px",
-  borderRadius: "10px",
+  borderRadius: "12px",
   border: "1px solid transparent",
-  backgroundColor: "#155dfc",
+  backgroundColor: "#18191b",
   color: "#ffffff",
   fontSize: "14px",
-  fontWeight: 600,
+  fontWeight: 500,
   lineHeight: "20px",
-  letterSpacing: "-0.1504px",
   textDecoration: "none",
 }
 
@@ -96,13 +96,13 @@ export const SIDEBAR_NAV_INACTIVE_LINK_STYLE = {
   gap: "12px",
   paddingLeft: "12px",
   paddingRight: "12px",
-  borderRadius: "10px",
+  borderRadius: "12px",
   border: "1px solid transparent",
   backgroundColor: "transparent",
+  color: "#18191b",
   fontSize: "14px",
   fontWeight: 500,
   lineHeight: "20px",
-  letterSpacing: "-0.1504px",
   textDecoration: "none",
 }
 

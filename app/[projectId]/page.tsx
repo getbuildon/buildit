@@ -1,6 +1,6 @@
 import { Building2 } from "lucide-react"
 import { ProjectPageHeader } from "@/components/project-shell/ProjectPageHeader"
-import { getProjectByIdMock } from "@/lib/projects/mockProjects"
+import { getProjectById } from "@/lib/projects/listUserProjects"
 
 type DashboardPageProps = {
   params: Promise<{ projectId: string }>
@@ -8,7 +8,7 @@ type DashboardPageProps = {
 
 export default async function DashboardPage({ params }: DashboardPageProps) {
   const { projectId } = await params
-  const project = getProjectByIdMock(projectId)
+  const project = await getProjectById(projectId)
 
   if (!project) {
     return null

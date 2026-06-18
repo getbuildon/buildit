@@ -1,13 +1,10 @@
 import Image from "next/image"
 import type { ReactNode } from "react"
-import { BuiltItIsoIcon } from "@/components/brand/BuiltItIsoIcon"
-import { BRAND_NAME } from "@/lib/brand"
 import {
+  LOGIN_BG,
   LOGIN_CARD,
   LOGIN_COLORS,
   LOGIN_GRADIENT_LEFT,
-  LOGIN_GRADIENT_MAIN,
-  LOGIN_GRADIENT_RIGHT,
   LOGIN_TYPE,
 } from "@/lib/login/designTokens"
 import { cn } from "@/lib/utils"
@@ -20,42 +17,52 @@ type AuthSplitLayoutProps = {
 export function AuthSplitLayout({ children, belowCard }: AuthSplitLayoutProps) {
   return (
     <div
-      className="relative min-h-screen text-white"
-      style={{ backgroundImage: LOGIN_GRADIENT_MAIN }}
+      className="relative min-h-screen"
+      style={{ backgroundColor: LOGIN_BG }}
     >
-      <main className="grid min-h-screen lg:grid-cols-[901.5fr_997.5fr]">
+      <main className="grid min-h-screen lg:grid-cols-[902fr_997fr]">
         <section
-          className="relative hidden min-h-screen overflow-hidden lg:block"
-          style={{ backgroundImage: LOGIN_GRADIENT_LEFT }}
+          className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col"
         >
-          <div className="absolute inset-0 opacity-30">
+          <div className="absolute inset-0">
             <Image
               src="/login/hero-bg.jpg"
               alt=""
               fill
               priority
-              className="object-cover"
+              className="object-cover grayscale"
               sizes="50vw"
             />
           </div>
+          <div
+            className="absolute inset-0"
+            style={{ backgroundImage: LOGIN_GRADIENT_LEFT }}
+          />
 
           <div className="relative flex min-h-screen flex-col">
-            <div className="flex flex-1 flex-col justify-center pl-24 pr-16">
-              <div className="w-full max-w-[576px]">
-                <div className="mb-10 flex items-center gap-3">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-white/10 px-2.5">
-                    <BuiltItIsoIcon className="size-7 text-white" />
-                  </div>
-                  <span className={LOGIN_TYPE.brand}>{BRAND_NAME}</span>
-                </div>
+            <div className="flex flex-1 flex-col justify-center pl-20 pr-[200px] pt-20">
+              <div className="w-full">
+                <Image
+                  src="/logo-build-on.svg"
+                  alt="BuildOn"
+                  width={200}
+                  height={42}
+                  priority
+                  className="mb-20 h-[42px] w-auto self-start"
+                />
 
                 <div className="flex flex-col gap-6">
-                  <h1 className={LOGIN_TYPE.heroTitle}>
-                    Seguimiento de obra claro, centralizado y en tiempo real
+                  <h1
+                    className={LOGIN_TYPE.heroTitle}
+                    style={{ color: LOGIN_COLORS.heroText }}
+                  >
+                    Seguimiento de obra claro,{" "}
+                    <span style={{ color: "#FF7433" }}>centralizado</span> y en
+                    tiempo real.
                   </h1>
                   <p
                     className={cn(LOGIN_TYPE.heroBody)}
-                    style={{ color: LOGIN_COLORS.subtitle }}
+                    style={{ color: LOGIN_COLORS.heroText }}
                   >
                     Gestiona tus proyectos de construcción con total visibilidad.
                     Monitorea avances, coordina equipos y mantén informados a tus
@@ -66,7 +73,7 @@ export function AuthSplitLayout({ children, belowCard }: AuthSplitLayoutProps) {
             </div>
 
             <p
-              className={cn("pb-16 pl-24", LOGIN_TYPE.heroFooter)}
+              className={cn("pb-20 pl-20", LOGIN_TYPE.heroFooter)}
               style={{ color: LOGIN_COLORS.footer }}
             >
               Desarrollado por Elemental Haus
@@ -76,18 +83,18 @@ export function AuthSplitLayout({ children, belowCard }: AuthSplitLayoutProps) {
 
         <section
           className="flex min-h-screen items-center justify-center px-6 py-12 sm:px-10 lg:px-16 xl:px-20"
-          style={{ backgroundImage: LOGIN_GRADIENT_RIGHT }}
         >
           <div
             className="flex w-full flex-col items-center"
             style={{ maxWidth: LOGIN_CARD.maxWidth }}
           >
-            <div className="mb-6 flex items-center gap-3 self-start lg:hidden">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-white/10 px-2.5">
-                <BuiltItIsoIcon className="size-7 text-white" />
-              </div>
-              <span className={LOGIN_TYPE.brand}>{BRAND_NAME}</span>
-            </div>
+            <Image
+              src="/logo-build-on.svg"
+              alt="BuildOn"
+              width={200}
+              height={42}
+              className="mb-6 h-[42px] w-auto self-start lg:hidden"
+            />
 
             {children}
 
@@ -106,7 +113,7 @@ type AuthFormCardProps = {
 export function AuthFormCard({ children }: AuthFormCardProps) {
   return (
     <div
-      className="w-full rounded-[16px] border bg-white shadow-[0_20px_12.5px_rgba(0,0,0,0.1),0_8px_5px_rgba(0,0,0,0.1)]"
+      className="w-full rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)]"
       style={{ borderColor: LOGIN_COLORS.inputBorder }}
     >
       <div

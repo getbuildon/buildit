@@ -7,5 +7,5 @@ export async function getServerSessionUser() {
     error,
   } = await supabase.auth.getUser()
   if (error || !user?.email) return null
-  return { uid: user.id, email: user.email }
+  return { id: user.id, email: user.email }
 }

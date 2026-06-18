@@ -3,25 +3,25 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #0f1419;
-  --foreground: #f1f5f9;
-  --card: #1a2332;
-  --card-foreground: #f1f5f9;
-  --popover: #1a2332;
-  --popover-foreground: #f1f5f9;
-  --primary: #3b82f6;
+  --background: #fefcfb;
+  --foreground: #18191b;
+  --card: #ffffff;
+  --card-foreground: #18191b;
+  --popover: #ffffff;
+  --popover-foreground: #18191b;
+  --primary: #ff7433;
   --primary-foreground: #ffffff;
-  --secondary: rgb(255 255 255 / 0.04);
-  --secondary-foreground: #f1f5f9;
-  --muted: rgb(255 255 255 / 0.06);
-  --muted-foreground: #94a3b8;
-  --accent: rgb(255 255 255 / 0.06);
-  --accent-foreground: #f1f5f9;
+  --secondary: #f5f3f1;
+  --secondary-foreground: #18191b;
+  --muted: #f5f3f1;
+  --muted-foreground: #696e77;
+  --accent: #fff1ea;
+  --accent-foreground: #b8430f;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: rgb(148 163 184 / 0.12);
-  --input: rgb(148 163 184 / 0.16);
-  --ring: rgb(59 130 246 / 0.45);
+  --border: #e8e9eb;
+  --input: #e8e9eb;
+  --ring: rgb(255 116 51 / 0.45);
   --radius: 0.75rem;
 }
 
@@ -49,10 +49,72 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-sans);
+}
+
+.font-recoleta {
+  font-family: var(--font-recoleta), serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+@keyframes victory-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes victory-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.88) translateY(28px);
+  }
+  70% {
+    transform: scale(1.02) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes victory-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 32px rgb(0 201 80 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 52px rgb(0 201 80 / 0.6);
+  }
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-12vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(540deg);
+    opacity: 0;
+  }
+}
+
+@keyframes countdown-tick {
+  0% {
+    transform: scale(1.35);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

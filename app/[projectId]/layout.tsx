@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import type { ReactNode } from "react"
 import { ProjectWorkspace } from "@/components/project-shell/ProjectWorkspace"
 import { assertProjectRoute } from "@/lib/project/assertProjectRoute"
-import { getProjectByIdMock } from "@/lib/projects/mockProjects"
+import { getProjectById } from "@/lib/projects/listUserProjects"
 
 type ProjectLayoutProps = {
   children: ReactNode
@@ -13,7 +13,7 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
   const { projectId } = await params
   await assertProjectRoute(projectId)
 
-  const project = getProjectByIdMock(projectId)
+  const project = await getProjectById(projectId)
   if (!project) {
     notFound()
   }

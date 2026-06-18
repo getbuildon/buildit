@@ -1,7 +1,7 @@
 import { FileCheck2 } from "lucide-react"
 import { ProjectPageHeader } from "@/components/project-shell/ProjectPageHeader"
 import { ProjectSectionPlaceholder } from "@/components/project-shell/ProjectSectionPlaceholder"
-import { getProjectByIdMock } from "@/lib/projects/mockProjects"
+import { getProjectById } from "@/lib/projects/listUserProjects"
 
 type PageProps = {
   params: Promise<{ projectId: string }>
@@ -9,7 +9,7 @@ type PageProps = {
 
 export default async function CertificacionesPage({ params }: PageProps) {
   const { projectId } = await params
-  const project = getProjectByIdMock(projectId)
+  const project = await getProjectById(projectId)
   if (!project) return null
 
   return (

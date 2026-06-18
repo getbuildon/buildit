@@ -18,12 +18,17 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // BuildOn brand button — orange fill with soft glow (Figma 1127:2891 / 1128:5510)
+        brand:
+          "bg-[#ff7433] text-white shadow-[0_0_20px_rgba(243,103,31,0.30)] hover:bg-[#ff7433]/90 focus-visible:ring-0",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
         sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
         icon: "size-9",
+        // BuildOn wizard primary action — 44px tall, 10px radius
+        brand: "h-[44px] rounded-[10px] px-4 gap-2",
       },
     },
     defaultVariants: {

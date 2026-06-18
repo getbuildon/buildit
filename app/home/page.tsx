@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { LogOut } from "lucide-react"
 import { AddProjectCard } from "@/components/projects/AddProjectCard"
 import { ProjectCard } from "@/components/projects/ProjectCard"
@@ -12,16 +13,19 @@ import {
   HOME_GRADIENT,
   HOME_TYPE,
 } from "@/lib/home/designTokens"
-import {
-  displayNameFromEmail,
-  getUserProjectsMock,
-} from "@/lib/projects/mockProjects"
+import { listUserProjects } from "@/lib/projects/listUserProjects"
+import { displayNameFromEmail } from "@/lib/projects/mockProjects"
+import type { UserProjectListItem } from "@/lib/projects/types"
 
 function HomePage() {
   const router = useRouter()
   const { logOut, user } = useAuth()
-  const projects = getUserProjectsMock()
+  const [projects, setProjects] = useState<UserProjectListItem[]>([])
   const displayName = displayNameFromEmail(user?.email)
+
+  useEffect(() => {
+    void listUserProjects().then(setProjects)
+  }, [])
 
   const handleLogout = async () => {
     await logOut()
@@ -48,10 +52,12 @@ function HomePage() {
       </div>
 
       <div className="flex w-full max-w-[896px] flex-col items-center">
-        <header className="flex w-full flex-col items-center gap-4 text-center">
-          <h1 className={HOME_TYPE.greeting}>¡Bienvenido, {displayName}! 👋</h1>
+        <header className="flex w-full flex-col items-center gap-3 text-center">
+          <h1 className={`font-recoleta ${HOME_TYPE.greeting}`}>
+            ¡Bienvenido, {displayName}! 👋
+          </h1>
           <p className={HOME_TYPE.question} style={{ color: HOME_COLORS.subtitle }}>
-            ¿A qué obra querés ingresar?
+            Creá tu primer proyecto.
           </p>
         </header>
 
@@ -62,12 +68,6 @@ function HomePage() {
           <AddProjectCard />
         </div>
 
-        <p
-          className={`${HOME_TYPE.footer} mt-10 text-center`}
-          style={{ color: HOME_COLORS.footer }}
-        >
-          Desarrollado por Elemental Haus
-        </p>
       </div>
     </div>
   )

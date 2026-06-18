@@ -1,14 +1,52 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Google_Sans_Flex } from "next/font/google"
+import localFont from "next/font/local"
 import { SupabaseConfigMissing } from "@/components/auth/SupabaseConfigMissing"
 import { AuthProvider } from "@/context/AuthContextSupabase"
 import { BRAND_NAME } from "@/lib/brand"
 import { readPublicSupabaseConfigFromEnv } from "@/lib/auth/publicSupabaseConfig"
 import "./globals.css"
 
-const inter = Inter({
+const googleSansFlex = Google_Sans_Flex({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-sans",
+  weight: ["400", "500", "600", "700"],
+})
+
+const recoleta = localFont({
+  src: [
+    {
+      path: "../public/fonts/Recoleta-Thin.ttf",
+      weight: "100",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Recoleta-Light.ttf",
+      weight: "300",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Recoleta-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Recoleta-Medium.ttf",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Recoleta-SemiBold.ttf",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Recoleta-Bold.ttf",
+      weight: "700",
+      style: "normal",
+    },
+  ],
+  variable: "--font-recoleta",
 })
 
 export const metadata: Metadata = {
@@ -25,8 +63,10 @@ export default function RootLayout({
   const supabasePublicConfig = readPublicSupabaseConfigFromEnv()
 
   return (
-    <html lang="es" className="dark scroll-smooth">
-      <body className={`${inter.variable} font-sans antialiased`}>
+    <html lang="es" className="scroll-smooth">
+      <body
+        className={`${recoleta.variable} ${googleSansFlex.variable} font-sans antialiased`}
+      >
         {supabasePublicConfig ? (
           <AuthProvider supabasePublicConfig={supabasePublicConfig}>
             {children}
