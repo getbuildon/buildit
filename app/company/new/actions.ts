@@ -21,34 +21,36 @@ export async function createCompany(input: CreateCompanyInput): Promise<CreateCo
   }
 
   try {
-    const { data: company, error: createError } = await supabase
-      .from("companies")
-      .insert({
-        name,
-        legal_name: input.legal_name?.trim() || null,
-        country: input.country?.trim() || null,
-      })
-      .select("id")
-      .single()
+    // Usar función SQL que bypasses RLS con SECURITY DEFINER
+    const { data: companyResult, error: createError } = await supabase.rpc(
+      "create_company_for_user",
+      {
+        p_name: name,
+        p_legal_name: input.legal_name?.trim() || null,
+        p_country: input.country?.trim() || null,
+      }
+    )
 
-    if (createError || !company) {
+    if (createError || !companyResult) {
       return { ok: false, error: createError?.message || "Error al crear la empresa." }
     }
 
-    const { error: memberError } = await supabase
-      .from("company_members")
-      .insert({
-        company_id: company.id,
-        user_id: user.id,
-        role: "owner",
-        status: "active",
-      })
+    const companyId = companyResult
+
+    // Agregar usuario como owner
+    const { error: memberError } = await supabase.rpc(
+      "add_user_as_company_owner",
+      {
+        p_company_id: companyId,
+        p_user_id: user.id,
+      }
+    )
 
     if (memberError) {
       return { ok: false, error: memberError.message }
     }
 
-    return { ok: true, companyId: company.id }
+    return { ok: true, companyId }
   } catch (err) {
     return { ok: false, error: "Error al crear la empresa." }
   }
