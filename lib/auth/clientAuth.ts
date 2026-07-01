@@ -135,3 +135,14 @@ export async function updatePasswordClient(password: string): Promise<AuthResult
     return { error: mapAuthError(err, "Error al actualizar la contraseña") }
   }
 }
+
+export async function updateEmailClient(email: string): Promise<AuthResult> {
+  try {
+    const supabase = createClient()
+    const { error } = await withAuthTimeout(supabase.auth.updateUser({ email: email.trim() }))
+    if (error) return { error: mapAuthError(error, "Error al actualizar el correo") }
+    return { needsEmailConfirmation: true }
+  } catch (err) {
+    return { error: mapAuthError(err, "Error al actualizar el correo") }
+  }
+}

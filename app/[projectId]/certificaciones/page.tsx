@@ -13,7 +13,13 @@ export default async function CertificacionesPage({ params }: PageProps) {
   if (!project) return null
 
   return (
-    <>
+    <div
+      style={{
+        maxWidth: "747px",
+        width: "100%",
+        margin: "0 auto",
+      }}
+    >
       <ProjectPageHeader
         icon={FileCheck2}
         title="Certificaciones"
@@ -23,6 +29,6 @@ export default async function CertificacionesPage({ params }: PageProps) {
         title="Próximamente"
         description="Esta sección se implementará según el diseño de Figma."
       />
-    </>
+    </div>
   )
 }

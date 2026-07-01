@@ -37,6 +37,51 @@ export async function createProjectFromDraft(
   try {
     const catalog = await loadProjectCatalogIds(supabase)
 
+    // Obtener o crear company por defecto del usuario
+    const { data: companies } = await supabase
+      .from("company_members")
+      .select("company_id")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .eq("role", "owner")
+      .limit(1)
+
+    let companyId: string
+
+    if (companies && companies.length > 0) {
+      companyId = companies[0].company_id
+    } else {
+      // Crear una company default para el usuario
+      const { data: newCompany, error: companyError } = await supabase
+        .from("companies")
+        .insert({
+          name: `Mi Empresa - ${user.id.slice(0, 8)}`,
+        })
+        .select("id")
+        .single()
+
+      if (companyError || !newCompany) {
+        return {
+          ok: false,
+          error: companyError?.message ?? "No se pudo crear la empresa.",
+        }
+      }
+
+      companyId = newCompany.id
+
+      // Agregar el usuario como owner de la company
+      const { error: memberError } = await supabase.from("company_members").insert({
+        company_id: companyId,
+        user_id: user.id,
+        role: "owner",
+        status: "active",
+      })
+
+      if (memberError) {
+        throw memberError
+      }
+    }
+
     const { data: project, error: projectError } = await supabase
       .from("projects")
       .insert({
@@ -45,6 +90,7 @@ export async function createProjectFromDraft(
         start_date: parseOptionalDate(draft.startDate),
         end_date: parseOptionalDate(draft.endDate),
         status: "active",
+        company_id: companyId,
         created_by: user.id,
       })
       .select("id")

@@ -72,6 +72,8 @@ export async function listUserProjects(): Promise<UserProjectListItem[]> {
   if (!user) return []
 
   const supabase = await createClient()
+
+  // Obtener proyectos donde el usuario es miembro
   const { data: memberships, error } = await supabase
     .from("project_members")
     .select(
@@ -81,7 +83,7 @@ export async function listUserProjects(): Promise<UserProjectListItem[]> {
         name,
         location
       )
-    `,
+    `
     )
     .eq("user_id", user.id)
     .eq("is_active", true)

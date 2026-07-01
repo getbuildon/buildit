@@ -1,4 +1,4 @@
-import { getProjectById } from "@/lib/projects/listUserProjects"
+import { getProjectBasics } from "./actions"
 import { ConfiguracionView } from "./ConfiguracionView"
 
 type PageProps = {
@@ -7,8 +7,8 @@ type PageProps = {
 
 export default async function ConfiguracionPage({ params }: PageProps) {
   const { projectId } = await params
-  const project = await getProjectById(projectId)
+  const project = await getProjectBasics(projectId)
   if (!project) return null
 
-  return <ConfiguracionView projectName={project.name} />
+  return <ConfiguracionView project={project} />
 }

@@ -14,6 +14,7 @@ import {
   HOME_TYPE,
 } from "@/lib/home/designTokens"
 import { listUserProjects } from "@/lib/projects/listUserProjects"
+import { getProfileName } from "@/lib/projects/getProfileName"
 import { displayNameFromEmail } from "@/lib/projects/mockProjects"
 import type { UserProjectListItem } from "@/lib/projects/types"
 
@@ -21,11 +22,18 @@ function HomePage() {
   const router = useRouter()
   const { logOut, user } = useAuth()
   const [projects, setProjects] = useState<UserProjectListItem[]>([])
-  const displayName = displayNameFromEmail(user?.email)
+  const [displayName, setDisplayName] = useState("")
 
   useEffect(() => {
-    void listUserProjects().then(setProjects)
-  }, [])
+    const loadData = async () => {
+      const [profileName] = await Promise.all([
+        getProfileName(),
+        listUserProjects().then(setProjects),
+      ])
+      setDisplayName(profileName || displayNameFromEmail(user?.email) || "")
+    }
+    loadData()
+  }, [user?.email])
 
   const handleLogout = async () => {
     await logOut()
@@ -56,9 +64,11 @@ function HomePage() {
           <h1 className={`font-recoleta ${HOME_TYPE.greeting}`}>
             ¡Bienvenido, {displayName}! 👋
           </h1>
-          <p className={HOME_TYPE.question} style={{ color: HOME_COLORS.subtitle }}>
-            Creá tu primer proyecto.
-          </p>
+          {projects.length === 0 && (
+            <p className={HOME_TYPE.question} style={{ color: HOME_COLORS.subtitle }}>
+              Creá tu primer proyecto.
+            </p>
+          )}
         </header>
 
         <div className="mt-12 flex w-full flex-wrap justify-center gap-6 sm:px-16">

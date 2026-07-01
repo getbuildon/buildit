@@ -183,7 +183,14 @@ export function EquipoTeamView() {
   const totalItems = MOCK_TEAM.length
 
   return (
-    <div className="flex flex-col gap-8 pt-6">
+    <div
+      className="flex flex-col gap-8 pt-6"
+      style={{
+        maxWidth: "747px",
+        width: "100%",
+        margin: "0 auto",
+      }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-2">

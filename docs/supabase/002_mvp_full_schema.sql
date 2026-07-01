@@ -1,0 +1,41 @@
+-- =============================================================================
+-- Build On — MVP Full Schema (referencia de documentación)
+-- Este archivo es la versión completa del esquema MVP incluyendo la migration
+-- inicial (001_projects_schema.sql) + esta migration (002).
+-- Para aplicar solo los cambios nuevos: usar 20260701000000_mvp_full_schema.sql
+-- =============================================================================
+
+-- Ver: supabase/migrations/20260701000000_mvp_full_schema.sql
+
+-- RESUMEN DE CAMBIOS RESPECTO A 001_projects_schema.sql
+-- -------------------------------------------------------
+-- NUEVAS TABLAS:
+--   companies, profiles, company_members,
+--   unit_clients, progress_entries, progress_validations,
+--   attachments, comments, reports, audit_events,
+--   unit_progress_snapshots
+--
+-- TABLAS ALTERADAS:
+--   projects         → +company_id, +description, +building_type,
+--                       +estimated_end_date, +image_url, status ampliado
+--   project_units    → +code, +name, +unit_type, +status (unit_sale_status)
+--   rubros           → +tracking_scope (project/floor/unit)
+--   rubro_tasks      → +description, +default_weight
+--   project_inv.     → +company_id, +token_hash, +expires_at, status ampliado
+--
+-- NUEVOS ENUMS:
+--   company_role, member_status, tracking_scope, progress_status,
+--   progress_state, validation_decision, comment_visibility, comment_type,
+--   attachment_entity_type, report_type, unit_sale_status
+--
+-- NUEVAS FUNCIONES:
+--   user_company_role(company_id, user_id)
+--   user_is_company_member(company_id, user_id)
+--   user_project_role(project_id, user_id)
+--   handle_new_user()  → trigger auto-crea profiles al signup
+--
+-- TABLAS EXISTENTES SIN CAMBIOS (backward compatible):
+--   unit_types, task_tracking_types, user_types, project_roles,
+--   project_floors, rubro_groups, project_members, project_invitations
+--   (solo se alteraron columnas, no se eliminó nada)
+-- =============================================================================
