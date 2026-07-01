@@ -1,12 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Building2, Save, CheckCircle, AlertCircle } from "lucide-react"
+import { use, useEffect, useState } from "react"
+import Link from "next/link"
+import { Save, CheckCircle, AlertCircle } from "lucide-react"
 import { getCompanyInfo, updateCompanyInfo, type CompanyInfo } from "./actions"
 
 type Feedback = { type: "success" | "error"; message: string } | null
 
-export default function CompanySettingsPage({ params }: { params: { companyId: string } }) {
+export default function CompanySettingsPage({ params }: { params: Promise<{ companyId: string }> }) {
+  const { companyId } = use(params)
   const [company, setCompany] = useState<CompanyInfo | null>(null)
   const [name, setName] = useState("")
   const [legalName, setLegalName] = useState("")
@@ -17,7 +19,7 @@ export default function CompanySettingsPage({ params }: { params: { companyId: s
 
   useEffect(() => {
     const loadCompany = async () => {
-      const data = await getCompanyInfo(params.companyId)
+      const data = await getCompanyInfo(companyId)
       if (data) {
         setCompany(data)
         setName(data.name)
@@ -27,7 +29,7 @@ export default function CompanySettingsPage({ params }: { params: { companyId: s
       setLoading(false)
     }
     loadCompany()
-  }, [params.companyId])
+  }, [companyId])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,7 +42,7 @@ export default function CompanySettingsPage({ params }: { params: { companyId: s
 
     setSaving(true)
     const result = await updateCompanyInfo({
-      companyId: params.companyId,
+      companyId: companyId,
       name,
       legal_name: legalName,
       country,
@@ -55,28 +57,52 @@ export default function CompanySettingsPage({ params }: { params: { companyId: s
   }
 
   if (loading) {
-    return <div className="p-6">Cargando...</div>
+    return (
+      <div style={{ minHeight: "100vh", backgroundColor: "#f8f9fa", padding: "40px 24px" }}>
+        <div style={{ maxWidth: "747px", margin: "0 auto" }}>Cargando...</div>
+      </div>
+    )
   }
 
   if (!company) {
-    return <div className="p-6 text-red-600">Empresa no encontrada</div>
+    return (
+      <div style={{ minHeight: "100vh", backgroundColor: "#f8f9fa", padding: "40px 24px" }}>
+        <div style={{ maxWidth: "747px", margin: "0 auto", color: "#dc2626" }}>Empresa no encontrada</div>
+      </div>
+    )
   }
 
   return (
-    <div
-      style={{
-        maxWidth: "747px",
-        width: "100%",
-        margin: "0 auto",
-      }}
-    >
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <Building2 className="w-6 h-6 text-orange-500" />
-          <h1 className="font-recoleta text-2xl font-normal text-gray-900">Configuración de Empresa</h1>
-        </div>
-        <p className="text-sm text-gray-600 mt-1">Administra los datos de tu empresa</p>
-      </div>
+    <div style={{ minHeight: "100vh", backgroundColor: "#f8f9fa", padding: "40px 24px" }}>
+      <div
+        style={{
+          maxWidth: "747px",
+          width: "100%",
+          margin: "0 auto",
+        }}
+      >
+        <header style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "24px" }}>
+          <Link
+            href="/home"
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "14px", fontWeight: 500, color: "#43484E", textDecoration: "none", width: "fit-content", lineHeight: 1.4, transition: "opacity 0.15s" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7" }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden style={{ flexShrink: 0, marginTop: "-1px" }}>
+              <path d="M7.99992 12.6673L3.33325 8.00065L7.99992 3.33398" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M12.6666 8H3.33325" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Volver
+          </Link>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <h1 style={{ fontSize: "24px", fontWeight: 400, lineHeight: "32px", color: "#272a2d", fontFamily: "var(--font-recoleta, serif)", margin: 0 }}>
+              Configuración de Empresa
+            </h1>
+            <p style={{ fontSize: "14px", fontWeight: 400, color: "#272a2d", lineHeight: "20px", margin: 0 }}>
+              Administrá los datos de tu empresa
+            </p>
+          </div>
+        </header>
 
       <form onSubmit={handleSave} className="flex flex-col gap-6">
         <div
@@ -251,6 +277,7 @@ export default function CompanySettingsPage({ params }: { params: { companyId: s
           </button>
         </div>
       </form>
+      </div>
     </div>
   )
 }
