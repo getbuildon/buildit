@@ -1,7 +1,7 @@
 "use client"
 
-import Link from "next/link"
 import { useCallback, useState } from "react"
+import { BackButton } from "@/components/ui/BackButton"
 import { createProjectFromDraft } from "@/app/projects/new/actions"
 import { CreateProjectSuccessPanel } from "@/components/projects/new/CreateProjectSuccessPanel"
 import { CreateProjectStepper } from "@/components/projects/new/CreateProjectStepper"
@@ -114,20 +114,7 @@ export function CreateNewProjectView() {
         style={{ maxWidth: CREATE_PROJECT_LAYOUT.contentMaxWidth }}
       >
         <header className="flex flex-col gap-4">
-          <Link
-            href="/home"
-            className={cn(
-              CREATE_PROJECT_TYPE.backLink,
-              "inline-flex w-fit items-center gap-1.5 transition-opacity hover:opacity-80",
-            )}
-            style={{ color: CREATE_PROJECT_COLORS.backLink }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-              <path d="M7.99992 12.6673L3.33325 8.00065L7.99992 3.33398" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M12.6666 8H3.33325" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Volver
-          </Link>
+          <BackButton href="/home" />
           <div className="flex flex-col gap-2">
             <h1
               className={CREATE_PROJECT_TYPE.pageTitle}

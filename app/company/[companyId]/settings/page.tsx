@@ -1,8 +1,8 @@
 "use client"
 
 import { use, useEffect, useState } from "react"
-import Link from "next/link"
 import { Save, CheckCircle, AlertCircle } from "lucide-react"
+import { BackButton } from "@/components/ui/BackButton"
 import { getCompanyInfo, updateCompanyInfo, type CompanyInfo } from "./actions"
 
 type Feedback = { type: "success" | "error"; message: string } | null
@@ -82,18 +82,7 @@ export default function CompanySettingsPage({ params }: { params: Promise<{ comp
         }}
       >
         <header style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "24px" }}>
-          <Link
-            href="/home"
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "14px", fontWeight: 500, color: "#43484E", textDecoration: "none", width: "fit-content", lineHeight: 1.4, transition: "opacity 0.15s" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7" }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1" }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden style={{ flexShrink: 0, marginTop: "-1px" }}>
-              <path d="M7.99992 12.6673L3.33325 8.00065L7.99992 3.33398" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M12.6666 8H3.33325" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Volver
-          </Link>
+          <BackButton href="/home" />
           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
             <h1 style={{ fontSize: "24px", fontWeight: 400, lineHeight: "32px", color: "#272a2d", fontFamily: "var(--font-recoleta, serif)", margin: 0 }}>
               Configuración de Empresa
