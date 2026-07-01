@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Building2, Save, CheckCircle, AlertCircle } from "lucide-react"
@@ -55,13 +56,27 @@ export default function NewCompanyPage() {
           margin: "0 auto",
         }}
       >
-        <div className="mb-6">
-          <div className="flex items-center gap-3">
-            <Building2 className="w-6 h-6 text-orange-500" />
-            <h1 className="font-recoleta text-2xl font-normal text-gray-900">Nueva Empresa</h1>
+        <header style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "24px" }}>
+          <Link
+            href="/home"
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "14px", fontWeight: 500, color: "#43484E", textDecoration: "none", width: "fit-content", lineHeight: 1.4, transition: "opacity 0.15s" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7" }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden style={{ flexShrink: 0, marginTop: "-1px" }}>
+              <path d="M7.99992 12.6673L3.33325 8.00065L7.99992 3.33398" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M12.6666 8H3.33325" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Volver
+          </Link>
+          <div>
+            <div className="flex items-center gap-3">
+              <Building2 className="w-6 h-6 text-orange-500" />
+              <h1 className="font-recoleta text-2xl font-normal text-gray-900">Nueva Empresa</h1>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">Crea una empresa para comenzar a gestionar tus proyectos</p>
           </div>
-          <p className="text-sm text-gray-600 mt-1">Crea una empresa para comenzar a gestionar tus proyectos</p>
-        </div>
+        </header>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div

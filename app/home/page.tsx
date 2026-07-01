@@ -2,11 +2,10 @@
 
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { LogOut } from "lucide-react"
 import { AddProjectCard } from "@/components/projects/AddProjectCard"
 import { ProjectCard } from "@/components/projects/ProjectCard"
 import { CompanySelector } from "@/components/company/CompanySelector"
-import { Button } from "@/components/ui/button"
+import { UserMenu } from "@/components/user/UserMenu"
 import { useAuth } from "@/context/AuthContextSupabase"
 import withAuth from "@/hoc/withAuth"
 import {
@@ -22,7 +21,7 @@ import type { UserProjectListItem } from "@/lib/projects/types"
 
 function HomePage() {
   const router = useRouter()
-  const { logOut, user } = useAuth()
+  const { user } = useAuth()
   const [companies, setCompanies] = useState<any[]>([])
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
   const [projects, setProjects] = useState<UserProjectListItem[]>([])
@@ -59,12 +58,6 @@ function HomePage() {
     }
   }, [selectedCompanyId])
 
-  const handleLogout = async () => {
-    await logOut()
-    router.replace("/login")
-    router.refresh()
-  }
-
   if (loading) {
     return (
       <div
@@ -83,16 +76,7 @@ function HomePage() {
         style={{ backgroundImage: HOME_GRADIENT }}
       >
         <div className="absolute top-6 right-6">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            className="border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white"
-          >
-            <LogOut className="size-4" />
-            Cerrar sesión
-          </Button>
+          <UserMenu displayName={displayName} />
         </div>
 
         <div className="flex w-full max-w-4xl flex-col items-center text-center">
@@ -128,18 +112,9 @@ function HomePage() {
       className="relative flex min-h-screen flex-col items-center justify-center px-6 py-8 text-white sm:px-10"
       style={{ backgroundImage: HOME_GRADIENT }}
     >
-      <div className="absolute top-6 right-6 flex items-center gap-4">
+      <div className="absolute top-6 right-6 flex items-center gap-3">
         <CompanySelector currentCompanyId={selectedCompanyId || ""} />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleLogout}
-          className="border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white"
-        >
-          <LogOut className="size-4" />
-          Cerrar sesión
-        </Button>
+        <UserMenu displayName={displayName} />
       </div>
 
       <div className="flex w-full max-w-4xl flex-col items-center">

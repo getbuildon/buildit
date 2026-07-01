@@ -1,17 +1,10 @@
 import type { Metadata } from "next"
-import { Google_Sans_Flex } from "next/font/google"
 import localFont from "next/font/local"
 import { SupabaseConfigMissing } from "@/components/auth/SupabaseConfigMissing"
 import { AuthProvider } from "@/context/AuthContextSupabase"
 import { BRAND_NAME } from "@/lib/brand"
 import { readPublicSupabaseConfigFromEnv } from "@/lib/auth/publicSupabaseConfig"
 import "./globals.css"
-
-const googleSansFlex = Google_Sans_Flex({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  weight: ["400", "500", "600", "700"],
-})
 
 const recoleta = localFont({
   src: [
@@ -65,7 +58,7 @@ export default function RootLayout({
   return (
     <html lang="es" className="scroll-smooth">
       <body
-        className={`${recoleta.variable} ${googleSansFlex.variable} font-sans antialiased`}
+        className={`${recoleta.variable} font-sans antialiased`}
       >
         {supabasePublicConfig ? (
           <AuthProvider supabasePublicConfig={supabasePublicConfig}>
