@@ -16,7 +16,7 @@ export async function assertProjectRoute(projectId: string) {
   // Verificar que el proyecto existe
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("id")
+    .select("id, company_id")
     .eq("id", id)
     .maybeSingle()
 
@@ -24,8 +24,8 @@ export async function assertProjectRoute(projectId: string) {
     throw new Error("Project not found")
   }
 
-  // Verificar que el usuario es miembro del proyecto
-  const { data: membership, error: memberError } = await supabase
+  // Acceso por membresía explícita al proyecto
+  const { data: membership } = await supabase
     .from("project_members")
     .select("id")
     .eq("project_id", id)
@@ -33,9 +33,21 @@ export async function assertProjectRoute(projectId: string) {
     .eq("is_active", true)
     .maybeSingle()
 
-  if (memberError || !membership) {
-    throw new Error("Access denied")
+  if (membership) return { projectId: id }
+
+  // Acceso por ser owner/admin de la empresa del proyecto
+  if (project.company_id) {
+    const { data: companyAccess } = await supabase
+      .from("company_members")
+      .select("id")
+      .eq("company_id", project.company_id)
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .in("role", ["owner", "admin"])
+      .maybeSingle()
+
+    if (companyAccess) return { projectId: id }
   }
 
-  return { projectId: id }
+  throw new Error("Access denied")
 }
