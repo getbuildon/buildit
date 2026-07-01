@@ -8,6 +8,7 @@ type ProjectRow = {
   id: string
   name: string
   location: string | null
+  company_id: string
 }
 
 async function countFloorsAndUnits(
@@ -34,6 +35,7 @@ function toUserProjectListItem(
 ): UserProjectListItem {
   return {
     projectId: project.id,
+    company_id: project.company_id,
     organizationName: "",
     name: project.name,
     address: project.location?.trim() || "Sin dirección",
@@ -57,7 +59,7 @@ export async function getProjectById(
 
   const { data: project, error } = await supabase
     .from("projects")
-    .select("id, name, location")
+    .select("id, name, location, company_id")
     .eq("id", id)
     .maybeSingle()
 
@@ -81,7 +83,8 @@ export async function listUserProjects(): Promise<UserProjectListItem[]> {
       project:projects (
         id,
         name,
-        location
+        location,
+        company_id
       )
     `
     )
