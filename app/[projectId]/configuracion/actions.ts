@@ -253,7 +253,7 @@ export async function saveProjectRubros(
   rubros: Array<{
     name: string
     description: string | null
-    tracking_scope: string
+    tracking_scope?: string
     tasks: Array<{ name: string; description: string | null; default_weight: number | null }>
   }>,
 ): Promise<UpdateProjectBasicsResult> {
@@ -300,7 +300,7 @@ export async function saveProjectRubros(
         .insert({
           project_id: id,
           name: rubro.name,
-          tracking_scope: rubro.tracking_scope,
+          tracking_scope: "unit",
           sort_order: i,
           group_id: defaultGroupId,
           tracking_type_id: defaultTrackingTypeId,
