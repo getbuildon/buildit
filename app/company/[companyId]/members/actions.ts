@@ -35,16 +35,34 @@ export async function getCompanyMembers(companyId: string): Promise<MembersResul
 
   const { data: members, error } = await supabase
     .from("company_members")
-    .select("id, user_id, email, role, status, joined_at")
+    .select(`
+      id,
+      user_id,
+      role,
+      status,
+      created_at,
+      user:auth.users (
+        email
+      )
+    `)
     .eq("company_id", companyId)
     .eq("status", "active")
-    .order("joined_at", { ascending: true })
+    .order("created_at", { ascending: true })
 
   if (error) {
     return { ok: false, error: error.message }
   }
 
-  return { ok: true, members: members as CompanyMember[] }
+  const formattedMembers = members?.map((m: any) => ({
+    id: m.id,
+    user_id: m.user_id,
+    email: m.user?.email || "",
+    role: m.role,
+    status: m.status,
+    joined_at: m.created_at,
+  })) || []
+
+  return { ok: true, members: formattedMembers as CompanyMember[] }
 }
 
 export async function updateMemberRole(
