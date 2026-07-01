@@ -80,34 +80,9 @@ export async function getProjectById(
   return toUserProjectListItem(project, counts)
 }
 
-export async function listUserProjects(): Promise<UserProjectListItem[]> {
-  const user = await getAuthenticatedUserOrNull()
-  if (!user) return []
-
-  const supabase = await createClient()
-
-  // Obtener proyectos donde el usuario es miembro
-  const { data: memberships, error } = await supabase
-    .from("project_members")
-    .select(
-      `
-      project:projects (
-        id,
-        name,
-        location,
-        company_id,
-        company:companies ( name )
-      )
-    `
-    )
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-
-  if (error || !memberships) return []
-
+function normalizeProjects(rows: any[]): ProjectRow[] {
   const projects: ProjectRow[] = []
-  for (const row of memberships) {
-    const raw = row.project as any
+  for (const raw of rows) {
     if (!raw) continue
     const items = Array.isArray(raw) ? raw : [raw]
     for (const item of items) {
@@ -121,11 +96,56 @@ export async function listUserProjects(): Promise<UserProjectListItem[]> {
       })
     }
   }
+  return projects
+}
 
-  if (projects.length === 0) return []
+export async function listUserProjects(): Promise<UserProjectListItem[]> {
+  const user = await getAuthenticatedUserOrNull()
+  if (!user) return []
+
+  const supabase = await createClient()
+
+  // Proyectos con membresía explícita (todos los roles)
+  const { data: memberships } = await supabase
+    .from("project_members")
+    .select(`project:projects ( id, name, location, company_id, company:companies ( name ) )`)
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+
+  // Proyectos de empresas donde el usuario es owner/admin (acceso automático)
+  const { data: companyMemberships } = await supabase
+    .from("company_members")
+    .select("company_id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .in("role", ["owner", "admin"])
+
+  const explicitProjects = normalizeProjects(
+    (memberships || []).map((m) => m.project)
+  )
+
+  let companyProjects: ProjectRow[] = []
+  if (companyMemberships && companyMemberships.length > 0) {
+    const companyIds = companyMemberships.map((cm) => cm.company_id)
+    const { data: rawProjects } = await supabase
+      .from("projects")
+      .select("id, name, location, company_id, company:companies ( name )")
+      .in("company_id", companyIds)
+
+    companyProjects = normalizeProjects(rawProjects || [])
+  }
+
+  // Unir sin duplicados (priorizar explícitos)
+  const seen = new Set(explicitProjects.map((p) => p.id))
+  const merged = [
+    ...explicitProjects,
+    ...companyProjects.filter((p) => !seen.has(p.id)),
+  ]
+
+  if (merged.length === 0) return []
 
   const results = await Promise.all(
-    projects.map(async (project) => {
+    merged.map(async (project) => {
       const counts = await countFloorsAndUnits(supabase, project.id)
       return toUserProjectListItem(project, counts)
     }),
