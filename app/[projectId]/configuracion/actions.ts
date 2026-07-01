@@ -168,8 +168,8 @@ export async function getProjectRubros(projectId: string): Promise<RubroData[]> 
     .from("rubros")
     .select(
       `
-      id, name, description, tracking_scope, sort_order,
-      rubro_tasks (id, name, description, sort_order, default_weight)
+      id, name, tracking_scope, sort_order,
+      rubro_tasks (id, name, description, sort_order, weight_percent)
     `
     )
     .eq("project_id", id)
@@ -180,10 +180,16 @@ export async function getProjectRubros(projectId: string): Promise<RubroData[]> 
   return rubros.map((r) => ({
     id: r.id,
     name: r.name,
-    description: r.description,
+    description: null,
     tracking_scope: r.tracking_scope,
     sort_order: r.sort_order,
-    tasks: (r.rubro_tasks as TaskData[]) || [],
+    tasks: ((r.rubro_tasks as any[]) || []).map((t) => ({
+      id: t.id,
+      name: t.name,
+      description: t.description ?? null,
+      sort_order: t.sort_order,
+      default_weight: t.weight_percent ?? null,
+    })),
   }))
 }
 
@@ -259,7 +265,7 @@ export async function saveProjectRubros(
 
   try {
     // Obtener el primer rubro_group del proyecto (requerido por FK)
-    const { data: groups } = await supabase
+    const { data: groups, error: groupsError } = await supabase
       .from("rubro_groups")
       .select("id")
       .eq("project_id", id)
@@ -272,7 +278,7 @@ export async function saveProjectRubros(
     const defaultGroupId = groups[0].id
 
     // Obtener el tracking type "porcentaje" (requerido por FK)
-    const { data: trackingTypes } = await supabase
+    const { data: trackingTypes, error: trackingError } = await supabase
       .from("task_tracking_types")
       .select("id")
       .eq("slug", "porcentaje")
@@ -294,7 +300,6 @@ export async function saveProjectRubros(
         .insert({
           project_id: id,
           name: rubro.name,
-          description: rubro.description,
           tracking_scope: rubro.tracking_scope,
           sort_order: i,
           group_id: defaultGroupId,
@@ -311,8 +316,8 @@ export async function saveProjectRubros(
           project_id: id,
           rubro_id: insertedRubro.id,
           name: t.name,
-          description: t.description,
-          default_weight: t.default_weight,
+          description: t.description ?? null,
+          weight_percent: t.default_weight ?? null,
           sort_order: idx,
         }))
 
@@ -323,8 +328,8 @@ export async function saveProjectRubros(
 
     revalidatePath(`/${id}/configuracion`)
     return { ok: true }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Error al guardar rubros"
+  } catch (err: any) {
+    const message = err?.message || err?.details || JSON.stringify(err) || "Error al guardar rubros"
     return { ok: false, error: message }
   }
 }
