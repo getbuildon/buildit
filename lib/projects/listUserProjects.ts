@@ -9,6 +9,7 @@ type ProjectRow = {
   name: string
   location: string | null
   company_id: string
+  company_name: string | null
 }
 
 async function countFloorsAndUnits(
@@ -36,7 +37,7 @@ function toUserProjectListItem(
   return {
     projectId: project.id,
     company_id: project.company_id,
-    organizationName: "",
+    organizationName: project.company_name || "",
     name: project.name,
     address: project.location?.trim() || "Sin dirección",
     floors: counts.floors,
@@ -57,13 +58,23 @@ export async function getProjectById(
 
   const supabase = await createClient()
 
-  const { data: project, error } = await supabase
+  const { data: raw, error } = await supabase
     .from("projects")
-    .select("id, name, location, company_id")
+    .select("id, name, location, company_id, company:companies(name)")
     .eq("id", id)
     .maybeSingle()
 
-  if (error || !project) return null
+  if (error || !raw) return null
+
+  const r = raw as any
+  const company = Array.isArray(r.company) ? r.company[0] : r.company
+  const project: ProjectRow = {
+    id: r.id,
+    name: r.name,
+    location: r.location,
+    company_id: r.company_id,
+    company_name: company?.name ?? null,
+  }
 
   const counts = await countFloorsAndUnits(supabase, project.id)
   return toUserProjectListItem(project, counts)
@@ -84,7 +95,8 @@ export async function listUserProjects(): Promise<UserProjectListItem[]> {
         id,
         name,
         location,
-        company_id
+        company_id,
+        company:companies ( name )
       )
     `
     )
@@ -95,12 +107,18 @@ export async function listUserProjects(): Promise<UserProjectListItem[]> {
 
   const projects: ProjectRow[] = []
   for (const row of memberships) {
-    const project = row.project as ProjectRow | ProjectRow[] | null
-    if (!project) continue
-    if (Array.isArray(project)) {
-      for (const item of project) projects.push(item)
-    } else {
-      projects.push(project)
+    const raw = row.project as any
+    if (!raw) continue
+    const items = Array.isArray(raw) ? raw : [raw]
+    for (const item of items) {
+      const company = Array.isArray(item.company) ? item.company[0] : item.company
+      projects.push({
+        id: item.id,
+        name: item.name,
+        location: item.location,
+        company_id: item.company_id,
+        company_name: company?.name ?? null,
+      })
     }
   }
 

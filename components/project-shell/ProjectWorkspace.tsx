@@ -81,7 +81,7 @@ export function ProjectSidebar({ project }: ProjectSidebarProps) {
             className="truncate"
             style={{ fontSize: "14px", fontWeight: 600, lineHeight: "19.6px", color: "#000000" }}
           >
-            Organización
+            {project.organizationName || "Organización"}
           </p>
           <p
             className="truncate"
