@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/utils/supabase/server"
+import { createAdminClient } from "@/utils/supabase/admin"
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
 
 export type CompanyMember = {
@@ -188,8 +189,9 @@ export async function inviteMember(
     return { ok: false, error: "Por favor ingresá un email válido." }
   }
 
-  // Buscar si el usuario ya existe (registrado)
-  const { data: profile } = await supabase
+  // Buscar si el usuario ya existe — usando admin client para bypassear RLS en profiles
+  const adminClient = createAdminClient()
+  const { data: profile } = await adminClient
     .from("profiles")
     .select("id")
     .eq("email", trimmedEmail)
