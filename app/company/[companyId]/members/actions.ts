@@ -8,7 +8,7 @@ export type CompanyMember = {
   user_id: string
   email: string
   role: "owner" | "admin" | "billing" | "member"
-  status: "active" | "invited" | "inactive"
+  status: "active" | "invited" | "disabled"
   joined_at: string | null
 }
 
@@ -169,7 +169,7 @@ export async function removeMember(companyId: string, memberId: string): Promise
 
   const { error } = await supabase
     .from("company_members")
-    .update({ status: "inactive" })
+    .update({ status: "disabled" })
     .eq("id", memberId)
 
   if (error) {
