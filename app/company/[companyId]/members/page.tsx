@@ -2,8 +2,8 @@
 
 import Link from "next/link"
 import { useEffect, useState, use } from "react"
-import { AlertCircle, CheckCircle, Trash2, Plus } from "lucide-react"
-import { getCompanyMembers, updateMemberRole, removeMember, inviteMember, type CompanyMember } from "./actions"
+import { AlertCircle, CheckCircle, Trash2, Plus, Clock } from "lucide-react"
+import { getCompanyMembers, updateMemberRole, removeMember, inviteMember, revokeInvitation, type CompanyMember } from "./actions"
 
 type Feedback = { type: "success" | "error"; message: string } | null
 
@@ -45,16 +45,34 @@ export default function CompanyMembersPage({ params }: { params: Promise<{ compa
   }
 
   const handleRemove = async (memberId: string) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar este miembro?")) return
+    const member = members.find((m) => m.id === memberId)
+    const isInvitation = member?.user_id === null
+    const message = isInvitation
+      ? "¿Estás seguro de que deseas revocar esta invitación?"
+      : "¿Estás seguro de que deseas eliminar este miembro?"
+
+    if (!confirm(message)) return
 
     setActionInProgress(memberId)
-    const result = await removeMember(companyId, memberId)
 
-    if (result.ok) {
-      setMembers(members.filter((m) => m.id !== memberId))
-      setFeedback({ type: "success", message: "Miembro eliminado correctamente." })
+    // Si es una invitación pendiente (user_id es null), revocar invitación
+    if (isInvitation) {
+      const result = await revokeInvitation(companyId, memberId)
+      if (result.ok) {
+        setMembers(members.filter((m) => m.id !== memberId))
+        setFeedback({ type: "success", message: "Invitación revocada correctamente." })
+      } else {
+        setFeedback({ type: "error", message: result.error })
+      }
     } else {
-      setFeedback({ type: "error", message: result.error })
+      // Si es miembro activo, eliminarlo
+      const result = await removeMember(companyId, memberId)
+      if (result.ok) {
+        setMembers(members.filter((m) => m.id !== memberId))
+        setFeedback({ type: "success", message: "Miembro eliminado correctamente." })
+      } else {
+        setFeedback({ type: "error", message: result.error })
+      }
     }
     setActionInProgress(null)
   }
@@ -342,69 +360,87 @@ export default function CompanyMembersPage({ params }: { params: Promise<{ compa
                   }}
                 >
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "14px", fontWeight: 500, color: "#1d293d", marginBottom: "4px" }}>
-                      {member.email}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                      <span style={{ fontSize: "14px", fontWeight: 500, color: "#1d293d" }}>
+                        {member.email}
+                      </span>
+                      {member.user_id === null && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 500, color: "#7c3aed", backgroundColor: "#ede9fe", padding: "2px 6px", borderRadius: "4px" }}>
+                          <Clock style={{ width: "12px", height: "12px" }} />
+                          Invitación pendiente
+                        </div>
+                      )}
                     </div>
                     <div style={{ fontSize: "12px", color: "#777b84" }}>
-                      Se unió el {member.joined_at ? new Date(member.joined_at).toLocaleDateString() : "N/A"}
+                      {member.user_id === null
+                        ? `Invitado el ${member.joined_at ? new Date(member.joined_at).toLocaleDateString() : "N/A"}`
+                        : `Se unió el ${member.joined_at ? new Date(member.joined_at).toLocaleDateString() : "N/A"}`}
                     </div>
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <select
-                      value={member.role}
-                      onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                      disabled={actionInProgress === member.id}
-                      style={{
-                        padding: "8px 12px",
-                        borderRadius: "10px",
-                        border: "1px solid #edeef0",
-                        backgroundColor: colors.bg,
-                        color: colors.text,
-                        fontSize: "13px",
-                        fontWeight: 500,
-                        fontFamily: "system-ui, -apple-system, sans-serif",
-                        cursor: actionInProgress === member.id ? "not-allowed" : "pointer",
-                        opacity: actionInProgress === member.id ? 0.6 : 1,
-                        transition: "all 0.15s",
-                        outline: "none",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (actionInProgress !== member.id) {
+                    {member.user_id !== null && (
+                      <select
+                        value={member.role}
+                        onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                        disabled={actionInProgress === member.id}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: "10px",
+                          border: "1px solid #edeef0",
+                          backgroundColor: colors.bg,
+                          color: colors.text,
+                          fontSize: "13px",
+                          fontWeight: 500,
+                          fontFamily: "system-ui, -apple-system, sans-serif",
+                          cursor: actionInProgress === member.id ? "not-allowed" : "pointer",
+                          opacity: actionInProgress === member.id ? 0.6 : 1,
+                          transition: "all 0.15s",
+                          outline: "none",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (actionInProgress !== member.id) {
+                            const sel = e.currentTarget as HTMLSelectElement
+                            sel.style.borderColor = "#d1d5db"
+                          }
+                        }}
+                        onMouseLeave={(e) => {
                           const sel = e.currentTarget as HTMLSelectElement
-                          sel.style.borderColor = "#d1d5db"
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        const sel = e.currentTarget as HTMLSelectElement
-                        sel.style.borderColor = "#edeef0"
-                      }}
-                    >
-                      <option value="owner">Propietario</option>
-                      <option value="admin">Administrador</option>
-                      <option value="billing">Facturación</option>
-                      <option value="member">Miembro</option>
-                    </select>
+                          sel.style.borderColor = "#edeef0"
+                        }}
+                      >
+                        <option value="owner">Propietario</option>
+                        <option value="admin">Administrador</option>
+                        <option value="billing">Facturación</option>
+                        <option value="member">Miembro</option>
+                      </select>
+                    )}
 
                     <button
                       onClick={() => handleRemove(member.id)}
-                      disabled={actionInProgress === member.id || member.role === "owner"}
-                      title={member.role === "owner" ? "No se puede eliminar al propietario" : "Eliminar miembro"}
+                      disabled={actionInProgress === member.id || (member.user_id !== null && member.role === "owner")}
+                      title={
+                        member.user_id === null
+                          ? "Revocar invitación"
+                          : member.role === "owner"
+                          ? "No se puede eliminar al propietario"
+                          : "Eliminar miembro"
+                      }
                       style={{
                         padding: "8px 10px",
                         borderRadius: "10px",
                         border: "1px solid #f3d4d0",
                         backgroundColor: "#fef5f3",
                         color: "#dc2626",
-                        cursor: actionInProgress === member.id || member.role === "owner" ? "not-allowed" : "pointer",
-                        opacity: actionInProgress === member.id || member.role === "owner" ? 0.4 : 1,
+                        cursor: actionInProgress === member.id || (member.user_id !== null && member.role === "owner") ? "not-allowed" : "pointer",
+                        opacity: actionInProgress === member.id || (member.user_id !== null && member.role === "owner") ? 0.4 : 1,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         transition: "all 0.15s",
                       }}
                       onMouseEnter={(e) => {
-                        if (actionInProgress !== member.id && member.role !== "owner") {
+                        if (actionInProgress !== member.id && (member.user_id === null || member.role !== "owner")) {
                           const btn = e.currentTarget as HTMLButtonElement
                           btn.style.backgroundColor = "#fce4e0"
                           btn.style.borderColor = "#f08774"
