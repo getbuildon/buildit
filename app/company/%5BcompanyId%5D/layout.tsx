@@ -4,11 +4,11 @@ import { getCompanyById } from "@/lib/company/getCompanies"
 
 type CompanyLayoutProps = {
   children: ReactNode
-  params: Promise<{ companyId: string }>
+  params: Promise<Record<string, string>>
 }
 
 export default async function CompanyLayout({ children, params }: CompanyLayoutProps) {
-  const { companyId } = await params
+  const { companyId } = await params as { companyId: string }
   const company = await getCompanyById(companyId)
 
   if (!company) {

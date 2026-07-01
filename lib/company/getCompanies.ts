@@ -25,12 +25,14 @@ export async function getUserCompanies(): Promise<CompanyData[]> {
   if (error || !memberships) return []
 
   return memberships
-    .map((m) => {
-      const company = m.company as { id: string; name: string } | null
+    .map((m: any) => {
+      const company = m.company as { id: string; name: string } | { id: string; name: string }[] | null
       if (!company) return null
+      const companyData = Array.isArray(company) ? company[0] : company
+      if (!companyData) return null
       return {
-        id: company.id,
-        name: company.name,
+        id: companyData.id,
+        name: companyData.name,
         role: m.role,
       }
     })
@@ -53,12 +55,14 @@ export async function getCompanyById(companyId: string): Promise<CompanyData | n
 
   if (error || !membership) return null
 
-  const company = membership.company as { id: string; name: string } | null
+  const company = membership.company as { id: string; name: string } | { id: string; name: string }[] | null
   if (!company) return null
+  const companyData = Array.isArray(company) ? company[0] : company
+  if (!companyData) return null
 
   return {
-    id: company.id,
-    name: company.name,
+    id: companyData.id,
+    name: companyData.name,
     role: membership.role,
   }
 }

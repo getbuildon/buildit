@@ -3,6 +3,7 @@ import type { UserProjectListItem } from "@/lib/projects/types"
 export const MOCK_USER_PROJECTS: UserProjectListItem[] = [
   {
     projectId: "emerald",
+    company_id: "00000000-0000-0000-0000-000000000001",
     organizationName: "Grupo Alamo",
     name: "Torre Emerald",
     address: "Padre Patiño 651, Formosa",
@@ -13,6 +14,7 @@ export const MOCK_USER_PROJECTS: UserProjectListItem[] = [
   },
   {
     projectId: "life-recoleta",
+    company_id: "00000000-0000-0000-0000-000000000001",
     organizationName: "Grupo Alamo",
     name: "Life Recoleta",
     address: "San Roque Gonzalez 390, Asunción",
