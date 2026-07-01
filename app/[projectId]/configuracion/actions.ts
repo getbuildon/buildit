@@ -258,6 +258,31 @@ export async function saveProjectRubros(
   const supabase = await createClient()
 
   try {
+    // Obtener el primer rubro_group del proyecto (requerido por FK)
+    const { data: groups } = await supabase
+      .from("rubro_groups")
+      .select("id")
+      .eq("project_id", id)
+      .order("sort_order", { ascending: true })
+      .limit(1)
+
+    if (!groups || groups.length === 0) {
+      return { ok: false, error: "El proyecto no tiene grupos de rubros configurados." }
+    }
+    const defaultGroupId = groups[0].id
+
+    // Obtener el tracking type "porcentaje" (requerido por FK)
+    const { data: trackingTypes } = await supabase
+      .from("task_tracking_types")
+      .select("id")
+      .eq("slug", "porcentaje")
+      .limit(1)
+
+    if (!trackingTypes || trackingTypes.length === 0) {
+      return { ok: false, error: "No se encontró el tipo de seguimiento predeterminado." }
+    }
+    const defaultTrackingTypeId = trackingTypes[0].id
+
     // Eliminar rubros existentes (se cascadean tareas)
     await supabase.from("rubros").delete().eq("project_id", id)
 
@@ -272,7 +297,8 @@ export async function saveProjectRubros(
           description: rubro.description,
           tracking_scope: rubro.tracking_scope,
           sort_order: i,
-          group_id: "00000000-0000-0000-0000-000000000000", // TODO: conectar con rubros_groups
+          group_id: defaultGroupId,
+          tracking_type_id: defaultTrackingTypeId,
         })
         .select("id")
         .single()
