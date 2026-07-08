@@ -51,23 +51,43 @@ export type RubroGroupDraft = {
 }
 
 export const PROJECT_USER_TYPES = [
-  "Interno",
-  "Externo",
+  "Owner",
+  "Admin",
+  "Supervisor",
+  "Operador",
   "Cliente",
-  "Contratista",
 ] as const
 
 export type ProjectUserType = (typeof PROJECT_USER_TYPES)[number]
 
 export const PROJECT_TEAM_ROLES = [
+  "Founder",
+  "Director General",
+  "Desarrollador",
   "Administrador",
+  "Gerente",
+  "Project Manager",
+  "Coordinador",
   "Director de Obra",
-  "Residente de Obra",
-  "Arquitecto",
+  "Residente",
+  "Jefe de Obra",
+  "Supervisor",
+  "Lider de Proyecto",
+  "Capataz",
+  "Contratista",
+  "Subcontratista",
   "Cliente",
 ] as const
 
 export type ProjectTeamRole = (typeof PROJECT_TEAM_ROLES)[number]
+
+export const USER_TYPE_ROLES: Record<ProjectUserType, readonly ProjectTeamRole[]> = {
+  Owner: ["Founder", "Director General", "Desarrollador"],
+  Admin: ["Administrador", "Gerente", "Project Manager", "Coordinador"],
+  Supervisor: ["Director de Obra", "Residente", "Jefe de Obra", "Supervisor", "Lider de Proyecto"],
+  Operador: ["Capataz", "Contratista", "Subcontratista"],
+  Cliente: ["Cliente"],
+}
 
 export type TeamMemberDraft = {
   id: string
@@ -79,12 +99,15 @@ export type TeamMemberDraft = {
 }
 
 export type CreateProjectDraft = {
+  companyId: string | null
+  companyName: string
   projectName: string
   location: string
   startDate: string
   endDate: string
   floors: StructureFloorDraft[]
   groups: RubroGroupDraft[]
+  unitTaskExclusions: Record<string, string[]>
   teamMembers: TeamMemberDraft[]
 }
 
@@ -110,29 +133,8 @@ export function createDefaultFloor(floorIndex: number): StructureFloorDraft {
   }
 }
 
-function createDemoCercoObraRubro(): RubroItemDraft {
-  return {
-    id: newId("rubro"),
-    name: "Cerco de Obra",
-    trackingType: "Porcentaje",
-    tasks: [
-      {
-        id: newId("task"),
-        name: "Instalación de cerco perimetral",
-        weightPercent: "",
-      },
-      {
-        id: newId("task"),
-        name: "Portón de acceso vehicular",
-        weightPercent: "",
-      },
-      {
-        id: newId("task"),
-        name: "Señalización de seguridad",
-        weightPercent: "",
-      },
-    ],
-  }
+function makeRubro(name: string): RubroItemDraft {
+  return { id: newId("rubro"), name, trackingType: "Porcentaje", tasks: [] }
 }
 
 export function createTemplateRubroGroups(): RubroGroupDraft[] {
@@ -140,25 +142,102 @@ export function createTemplateRubroGroups(): RubroGroupDraft[] {
     {
       id: newId("group"),
       name: "Trabajos Preliminares",
-      rubros: [createDemoCercoObraRubro()],
-      seedRubrosCount: 6,
-      seedTasksCount: 20,
+      rubros: [
+        makeRubro("Cerco de Obra"),
+        makeRubro("Instalaciones provisorias"),
+        makeRubro("Demolición y limpieza"),
+        makeRubro("Replanteo y nivelación"),
+        makeRubro("Plan higiene y seguridad"),
+        makeRubro("Logística"),
+      ],
     },
-    { id: newId("group"), name: "Obra Gruesa", rubros: [], seedRubrosCount: 9, seedTasksCount: 32 },
-    { id: newId("group"), name: "Instalaciones Sanitarias", rubros: [], seedRubrosCount: 7, seedTasksCount: 26 },
-    { id: newId("group"), name: "Instalaciones Eléctricas", rubros: [], seedRubrosCount: 12, seedTasksCount: 39 },
-    { id: newId("group"), name: "Obra Fina", rubros: [], seedRubrosCount: 12, seedTasksCount: 46 },
+    {
+      id: newId("group"),
+      name: "Obra Gruesa",
+      rubros: [
+        makeRubro("Estructura de Fundación"),
+        makeRubro("Estructura Vertical"),
+        makeRubro("Estructura Horizontal"),
+        makeRubro("Cubiertas"),
+        makeRubro("Cerramientos"),
+        makeRubro("Contrapisos"),
+        makeRubro("Revoques"),
+        makeRubro("Herrería gruesa"),
+        makeRubro("Aislaciones"),
+      ],
+    },
+    {
+      id: newId("group"),
+      name: "Instalaciones Sanitarias",
+      rubros: [
+        makeRubro("Servicio de provisión de agua"),
+        makeRubro("Servicio contra incendio"),
+        makeRubro("Desagüe cloacal primario"),
+        makeRubro("Desagüe cloacal secundario"),
+        makeRubro("Desagüe equipos A.A."),
+        makeRubro("Desagüe pluvial"),
+        makeRubro("Piscina"),
+      ],
+    },
+    {
+      id: newId("group"),
+      name: "Instalaciones Eléctricas",
+      rubros: [
+        makeRubro("Alimentación eléctrica general"),
+        makeRubro("Tablero general y medidores"),
+        makeRubro("Tableros seccionales"),
+        makeRubro("Tomas y bocas"),
+        makeRubro("Canalización y cableado"),
+        makeRubro("Sistema detección incendio"),
+        makeRubro("Sistema de generación eléctrica autónoma"),
+        makeRubro("Sistema portero"),
+        makeRubro("Sistema cámaras y seguridad"),
+        makeRubro("Comunicación mecánica"),
+        makeRubro("Portones y rampas"),
+        makeRubro("Puesta a tierra y pararrayos"),
+      ],
+    },
+    {
+      id: newId("group"),
+      name: "Obra Fina",
+      rubros: [
+        makeRubro("Revoques Finos"),
+        makeRubro("Cielorrasos"),
+        makeRubro("Carpetas"),
+        makeRubro("Pisos, zócalos y revestimientos"),
+        makeRubro("Carpinterías – Puertas, ventanas, barandas."),
+        makeRubro("Herrería fina"),
+        makeRubro("Pintura interior y exterior"),
+        makeRubro("Instalación de artefactos sanitarios y griferías"),
+        makeRubro("Instalación de artefactos eléctricos, tomas y puntos"),
+        makeRubro("Amoblamiento"),
+        makeRubro("Marmolería"),
+        makeRubro("Ajustes y limpieza final de obra"),
+      ],
+    },
+    {
+      id: newId("group"),
+      name: "Instalaciones Especiales",
+      rubros: [
+        makeRubro("Gas"),
+        makeRubro("Energía solar"),
+        makeRubro("Domótica"),
+      ],
+    },
   ]
 }
 
 export function createEmptyProjectDraft(): CreateProjectDraft {
   return {
+    companyId: null,
+    companyName: "",
     projectName: "",
     location: "",
     startDate: "",
     endDate: "",
     floors: [],
     groups: createTemplateRubroGroups(),
+    unitTaskExclusions: {},
     teamMembers: [],
   }
 }
@@ -193,12 +272,12 @@ export type AvailableTeamMember = {
 }
 
 export const AVAILABLE_TEAM_MEMBERS: AvailableTeamMember[] = [
-  { id: "avail-mf", firstName: "María", lastName: "Fernandez", email: "maria.fernandez@alamogrupo.com", roleTitle: "Director/a de Obra", userType: "Interno", role: "Director de Obra" },
-  { id: "avail-dr", firstName: "Diego", lastName: "Ramirez", email: "diego.ramirez@alamogrupo.com", roleTitle: "Lider de proyecto", userType: "Interno", role: "Residente de Obra" },
-  { id: "avail-pt", firstName: "Patricia", lastName: "Torres", email: "patricia.torres@alamogrupo.com", roleTitle: "Project Manager", userType: "Interno", role: "Residente de Obra" },
-  { id: "avail-rs", firstName: "Roberto", lastName: "Silva", email: "roberto.silva@alamogrupo.com", roleTitle: "Contratista", userType: "Contratista", role: "Residente de Obra" },
-  { id: "avail-jl", firstName: "Jorge", lastName: "Lezcano", email: "jorge.lezcano@alamogrupo.com", roleTitle: "Capataz", userType: "Interno", role: "Residente de Obra" },
-  { id: "avail-ag", firstName: "Alejandro", lastName: "Gomez", email: "alejandro.gomez@alamogrupo.com", roleTitle: "Capataz", userType: "Interno", role: "Residente de Obra" },
+  { id: "avail-mf", firstName: "María", lastName: "Fernandez", email: "maria.fernandez@alamogrupo.com", roleTitle: "Director/a de Obra", userType: "Supervisor", role: "Director de Obra" },
+  { id: "avail-dr", firstName: "Diego", lastName: "Ramirez", email: "diego.ramirez@alamogrupo.com", roleTitle: "Lider de proyecto", userType: "Supervisor", role: "Residente" },
+  { id: "avail-pt", firstName: "Patricia", lastName: "Torres", email: "patricia.torres@alamogrupo.com", roleTitle: "Project Manager", userType: "Admin", role: "Residente" },
+  { id: "avail-rs", firstName: "Roberto", lastName: "Silva", email: "roberto.silva@alamogrupo.com", roleTitle: "Contratista", userType: "Operador", role: "Residente" },
+  { id: "avail-jl", firstName: "Jorge", lastName: "Lezcano", email: "jorge.lezcano@alamogrupo.com", roleTitle: "Capataz", userType: "Operador", role: "Residente" },
+  { id: "avail-ag", firstName: "Alejandro", lastName: "Gomez", email: "alejandro.gomez@alamogrupo.com", roleTitle: "Capataz", userType: "Operador", role: "Residente" },
 ]
 
 export function availableMemberInitials(member: AvailableTeamMember): string {
@@ -222,10 +301,21 @@ const TEAM_ROLE_DISPLAY: Record<
   ProjectTeamRole,
   { badge: string; description: string }
 > = {
+  Founder: { badge: "Founder", description: "Founder" },
+  "Director General": { badge: "Director", description: "Director General" },
+  Desarrollador: { badge: "Dev", description: "Desarrollador" },
   Administrador: { badge: "Admin", description: "Administrador" },
-  "Director de Obra": { badge: "Supervisor", description: "Director de obra" },
-  "Residente de Obra": { badge: "Residente", description: "Residente de obra" },
-  Arquitecto: { badge: "Arquitecto", description: "Arquitecto" },
+  Gerente: { badge: "Gerente", description: "Gerente" },
+  "Project Manager": { badge: "PM", description: "Project Manager" },
+  Coordinador: { badge: "Coord.", description: "Coordinador" },
+  "Director de Obra": { badge: "Dir. Obra", description: "Director de Obra" },
+  Residente: { badge: "Residente", description: "Residente" },
+  "Jefe de Obra": { badge: "Jefe Obra", description: "Jefe de Obra" },
+  Supervisor: { badge: "Supervisor", description: "Supervisor" },
+  "Lider de Proyecto": { badge: "Lider", description: "Lider de Proyecto" },
+  Capataz: { badge: "Capataz", description: "Capataz" },
+  Contratista: { badge: "Contratista", description: "Contratista" },
+  Subcontratista: { badge: "Subcontrat.", description: "Subcontratista" },
   Cliente: { badge: "Cliente", description: "Cliente" },
 }
 

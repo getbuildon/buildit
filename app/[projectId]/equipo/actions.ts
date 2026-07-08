@@ -1,0 +1,275 @@
+"use server"
+
+import { createClient } from "@/utils/supabase/server"
+import { createAdminClient } from "@/utils/supabase/admin"
+import { requireAuthenticatedUser } from "@/lib/authHelpers"
+import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
+import { PROJECT_ROLE_SLUG } from "@/lib/projects/catalogSlugs"
+import type { ProjectTeamRole, ProjectUserType } from "@/lib/projects/createProjectDraft"
+
+export type ProjectTeamMember = {
+  memberId: string
+  userId: string
+  firstName: string
+  lastName: string
+  email: string
+  roleLabel: string
+  userTypeLabel: string | null
+  isYou: boolean
+}
+
+export type ProjectTeamInvitation = {
+  invitationId: string
+  firstName: string
+  lastName: string
+  email: string
+  roleLabel: string
+  userTypeLabel: string | null
+}
+
+export type ProjectTeamData = {
+  members: ProjectTeamMember[]
+  pendingInvitations: ProjectTeamInvitation[]
+}
+
+export async function getProjectTeamData(projectId: string): Promise<ProjectTeamData> {
+  const user = await requireAuthenticatedUser()
+  const admin = createAdminClient()
+  const supabase = await createClient()
+
+  const [membersRes, invitationsRes] = await Promise.all([
+    supabase
+      .from("project_members")
+      .select("id, user_id, role_id, user_type_id")
+      .eq("project_id", projectId)
+      .eq("is_active", true),
+    supabase
+      .from("project_invitations")
+      .select("id, email, first_name, last_name, role_id, user_type_id")
+      .eq("project_id", projectId)
+      .eq("status", "pending"),
+  ])
+
+  const members = membersRes.data ?? []
+  const invitations = invitationsRes.data ?? []
+
+  const userIds = members.map((m) => m.user_id)
+  const allRoleIds = [
+    ...new Set([
+      ...members.map((m) => m.role_id),
+      ...invitations.map((i) => i.role_id),
+    ]),
+  ]
+  const userTypeIds = [
+    ...new Set([
+      ...members.map((m) => m.user_type_id).filter((id): id is string => id != null),
+      ...invitations.map((i) => i.user_type_id).filter((id): id is string => id != null),
+    ]),
+  ]
+
+  const [profilesRes, rolesRes, userTypesRes] = await Promise.all([
+    userIds.length > 0
+      ? admin.from("profiles").select("id, first_name, last_name, email").in("id", userIds)
+      : Promise.resolve({ data: [] as { id: string; first_name: string; last_name: string; email: string }[] }),
+    allRoleIds.length > 0
+      ? admin.from("project_roles").select("id, slug, label, badge").in("id", allRoleIds)
+      : Promise.resolve({ data: [] as { id: string; slug: string; label: string; badge: string }[] }),
+    userTypeIds.length > 0
+      ? admin.from("user_types").select("id, slug, label").in("id", userTypeIds)
+      : Promise.resolve({ data: [] as { id: string; slug: string; label: string }[] }),
+  ])
+
+  const profileById = new Map((profilesRes.data ?? []).map((p) => [p.id, p]))
+  const roleById = new Map((rolesRes.data ?? []).map((r) => [r.id, r]))
+  const userTypeById = new Map((userTypesRes.data ?? []).map((t) => [t.id, t]))
+
+  const clienteSlug = PROJECT_ROLE_SLUG.Cliente
+
+  const teamMembers: ProjectTeamMember[] = members
+    .filter((m) => roleById.get(m.role_id)?.slug !== clienteSlug)
+    .map((m) => {
+      const profile = profileById.get(m.user_id)
+      const role = roleById.get(m.role_id)
+      const userType = m.user_type_id != null ? userTypeById.get(m.user_type_id) : null
+      return {
+        memberId: m.id,
+        userId: m.user_id,
+        firstName: profile?.first_name ?? "",
+        lastName: profile?.last_name ?? "",
+        email: profile?.email ?? "",
+        roleLabel: role?.label ?? "",
+        userTypeLabel: userType?.label ?? null,
+        isYou: m.user_id === user.id,
+      }
+    })
+
+  const pendingInvitations: ProjectTeamInvitation[] = invitations
+    .filter((i) => roleById.get(i.role_id)?.slug !== clienteSlug)
+    .map((i) => {
+      const role = roleById.get(i.role_id)
+      const userType = i.user_type_id != null ? userTypeById.get(i.user_type_id) : null
+      return {
+        invitationId: i.id,
+        firstName: i.first_name,
+        lastName: i.last_name,
+        email: i.email,
+        roleLabel: role?.label ?? "",
+        userTypeLabel: userType?.label ?? null,
+      }
+    })
+
+  return { members: teamMembers, pendingInvitations }
+}
+
+export async function addTeamMember(
+  projectId: string,
+  data: {
+    firstName: string
+    lastName: string
+    email: string
+    userType: ProjectUserType
+    role: ProjectTeamRole
+  },
+): Promise<
+  | { ok: true; invitation: ProjectTeamInvitation }
+  | { ok: false; error: string }
+> {
+  const user = await requireAuthenticatedUser()
+  const supabase = await createClient()
+  const admin = createAdminClient()
+
+  let catalog
+  try {
+    catalog = await loadProjectCatalogIds(supabase)
+  } catch {
+    return { ok: false, error: "No se pudo cargar la configuración del proyecto." }
+  }
+
+  const { data: invitation, error } = await supabase
+    .from("project_invitations")
+    .insert({
+      project_id: projectId,
+      email: data.email.trim().toLowerCase(),
+      first_name: data.firstName.trim(),
+      last_name: data.lastName.trim(),
+      user_type_id: catalog.userTypeIds[data.userType],
+      role_id: catalog.roleIds[data.role],
+      status: "pending",
+      invited_by: user.id,
+    })
+    .select("id, email, first_name, last_name, role_id, user_type_id")
+    .single()
+
+  if (error) {
+    if (error.code === "23505") {
+      return { ok: false, error: "Ya existe una invitación pendiente para ese correo." }
+    }
+    return { ok: false, error: error.message }
+  }
+
+  const [roleRes, userTypeRes] = await Promise.all([
+    admin.from("project_roles").select("label").eq("id", invitation.role_id).single(),
+    invitation.user_type_id
+      ? admin.from("user_types").select("label").eq("id", invitation.user_type_id).single()
+      : Promise.resolve({ data: null }),
+  ])
+
+  return {
+    ok: true,
+    invitation: {
+      invitationId: invitation.id,
+      firstName: invitation.first_name,
+      lastName: invitation.last_name,
+      email: invitation.email,
+      roleLabel: roleRes.data?.label ?? "",
+      userTypeLabel: userTypeRes.data?.label ?? null,
+    },
+  }
+}
+
+export async function removeTeamMember(
+  memberId: string,
+  projectId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireAuthenticatedUser()
+  const supabase = await createClient()
+
+  const { data: memberRow } = await supabase
+    .from("project_members")
+    .select("user_id")
+    .eq("id", memberId)
+    .eq("project_id", projectId)
+    .single()
+
+  if (memberRow?.user_id === user.id) {
+    return { ok: false, error: "No podés eliminar tu propio acceso." }
+  }
+
+  const { error } = await supabase
+    .from("project_members")
+    .update({ is_active: false })
+    .eq("id", memberId)
+    .eq("project_id", projectId)
+
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
+export async function updateTeamMember(
+  memberId: string,
+  projectId: string,
+  data: { userType: ProjectUserType; role: ProjectTeamRole },
+): Promise<
+  | { ok: true; userTypeLabel: string | null; roleLabel: string }
+  | { ok: false; error: string }
+> {
+  await requireAuthenticatedUser()
+  const supabase = await createClient()
+  const admin = createAdminClient()
+
+  let catalog
+  try {
+    catalog = await loadProjectCatalogIds(supabase)
+  } catch {
+    return { ok: false, error: "No se pudo cargar la configuración del proyecto." }
+  }
+
+  const { error } = await supabase
+    .from("project_members")
+    .update({
+      role_id: catalog.roleIds[data.role],
+      user_type_id: catalog.userTypeIds[data.userType],
+    })
+    .eq("id", memberId)
+    .eq("project_id", projectId)
+
+  if (error) return { ok: false, error: error.message }
+
+  const [roleRes, userTypeRes] = await Promise.all([
+    admin.from("project_roles").select("label").eq("id", catalog.roleIds[data.role]).single(),
+    admin.from("user_types").select("label").eq("id", catalog.userTypeIds[data.userType]).single(),
+  ])
+
+  return {
+    ok: true,
+    roleLabel: roleRes.data?.label ?? data.role,
+    userTypeLabel: userTypeRes.data?.label ?? data.userType,
+  }
+}
+
+export async function revokeTeamInvitation(
+  invitationId: string,
+  projectId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  await requireAuthenticatedUser()
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from("project_invitations")
+    .update({ status: "revoked" })
+    .eq("id", invitationId)
+    .eq("project_id", projectId)
+
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}

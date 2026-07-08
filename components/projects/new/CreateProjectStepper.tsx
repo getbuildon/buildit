@@ -61,10 +61,23 @@ function StepIconTeam({ active }: { active: boolean }) {
   )
 }
 
+function StepIconUnitTasks({ active }: { active: boolean }) {
+  const s = active ? "white" : "#afb3ba"
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+      <path d="M13.3333 2.5H15C15.4421 2.5 15.8661 2.67559 16.1786 2.98816C16.4912 3.30072 16.6667 3.72464 16.6667 4.16667V16.6667C16.6667 17.1087 16.4912 17.5326 16.1786 17.8452C15.8661 18.1577 15.4421 18.3333 15 18.3333H5C4.55797 18.3333 4.13405 18.1577 3.82149 17.8452C3.50893 17.5326 3.33334 17.1087 3.33334 16.6667V4.16667C3.33334 3.72464 3.50893 3.30072 3.82149 2.98816C4.13405 2.67559 4.55797 2.5 5 2.5H6.66667" stroke={s} strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M12.5 1.66675H7.5C7.03977 1.66675 6.66667 2.03984 6.66667 2.50008V3.33341C6.66667 3.79365 7.03977 4.16675 7.5 4.16675H12.5C12.9602 4.16675 13.3333 3.79365 13.3333 3.33341V2.50008C13.3333 2.03984 12.9602 1.66675 12.5 1.66675Z" stroke={s} strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M7.5 10L9.16667 11.6667L12.5 8.33325" stroke={s} strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M7.5 14.1667H12.5" stroke={s} strokeWidth="1.33333" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
 const STEP_ICONS: Record<string, (props: { active: boolean }) => React.ReactElement> = {
   basic: StepIconBasic,
   structure: StepIconStructure,
   tasks: StepIconTasks,
+  "unit-tasks": StepIconUnitTasks,
   team: StepIconTeam,
 }
 

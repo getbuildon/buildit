@@ -8,9 +8,6 @@ import { CreateProjectStructureStep } from "@/components/projects/new/steps/Crea
 import { CreateProjectTasksStep } from "@/components/projects/new/steps/CreateProjectTasksStep"
 import {
   createDefaultFloor,
-  createDefaultRubroItem,
-  createDefaultRubroTask,
-  createDefaultUnit,
   createEmptyProjectDraft,
   type CreateProjectDraft,
   type RubroGroupDraft,
@@ -22,7 +19,7 @@ import {
   updateProjectBasics,
   getProjectStructure,
   getProjectUnits,
-  getProjectRubros,
+  getProjectRubroGroups,
   saveProjectStructure,
   saveProjectRubros,
   type ProjectBasics,
@@ -79,10 +76,10 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
 
   useEffect(() => {
     const loadProjectData = async () => {
-      const [floors, units, rubros] = await Promise.all([
+      const [floors, units, dbGroups] = await Promise.all([
         getProjectStructure(project.id),
         getProjectUnits(project.id),
-        getProjectRubros(project.id),
+        getProjectRubroGroups(project.id),
       ])
 
       const base = createEmptyProjectDraft()
@@ -108,24 +105,22 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
             createDefaultFloor(3),
           ]
 
-      // Construir grupos de rubros
-      const groups: RubroGroupDraft[] = rubros.length > 0
-        ? [
-            {
-              id: "default-group",
-              name: "Rubros",
-              rubros: rubros.map((r) => ({
-                id: r.id,
-                name: r.name,
-                trackingType: r.tracking_scope as RubroItemDraft["trackingType"],
-                tasks: r.tasks.map((t) => ({
-                  id: t.id,
-                  name: t.name,
-                  weightPercent: t.default_weight?.toString() || "",
-                })),
+      // Usar los grupos del DB si existen, si no usar el template
+      const groups: RubroGroupDraft[] = dbGroups.length > 0
+        ? dbGroups.map((g) => ({
+            id: g.id,
+            name: g.name,
+            rubros: g.rubros.map((r) => ({
+              id: r.id,
+              name: r.name,
+              trackingType: "Porcentaje" as RubroItemDraft["trackingType"],
+              tasks: r.tasks.map((t) => ({
+                id: t.id,
+                name: t.name,
+                weightPercent: t.default_weight?.toString() || "",
               })),
-            },
-          ]
+            })),
+          }))
         : base.groups
 
       setDraft({
@@ -161,6 +156,31 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
       return
     }
 
+    // Capturar snapshot síncrono del draft antes de cualquier await
+    // para evitar closures stale si hay re-renders durante los awaits.
+    const floorsData = (draft?.floors || []).map((f) => ({
+      name: f.name,
+      level: f.level || null,
+      units: f.units.map((u) => ({
+        code: `${f.name}-${u.roomCount || u.squareMeters || u.id.slice(0, 4)}`,
+        name: null,
+        unit_type: u.type,
+        room_count: u.roomCount ? parseInt(u.roomCount) : null,
+        area_m2: u.squareMeters ? parseFloat(u.squareMeters) : null,
+      })),
+    }))
+
+    const groupsData = (draft?.groups || []).map((g) => ({
+      name: g.name,
+      rubros: g.rubros.map((r) => ({
+        name: r.name,
+        tasks: r.tasks.map((t) => ({
+          name: t.name,
+          default_weight: t.weightPercent ? parseFloat(t.weightPercent) : null,
+        })),
+      })),
+    }))
+
     setSaving(true)
 
     // Guardar datos básicos
@@ -179,18 +199,6 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     }
 
     // Guardar estructura (pisos y unidades)
-    const floorsData = draft?.floors.map((f) => ({
-      name: f.name,
-      level: f.level || null,
-      units: f.units.map((u) => ({
-        code: `${f.name}-${u.roomCount || u.squareMeters || u.id.slice(0, 4)}`,
-        name: null,
-        unit_type: u.type,
-        room_count: u.roomCount ? parseInt(u.roomCount) : null,
-        area_m2: u.squareMeters ? parseFloat(u.squareMeters) : null,
-      })),
-    })) || []
-
     const structureResult = await saveProjectStructure(project.id, floorsData)
 
     if (!structureResult.ok) {
@@ -199,22 +207,8 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
       return
     }
 
-    // Guardar rubros y tareas
-    const rubrosData = draft?.groups
-      .flatMap((g) =>
-        g.rubros.map((r) => ({
-          name: r.name,
-          description: null,
-          tracking_scope: r.trackingType,
-          tasks: r.tasks.map((t) => ({
-            name: t.name,
-            description: null,
-            default_weight: t.weightPercent ? parseFloat(t.weightPercent) : null,
-          })),
-        }))
-      ) || []
-
-    const rubrosResult = await saveProjectRubros(project.id, rubrosData)
+    // Guardar grupos de rubros y tareas
+    const rubrosResult = await saveProjectRubros(project.id, groupsData)
 
     setSaving(false)
 

@@ -135,7 +135,6 @@ function HomePage() {
           ))}
           <AddProjectCard />
         </div>
-
       </div>
     </div>
   )

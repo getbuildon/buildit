@@ -1,5 +1,6 @@
 import {
   Building2,
+  ClipboardList,
   Layers,
   Users,
   Wrench,
@@ -10,6 +11,7 @@ export const CREATE_PROJECT_STEP_IDS = [
   "basic",
   "structure",
   "tasks",
+  "unit-tasks",
   "team",
 ] as const
 
@@ -40,6 +42,12 @@ export const CREATE_PROJECT_STEPS: CreateProjectStepConfig[] = [
     label: "Rubros y Tareas",
     icon: Wrench,
     sectionTitle: "Rubros y Checklists",
+  },
+  {
+    id: "unit-tasks",
+    label: "Asignación por Unidad",
+    icon: ClipboardList,
+    sectionTitle: "Revisar aplicación por unidad",
   },
   {
     id: "team",

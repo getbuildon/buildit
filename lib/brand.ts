@@ -1,1 +1,1 @@
-export const BRAND_NAME = "Built-It"
+export const BRAND_NAME = "Build-On"

@@ -10,6 +10,7 @@ import { CreateProjectBasicInfoStep } from "@/components/projects/new/steps/Crea
 import { CreateProjectStructureStep } from "@/components/projects/new/steps/CreateProjectStructureStep"
 import { CreateProjectTasksStep } from "@/components/projects/new/steps/CreateProjectTasksStep"
 import { CreateProjectTeamStep } from "@/components/projects/new/steps/CreateProjectTeamStep"
+import { CreateProjectUnitTasksStep } from "@/components/projects/new/steps/CreateProjectUnitTasksStep"
 import {
   CREATE_PROJECT_STEPS,
   getNextCreateProjectStepId,
@@ -97,6 +98,8 @@ export function CreateNewProjectView() {
         return <CreateProjectStructureStep draft={draft} onChange={updateDraft} />
       case "tasks":
         return <CreateProjectTasksStep draft={draft} onChange={updateDraft} />
+      case "unit-tasks":
+        return <CreateProjectUnitTasksStep draft={draft} onChange={updateDraft} />
       case "team":
         return <CreateProjectTeamStep draft={draft} onChange={updateDraft} />
       default:

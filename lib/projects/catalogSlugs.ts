@@ -15,16 +15,28 @@ export const TASK_TRACKING_SLUG: Record<TaskTrackingType, string> = {
 }
 
 export const USER_TYPE_SLUG: Record<ProjectUserType, string> = {
-  Interno: "interno",
-  Externo: "externo",
+  Owner: "owner",
+  Admin: "admin",
+  Supervisor: "supervisor",
+  Operador: "operador",
   Cliente: "cliente",
-  Contratista: "contratista",
 }
 
 export const PROJECT_ROLE_SLUG: Record<ProjectTeamRole, string> = {
+  Founder: "founder",
+  "Director General": "director_general",
+  Desarrollador: "desarrollador",
   Administrador: "administrador",
+  Gerente: "gerente",
+  "Project Manager": "project_manager",
+  Coordinador: "coordinador",
   "Director de Obra": "director_obra",
-  "Residente de Obra": "residente_obra",
-  Arquitecto: "arquitecto",
+  Residente: "residente",
+  "Jefe de Obra": "jefe_obra",
+  Supervisor: "supervisor",
+  "Lider de Proyecto": "lider_proyecto",
+  Capataz: "capataz",
+  Contratista: "contratista",
+  Subcontratista: "subcontratista",
   Cliente: "cliente",
 }

@@ -15,7 +15,7 @@ export type ProjectNavItem = {
 
 export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
   { label: "Dashboard", segment: "", icon: LayoutDashboard },
-  { label: "Certificaciones", segment: "certificaciones", icon: FileCheck2 },
+  { label: "Trabajo Diario", segment: "trabajo-diario", icon: FileCheck2 },
   { label: "Equipo", segment: "equipo", icon: Users },
   { label: "Clientes", segment: "clientes", icon: UserCircle2 },
   { label: "Configuración", segment: "configuracion", icon: Settings },

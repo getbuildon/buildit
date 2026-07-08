@@ -1,4 +1,5 @@
 import { getProjectById } from "@/lib/projects/listUserProjects"
+import { getProjectTeamData } from "./actions"
 import { EquipoTeamView } from "./EquipoTeamView"
 
 type PageProps = {
@@ -10,5 +11,7 @@ export default async function EquipoPage({ params }: PageProps) {
   const project = await getProjectById(projectId)
   if (!project) return null
 
-  return <EquipoTeamView />
+  const teamData = await getProjectTeamData(projectId)
+
+  return <EquipoTeamView projectId={projectId} initialData={teamData} />
 }

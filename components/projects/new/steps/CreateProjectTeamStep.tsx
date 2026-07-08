@@ -1,18 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ChevronDown, Plus, Trash2, UserPlus } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { getCompanyProjectMembers } from "@/app/projects/new/actions"
 import {
-  AVAILABLE_TEAM_MEMBERS,
   availableMemberInitials,
   createTeamMemberDraft,
   getTeamRoleDisplay,
   teamMemberFullName,
   teamMemberInitials,
-  PROJECT_TEAM_ROLES,
   PROJECT_USER_TYPES,
+  USER_TYPE_ROLES,
+  type AvailableTeamMember,
   type CreateProjectDraft,
   type ProjectTeamRole,
   type ProjectUserType,
@@ -87,6 +88,12 @@ export function CreateProjectTeamStep({
   const [role, setRole] = useState<ProjectTeamRole | "">("")
   const [email, setEmail] = useState("")
   const [formError, setFormError] = useState("")
+  const [companyMembers, setCompanyMembers] = useState<AvailableTeamMember[]>([])
+
+  useEffect(() => {
+    if (!draft.companyId) return
+    void getCompanyProjectMembers(draft.companyId).then(setCompanyMembers)
+  }, [draft.companyId])
 
   const setTeamMembers = (teamMembers: TeamMemberDraft[]) => {
     onChange({ teamMembers })
@@ -139,7 +146,7 @@ export function CreateProjectTeamStep({
   }
 
   const addAvailableMember = (memberId: string) => {
-    const member = AVAILABLE_TEAM_MEMBERS.find((m) => m.id === memberId)
+    const member = companyMembers.find((m) => m.id === memberId)
     if (!member || assignedEmails.has(member.email.toLowerCase())) return
     setTeamMembers([
       ...draft.teamMembers,
@@ -157,7 +164,7 @@ export function CreateProjectTeamStep({
     setTeamMembers(draft.teamMembers.filter((member) => member.id !== memberId))
   }
 
-  const availableToAdd = AVAILABLE_TEAM_MEMBERS.filter(
+  const availableToAdd = companyMembers.filter(
     (member) => !assignedEmails.has(member.email.toLowerCase()),
   )
 
@@ -212,6 +219,7 @@ export function CreateProjectTeamStep({
               options={PROJECT_USER_TYPES}
               onChange={(value) => {
                 setUserType(value as ProjectUserType)
+                setRole("")
                 if (formError) setFormError("")
               }}
             />
@@ -219,7 +227,7 @@ export function CreateProjectTeamStep({
               id="member-role"
               value={role}
               placeholder="Rol"
-              options={PROJECT_TEAM_ROLES}
+              options={userType ? USER_TYPE_ROLES[userType] : []}
               onChange={(value) => {
                 setRole(value as ProjectTeamRole)
                 if (formError) setFormError("")
