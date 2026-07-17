@@ -10,6 +10,7 @@ import { CreateProjectUnitTasksStep } from "@/components/projects/new/steps/Crea
 import {
   type CreateProjectDraft,
 } from "@/lib/projects/createProjectDraft"
+import { unitTypeToDbFields } from "@/lib/projects/unitTypes"
 import {
   buildConfigDraftFromProjectData,
   exclusionsToAssignments,
@@ -156,14 +157,22 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
       id: f.id,
       name: f.name,
       level: f.level || null,
-      units: f.units.map((u) => ({
-        id: u.id,
-        code: `${f.name}-${u.roomCount || u.squareMeters || u.id.slice(0, 4)}`,
-        name: null,
-        unit_type: u.type,
-        room_count: u.roomCount ? parseInt(u.roomCount) : null,
-        area_m2: u.squareMeters ? parseFloat(u.squareMeters) : null,
-      })),
+      units: f.units.map((u) => {
+        const { room_count, name } = unitTypeToDbFields({
+          type: u.type,
+          roomCount: u.roomCount,
+          officeSize: u.officeSize,
+        })
+
+        return {
+          id: u.id,
+          code: `${f.name}-${u.id.slice(0, 8)}`,
+          name,
+          unit_type: u.type,
+          room_count,
+          area_m2: u.squareMeters ? parseFloat(u.squareMeters) : null,
+        }
+      }),
     }))
 
     const groupsData = (draftSnapshot?.groups || []).map((g) => ({

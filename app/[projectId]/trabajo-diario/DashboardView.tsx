@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { endOfDay, endOfMonth, startOfDay, startOfMonth } from "date-fns"
+import { endOfDay, endOfMonth, format, startOfDay, startOfMonth } from "date-fns"
+import { es } from "date-fns/locale"
 import { Calendar, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
@@ -92,12 +93,10 @@ export function DashboardView({ project, data }: Props) {
     })
   }, [data.tasks, fromDate, selectedFloorId, selectedUnitId, toDate])
 
-  const todayLabel = new Intl.DateTimeFormat("es-AR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date())
+  const todayLabel = (() => {
+    const formatted = format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+  })()
 
   const exitLoadMode = () => {
     setViewMode("list")
@@ -128,10 +127,7 @@ export function DashboardView({ project, data }: Props) {
           </h1>
           <div className="flex items-center gap-2 text-[14px] text-[#43484e]">
             <Calendar className="size-4" aria-hidden />
-            <span className="capitalize">{todayLabel}</span>
-            {viewMode === "list" ? (
-              <span className="text-[#777b84]">• {project.name}</span>
-            ) : null}
+            <span>{todayLabel}</span>
           </div>
         </div>
 
@@ -159,6 +155,7 @@ export function DashboardView({ project, data }: Props) {
           floors={data.floors}
           rubroGroups={data.rubroGroups}
           assignmentsByUnit={data.assignmentsByUnit}
+          loadedUnitTaskKeys={data.loadedUnitTaskKeys}
           selectedFloorId={selectedLoadFloorId}
           selectedRubroId={selectedLoadRubroId}
           onSelectFloor={handleSelectFloor}
@@ -280,9 +277,7 @@ export function DashboardView({ project, data }: Props) {
                     <div className="flex items-center gap-1 text-[12px] text-[#62748e]">
                       <span>{task.floorName}</span>
                       <span>•</span>
-                      <span>
-                        {task.unitName ? `${task.unitCode} — ${task.unitName}` : task.unitCode}
-                      </span>
+                      <span>Unidad {task.unitLabel}</span>
                       <span>•</span>
                       <span>{task.date}</span>
                     </div>

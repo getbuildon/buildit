@@ -7,9 +7,12 @@ import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
 import {
+  getUnitTaskKey,
   mapTaskStatusToDb,
   type CargarAvanceTaskStatus,
 } from "@/lib/projects/cargarAvance"
+import { getUnitLabelInFloor } from "@/lib/projects/floorLabels"
+import { PROGRESS_PHOTOS_BUCKET } from "@/lib/progress/progressPhotoConfig"
 import { getUnitTaskAssignments } from "../configuracion/actions"
 
 export type SaveCargarAvanceInput = {
@@ -21,12 +24,34 @@ export type SaveCargarAvanceInput = {
     taskId: string
     taskStatus: CargarAvanceTaskStatus
     comment: string | null
+    photoCount?: number
   }>
 }
 
-export type SaveCargarAvanceResult = { ok: true } | { ok: false; error: string }
+export type SaveCargarAvanceResult =
+  | {
+      ok: true
+      entries: Array<{ entryId: string; unitId: string; taskId: string }>
+    }
+  | { ok: false; error: string }
+
+export type RegisterProgressAttachmentInput = {
+  entryId: string
+  storagePath: string
+  fileName: string
+  fileType: string
+  fileSize: number
+}
+
+export type RegisterProgressAttachmentsResult = { ok: true } | { ok: false; error: string }
 
 export type TrabajoDiarioTaskStatus = "Completado" | "En Proceso" | "Bloqueado"
+
+export type TrabajoDiarioTaskAttachment = {
+  id: string
+  fileName: string
+  signedUrl: string
+}
 
 export type TrabajoDiarioTaskHistoryItem = {
   id: string
@@ -35,7 +60,7 @@ export type TrabajoDiarioTaskHistoryItem = {
   occurredAt: string
   formattedDate: string
   authorName: string
-  attachmentCount: number
+  attachments: TrabajoDiarioTaskAttachment[]
 }
 
 export type TrabajoDiarioTaskDetail = {
@@ -43,12 +68,12 @@ export type TrabajoDiarioTaskDetail = {
   taskName: string
   rubroName: string
   floorName: string
-  unitCode: string
+  unitLabel: string
   occurredAt: string
   formattedLongDate: string
   status: TrabajoDiarioTaskStatus
   comment: string | null
-  attachmentCount: number
+  attachments: TrabajoDiarioTaskAttachment[]
   history: TrabajoDiarioTaskHistoryItem[]
 }
 
@@ -70,7 +95,7 @@ export type TrabajoDiarioTask = {
   floorId: string
   floorName: string
   unitId: string
-  unitCode: string
+  unitLabel: string
   unitName: string | null
   occurredAt: string | null
   date: string
@@ -114,6 +139,7 @@ export type TrabajoDiarioData = {
   tasks: TrabajoDiarioTask[]
   rubroGroups: TrabajoDiarioRubroGroup[]
   assignmentsByUnit: Record<string, string[]>
+  loadedUnitTaskKeys: string[]
 }
 
 function mapProgressStatus(
@@ -159,27 +185,53 @@ function formatProfileName(profile: {
   return profile.email
 }
 
-async function getAttachmentCountsByEntry(
+async function getAttachmentsByEntry(
   supabase: Awaited<ReturnType<typeof createClient>>,
   projectId: string,
   entryIds: string[],
-): Promise<Map<string, number>> {
-  if (entryIds.length === 0) return new Map()
+): Promise<Map<string, TrabajoDiarioTaskAttachment[]>> {
+  const result = new Map<string, TrabajoDiarioTaskAttachment[]>()
+  if (entryIds.length === 0) return result
 
   const { data, error } = await supabase
     .from("attachments")
-    .select("entity_id")
+    .select("id, entity_id, file_url, file_name, created_at")
     .eq("project_id", projectId)
     .eq("entity_type", "progress_entry")
     .in("entity_id", entryIds)
+    .order("created_at", { ascending: true })
 
-  if (error || !data) return new Map()
+  if (error || !data) return result
 
-  const counts = new Map<string, number>()
-  for (const row of data) {
-    counts.set(row.entity_id, (counts.get(row.entity_id) ?? 0) + 1)
+  const storagePaths = [...new Set(data.map((row) => row.file_url))]
+  const signedUrlByPath = new Map<string, string>()
+
+  if (storagePaths.length > 0) {
+    const { data: signedUrls, error: signedError } = await supabase.storage
+      .from(PROGRESS_PHOTOS_BUCKET)
+      .createSignedUrls(storagePaths, 3600)
+
+    if (!signedError && signedUrls) {
+      for (const item of signedUrls) {
+        if (item.signedUrl) signedUrlByPath.set(item.path ?? "", item.signedUrl)
+      }
+    }
   }
-  return counts
+
+  for (const row of data) {
+    const signedUrl = signedUrlByPath.get(row.file_url)
+    if (!signedUrl) continue
+
+    const current = result.get(row.entity_id) ?? []
+    current.push({
+      id: row.id,
+      fileName: row.file_name,
+      signedUrl,
+    })
+    result.set(row.entity_id, current)
+  }
+
+  return result
 }
 
 export async function getTrabajoDiarioData(
@@ -260,12 +312,15 @@ export async function getTrabajoDiarioData(
     level: floor.level,
     units: units
       .filter((unit) => unit.floor_id === floor.id)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
       .map((unit) => ({
         id: unit.id,
         code: unit.code,
         name: unit.name,
       })),
   }))
+
+  const floorUnitsById = new Map(trabajoFloors.map((floor) => [floor.id, floor.units]))
 
   const rubroGroups: TrabajoDiarioRubroGroup[] = rubroGroupsRaw.map((group) => ({
     id: group.id,
@@ -297,10 +352,19 @@ export async function getTrabajoDiarioData(
   }))
 
   const tasks: TrabajoDiarioTask[] = []
+  const latestEntryKeys = new Set<string>()
+  const loadedUnitTaskKeys = new Set<string>()
 
   for (const entry of entries) {
     if (!entry.unit_id || !entry.task_id) continue
+
+    loadedUnitTaskKeys.add(`${entry.unit_id}:${entry.task_id}`)
+
     if (!isTaskAssignedToUnit(assignments.byUnit, entry.unit_id, entry.task_id)) continue
+
+    const unitTaskKey = `${entry.unit_id}:${entry.task_id}`
+    if (latestEntryKeys.has(unitTaskKey)) continue
+    latestEntryKeys.add(unitTaskKey)
 
     const unit = unitById.get(entry.unit_id)
     if (!unit) continue
@@ -312,6 +376,8 @@ export async function getTrabajoDiarioData(
     const rubroName = Array.isArray(rubro) ? rubro[0]?.name : rubro?.name
     const taskName = Array.isArray(task) ? task[0]?.name : task?.name
 
+    const floorUnits = floorId ? floorUnitsById.get(floorId) ?? [] : []
+
     tasks.push({
       id: entry.id,
       name: taskName ?? "Tarea",
@@ -319,7 +385,7 @@ export async function getTrabajoDiarioData(
       floorId,
       floorName,
       unitId: entry.unit_id,
-      unitCode: unit.code,
+      unitLabel: getUnitLabelInFloor(floorUnits, entry.unit_id),
       unitName: unit.name,
       occurredAt: entry.submitted_at ?? entry.created_at,
       date: formatEntryDate(entry.submitted_at ?? entry.created_at),
@@ -332,6 +398,7 @@ export async function getTrabajoDiarioData(
     tasks,
     rubroGroups,
     assignmentsByUnit: assignments.byUnit,
+    loadedUnitTaskKeys: [...loadedUnitTaskKeys],
   }
 }
 
@@ -347,7 +414,10 @@ export async function saveCargarAvance(
   }
 
   const tasksToSave = input.tasks.filter(
-    (task) => task.taskStatus !== "pending" || (task.comment?.trim().length ?? 0) > 0,
+    (task) =>
+      task.taskStatus !== "pending" ||
+      (task.comment?.trim().length ?? 0) > 0 ||
+      (task.photoCount ?? 0) > 0,
   )
 
   if (tasksToSave.length === 0) {
@@ -415,29 +485,121 @@ export async function saveCargarAvance(
     }
   }
 
+  const { data: existingEntries, error: existingEntriesError } = await supabase
+    .from("progress_entries")
+    .select("unit_id, task_id")
+    .eq("project_id", projectId)
+    .in("unit_id", input.unitIds)
+    .in(
+      "task_id",
+      tasksToSave.map((task) => task.taskId),
+    )
+
+  if (existingEntriesError) {
+    return { ok: false, error: existingEntriesError.message }
+  }
+
+  const loadedKeys = new Set(
+    (existingEntries ?? []).map((entry) => getUnitTaskKey(entry.unit_id, entry.task_id)),
+  )
+
   const now = new Date().toISOString()
   const rows = input.unitIds.flatMap((unitId) =>
-    tasksToSave.map((task) => {
+    tasksToSave.flatMap((task) => {
+      if (loadedKeys.has(getUnitTaskKey(unitId, task.taskId))) return []
+
       const mapped = mapTaskStatusToDb(task.taskStatus)
-      return {
-        project_id: projectId,
-        floor_id: input.floorId,
-        unit_id: unitId,
-        category_id: input.rubroId,
-        task_id: task.taskId,
-        created_by: user.id,
-        status: mapped.status,
-        progress_state: mapped.progress_state,
-        comment: task.comment?.trim() || null,
-        submitted_at: mapped.status === "draft" ? null : now,
-      }
+      return [
+        {
+          project_id: projectId,
+          floor_id: input.floorId,
+          unit_id: unitId,
+          category_id: input.rubroId,
+          task_id: task.taskId,
+          created_by: user.id,
+          status: mapped.status,
+          progress_state: mapped.progress_state,
+          comment: task.comment?.trim() || null,
+          submitted_at: mapped.status === "draft" ? null : now,
+        },
+      ]
     }),
   )
 
-  const { error: insertError } = await supabase.from("progress_entries").insert(rows)
+  if (rows.length === 0) {
+    return {
+      ok: false,
+      error: "Las tareas seleccionadas ya tienen avance cargado para estas unidades.",
+    }
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("progress_entries")
+    .insert(rows)
+    .select("id, unit_id, task_id")
+
   if (insertError) return { ok: false, error: insertError.message }
 
   revalidatePath(`/${projectId}/trabajo-diario`)
+  return {
+    ok: true,
+    entries: (inserted ?? []).map((row) => ({
+      entryId: row.id,
+      unitId: row.unit_id,
+      taskId: row.task_id,
+    })),
+  }
+}
+
+export async function registerProgressAttachments(
+  projectId: string,
+  attachments: RegisterProgressAttachmentInput[],
+): Promise<RegisterProgressAttachmentsResult> {
+  const id = projectId.trim()
+  if (!id) return { ok: false, error: "Proyecto inválido." }
+  if (attachments.length === 0) return { ok: true }
+
+  const user = await requireAuthenticatedUser()
+  const supabase = await createClient()
+
+  const entryIds = [...new Set(attachments.map((item) => item.entryId))]
+
+  const { data: entries, error: entriesError } = await supabase
+    .from("progress_entries")
+    .select("id")
+    .eq("project_id", id)
+    .in("id", entryIds)
+
+  if (entriesError) return { ok: false, error: entriesError.message }
+  if (!entries || entries.length !== entryIds.length) {
+    return { ok: false, error: "Uno o más avances no son válidos." }
+  }
+
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("company_id")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (projectError) return { ok: false, error: projectError.message }
+  if (!project) return { ok: false, error: "Proyecto no encontrado." }
+
+  const rows = attachments.map((attachment) => ({
+    company_id: project.company_id,
+    project_id: id,
+    uploaded_by: user.id,
+    entity_type: "progress_entry" as const,
+    entity_id: attachment.entryId,
+    file_url: attachment.storagePath,
+    file_name: attachment.fileName,
+    file_type: attachment.fileType,
+    file_size: attachment.fileSize,
+  }))
+
+  const { error: insertError } = await supabase.from("attachments").insert(rows)
+  if (insertError) return { ok: false, error: insertError.message }
+
+  revalidatePath(`/${id}/trabajo-diario`)
   return { ok: true }
 }
 
@@ -472,13 +634,27 @@ export async function getTrabajoDiarioTaskDetail(
       rubros:category_id (name),
       rubro_tasks:task_id (name),
       project_floors:floor_id (name),
-      project_units:unit_id (code)
+      project_units:unit_id (id)
     `)
     .eq("project_id", id)
     .eq("id", progressEntryId)
     .maybeSingle()
 
   if (entryError || !entry || !entry.unit_id || !entry.task_id) return null
+
+  const floorId = entry.floor_id
+  let unitLabel = "—"
+
+  if (floorId) {
+    const { data: floorUnits } = await supabase
+      .from("project_units")
+      .select("id")
+      .eq("project_id", id)
+      .eq("floor_id", floorId)
+      .order("sort_order", { ascending: true })
+
+    unitLabel = getUnitLabelInFloor(floorUnits ?? [], entry.unit_id)
+  }
 
   const { data: historyRows, error: historyError } = await supabase
     .from("progress_entries")
@@ -499,7 +675,10 @@ export async function getTrabajoDiarioTaskDetail(
   if (historyError || !historyRows) return null
 
   const historyEntryIds = historyRows.map((row) => row.id)
-  const attachmentCounts = await getAttachmentCountsByEntry(supabase, id, historyEntryIds)
+  const attachmentsByEntry = await getAttachmentsByEntry(supabase, id, [
+    ...historyEntryIds,
+    entry.id,
+  ])
 
   const authorIds = [...new Set(historyRows.map((row) => row.created_by))]
   const { data: profiles } =
@@ -520,12 +699,10 @@ export async function getTrabajoDiarioTaskDetail(
   const rubro = entry.rubros as { name: string } | { name: string }[] | null
   const task = entry.rubro_tasks as { name: string } | { name: string }[] | null
   const floor = entry.project_floors as { name: string } | { name: string }[] | null
-  const unit = entry.project_units as { code: string } | { code: string }[] | null
 
   const rubroName = Array.isArray(rubro) ? rubro[0]?.name : rubro?.name
   const taskName = Array.isArray(task) ? task[0]?.name : task?.name
   const floorName = Array.isArray(floor) ? floor[0]?.name : floor?.name
-  const unitCode = Array.isArray(unit) ? unit[0]?.code : unit?.code
 
   const occurredAt = entry.submitted_at ?? entry.created_at
 
@@ -539,7 +716,7 @@ export async function getTrabajoDiarioTaskDetail(
       occurredAt: rowOccurredAt,
       formattedDate: formatHistoryDate(rowOccurredAt),
       authorName: profile ? formatProfileName(profile) : "Usuario",
-      attachmentCount: attachmentCounts.get(row.id) ?? 0,
+      attachments: attachmentsByEntry.get(row.id) ?? [],
     }
   })
 
@@ -548,12 +725,12 @@ export async function getTrabajoDiarioTaskDetail(
     taskName: taskName ?? "Tarea",
     rubroName: rubroName ?? "Rubro",
     floorName: floorName ?? "—",
-    unitCode: unitCode ?? "—",
+    unitLabel,
     occurredAt,
     formattedLongDate: formatEntryLongDate(occurredAt),
     status: mapProgressStatus(entry.status, entry.progress_state),
     comment: entry.comment,
-    attachmentCount: attachmentCounts.get(entry.id) ?? 0,
+    attachments: attachmentsByEntry.get(entry.id) ?? [],
     history,
   }
 }

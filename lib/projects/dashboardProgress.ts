@@ -3,6 +3,13 @@ export type ProgressEntryRow = {
   task_id: string
   progress_state: string
   status: string
+  created_at?: string | null
+  submitted_at?: string | null
+}
+
+function getEntryTimestamp(entry: ProgressEntryRow): number {
+  const value = entry.submitted_at ?? entry.created_at
+  return value ? new Date(value).getTime() : 0
 }
 
 export function getAssignedTaskIdsForUnit(
@@ -95,4 +102,30 @@ export function countAssignedBlockedTasks(
   }
 
   return blocked.size
+}
+
+export function unitHasBlockedTasks(
+  unitId: string,
+  assignedTaskIds: string[],
+  entries: ProgressEntryRow[],
+): boolean {
+  if (assignedTaskIds.length === 0) return false
+
+  const latestByTask = new Map<string, ProgressEntryRow>()
+
+  for (const entry of entries) {
+    if (entry.unit_id !== unitId || !entry.task_id) continue
+    if (!assignedTaskIds.includes(entry.task_id)) continue
+
+    const previous = latestByTask.get(entry.task_id)
+    if (!previous || getEntryTimestamp(entry) > getEntryTimestamp(previous)) {
+      latestByTask.set(entry.task_id, entry)
+    }
+  }
+
+  for (const entry of latestByTask.values()) {
+    if (entry.status === "rejected") return true
+  }
+
+  return false
 }

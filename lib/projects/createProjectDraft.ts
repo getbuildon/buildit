@@ -1,17 +1,16 @@
-export const STRUCTURE_UNIT_TYPES = [
-  "Departamento",
-  "Cochera",
-  "Local",
-  "Bodega",
-] as const
+import {
+  STRUCTURE_UNIT_TYPES,
+  type StructureUnitType,
+} from "@/lib/projects/unitTypes"
 
-export type StructureUnitType = (typeof STRUCTURE_UNIT_TYPES)[number]
+export { STRUCTURE_UNIT_TYPES, type StructureUnitType }
 
 export type StructureUnitDraft = {
   id: string
   type: StructureUnitType
   squareMeters: string
   roomCount: string
+  officeSize: string
 }
 
 export type StructureFloorDraft = {
@@ -121,6 +120,7 @@ export function createDefaultUnit(): StructureUnitDraft {
     type: "Departamento",
     squareMeters: "",
     roomCount: "",
+    officeSize: "",
   }
 }
 

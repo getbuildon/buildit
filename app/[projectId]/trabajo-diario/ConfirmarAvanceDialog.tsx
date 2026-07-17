@@ -31,6 +31,7 @@ type ConfirmarAvanceDialogProps = {
   rubroName: string
   tasks: ConfirmarAvanceTaskItem[]
   saving: boolean
+  saveStatus?: string | null
   saveError: string | null
   onConfirm: () => void
 }
@@ -43,6 +44,7 @@ export function ConfirmarAvanceDialog({
   rubroName,
   tasks,
   saving,
+  saveStatus,
   saveError,
   onConfirm,
 }: ConfirmarAvanceDialogProps) {
@@ -114,7 +116,7 @@ export function ConfirmarAvanceDialog({
             onClick={onConfirm}
           >
             {saving ? <Spinner className="size-4" /> : null}
-            Confirmar
+            {saving && saveStatus ? saveStatus : saving ? "Guardando..." : "Confirmar"}
           </Button>
         </div>
       </AlertDialogContent>

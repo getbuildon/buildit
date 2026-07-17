@@ -11,6 +11,7 @@ import type {
 } from "@/lib/projects/createProjectDraft"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
 import { PROJECT_ROLE_SLUG, USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
+import { unitTypeToDbFields } from "@/lib/projects/unitTypes"
 
 export type CreateProjectResult =
   | { ok: true; projectId: string }
@@ -244,6 +245,8 @@ export async function createProjectFromDraft(
         project_id: string
         floor_id: string
         unit_type_id: string
+        unit_type: string
+        name: string | null
         square_meters: number | null
         room_count: number | null
         sort_order: number
@@ -253,16 +256,21 @@ export async function createProjectFromDraft(
         const floorId = floors[floorIndex]?.id
         if (!floorId) return
         floor.units.forEach((unit, unitIndex) => {
+          const { room_count, name } = unitTypeToDbFields({
+            type: unit.type,
+            roomCount: unit.roomCount,
+            officeSize: unit.officeSize,
+          })
+
           unitDraftIds.push(unit.id)
           unitRows.push({
             project_id: projectId!,
             floor_id: floorId,
             unit_type_id: catalog.unitTypeIds[unit.type],
+            unit_type: unit.type,
+            name,
             square_meters: parseOptionalNumber(unit.squareMeters),
-            room_count: (() => {
-              const count = parseOptionalNumber(unit.roomCount)
-              return count === null ? null : Math.round(count)
-            })(),
+            room_count,
             sort_order: unitIndex,
           })
         })

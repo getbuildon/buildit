@@ -4,13 +4,17 @@ import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { Building2, Info, MapPin, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
+  buildLoadedUnitTaskKeySet,
   getRubrosForUnits,
   getTasksForRubroAndUnits,
   getUnitDisplayLabel,
   getUnitDisplayTitle,
+  createEmptyTaskDraft,
   hasTaskDraftContent,
+  revokeAllTaskDrafts,
   type CargarAvanceTaskDraft,
 } from "@/lib/projects/cargarAvance"
+import { buildAttachmentsForTaskPhotos } from "@/lib/progress/linkProgressPhotos.client"
 import { getFloorShortLabel } from "@/lib/projects/floorLabels"
 import {
   AlertDialog,
@@ -24,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ConfirmarAvanceDialog } from "./ConfirmarAvanceDialog"
 import { CargarAvanceTaskPanel } from "./CargarAvanceTaskPanel"
-import { saveCargarAvance } from "./actions"
+import { saveCargarAvance, registerProgressAttachments } from "./actions"
 import type { TrabajoDiarioFloor, TrabajoDiarioRubroGroup } from "./actions"
 
 const INSTRUCTIONS = [
@@ -96,6 +100,7 @@ type CargarAvanceViewProps = {
   floors: TrabajoDiarioFloor[]
   rubroGroups: TrabajoDiarioRubroGroup[]
   assignmentsByUnit: Record<string, string[]>
+  loadedUnitTaskKeys: string[]
   selectedFloorId: string | null
   selectedRubroId: string | null
   onSelectFloor: (floorId: string) => void
@@ -109,6 +114,7 @@ export function CargarAvanceView({
   floors,
   rubroGroups,
   assignmentsByUnit,
+  loadedUnitTaskKeys,
   selectedFloorId,
   selectedRubroId,
   onSelectFloor,
@@ -120,6 +126,7 @@ export function CargarAvanceView({
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set())
   const [taskDrafts, setTaskDrafts] = useState<Record<string, CargarAvanceTaskDraft>>({})
   const [saving, setSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [showConfirmSave, setShowConfirmSave] = useState(false)
   const [pendingRubroId, setPendingRubroId] = useState<string | null>(null)
@@ -128,9 +135,19 @@ export function CargarAvanceView({
   const selectedFloor = floors.find((floor) => floor.id === selectedFloorId) ?? null
   const floorUnits = selectedFloor?.units ?? []
 
+  const loadedKeys = useMemo(
+    () => buildLoadedUnitTaskKeySet(loadedUnitTaskKeys),
+    [loadedUnitTaskKeys],
+  )
+
   const availableRubros = useMemo(() => {
-    return getRubrosForUnits(selectedUnitIds, rubroGroups, assignmentsByUnit)
-  }, [assignmentsByUnit, rubroGroups, selectedUnitIds])
+    return getRubrosForUnits(
+      selectedUnitIds,
+      rubroGroups,
+      assignmentsByUnit,
+      loadedKeys,
+    )
+  }, [assignmentsByUnit, loadedKeys, rubroGroups, selectedUnitIds])
 
   const availableTasks = useMemo(() => {
     if (!selectedRubroId || selectedUnitIds.length === 0) return []
@@ -139,8 +156,9 @@ export function CargarAvanceView({
       rubroGroups,
       selectedUnitIds,
       assignmentsByUnit,
+      loadedKeys,
     )
-  }, [assignmentsByUnit, rubroGroups, selectedRubroId, selectedUnitIds])
+  }, [assignmentsByUnit, loadedKeys, rubroGroups, selectedRubroId, selectedUnitIds])
 
   const selectedRubroName =
     availableRubros.find((rubro) => rubro.id === selectedRubroId)?.name ?? "—"
@@ -158,7 +176,7 @@ export function CargarAvanceView({
   const reviewTasks = useMemo(() => {
     return availableTasks
       .filter((task) =>
-        hasTaskDraftContent(taskDrafts[task.id] ?? { taskStatus: "pending", comment: "" }),
+        hasTaskDraftContent(taskDrafts[task.id] ?? createEmptyTaskDraft()),
       )
       .map((task) => ({
         id: task.id,
@@ -172,26 +190,39 @@ export function CargarAvanceView({
   useEffect(() => {
     setSelectedUnitIds([])
     setExpandedTaskIds(new Set())
-    setTaskDrafts({})
+    setTaskDrafts((current) => {
+      revokeAllTaskDrafts(current)
+      return {}
+    })
     setSaveError(null)
+    setSaveStatus(null)
     setShowConfirmSave(false)
   }, [selectedFloorId])
 
   useEffect(() => {
     if (selectedUnitIds.length === 0) return
 
-    const rubros = getRubrosForUnits(selectedUnitIds, rubroGroups, assignmentsByUnit)
+    const rubros = getRubrosForUnits(
+      selectedUnitIds,
+      rubroGroups,
+      assignmentsByUnit,
+      loadedKeys,
+    )
     if (rubros.length === 0) return
 
     if (!selectedRubroId || !rubros.some((rubro) => rubro.id === selectedRubroId)) {
       onSelectRubro(rubros[0].id)
     }
-  }, [assignmentsByUnit, onSelectRubro, rubroGroups, selectedRubroId, selectedUnitIds])
+  }, [assignmentsByUnit, loadedKeys, onSelectRubro, rubroGroups, selectedRubroId, selectedUnitIds])
 
   useEffect(() => {
     setExpandedTaskIds(new Set())
-    setTaskDrafts({})
+    setTaskDrafts((current) => {
+      revokeAllTaskDrafts(current)
+      return {}
+    })
     setSaveError(null)
+    setSaveStatus(null)
     setShowConfirmSave(false)
   }, [selectedRubroId, selectedUnitIds])
 
@@ -199,7 +230,7 @@ export function CargarAvanceView({
     setTaskDrafts((current) => {
       const next: Record<string, CargarAvanceTaskDraft> = {}
       for (const task of availableTasks) {
-        next[task.id] = current[task.id] ?? { taskStatus: "pending", comment: "" }
+        next[task.id] = current[task.id] ?? createEmptyTaskDraft()
       }
       return next
     })
@@ -223,14 +254,24 @@ export function CargarAvanceView({
   }
 
   const updateTaskDraft = (taskId: string, patch: Partial<CargarAvanceTaskDraft>) => {
-    setTaskDrafts((current) => ({
-      ...current,
-      [taskId]: {
-        ...{ taskStatus: "pending" as const, comment: "" },
-        ...current[taskId],
-        ...patch,
-      },
-    }))
+    setTaskDrafts((current) => {
+      const previous = current[taskId] ?? createEmptyTaskDraft()
+
+      if (patch.photos && patch.photos !== previous.photos) {
+        const nextPhotoIds = new Set(patch.photos.map((photo) => photo.id))
+        for (const photo of previous.photos) {
+          if (!nextPhotoIds.has(photo.id)) URL.revokeObjectURL(photo.previewUrl)
+        }
+      }
+
+      return {
+        ...current,
+        [taskId]: {
+          ...previous,
+          ...patch,
+        },
+      }
+    })
   }
 
   const canSave = useMemo(
@@ -251,6 +292,10 @@ export function CargarAvanceView({
   }
 
   const confirmRubroChange = () => {
+    setTaskDrafts((current) => {
+      revokeAllTaskDrafts(current)
+      return {}
+    })
     if (pendingRubroId) onSelectRubro(pendingRubroId)
     setPendingRubroId(null)
     setShowRubroChangeConfirm(false)
@@ -271,28 +316,92 @@ export function CargarAvanceView({
     if (!selectedFloorId || !selectedRubroId || selectedUnitIds.length === 0) return
 
     setSaveError(null)
+    setSaveStatus("Guardando avance...")
     setSaving(true)
+
+    const tasksPayload = availableTasks
+      .filter((task) => hasTaskDraftContent(taskDrafts[task.id] ?? createEmptyTaskDraft()))
+      .map((task) => {
+        const draft = taskDrafts[task.id] ?? createEmptyTaskDraft()
+        return {
+          taskId: task.id,
+          taskStatus: draft.taskStatus,
+          comment: draft.comment || null,
+          photoCount: draft.photos.length,
+        }
+      })
 
     const result = await saveCargarAvance({
       projectId,
       floorId: selectedFloorId,
       rubroId: selectedRubroId,
       unitIds: selectedUnitIds,
-      tasks: availableTasks.map((task) => ({
-        taskId: task.id,
-        taskStatus: taskDrafts[task.id]?.taskStatus ?? "pending",
-        comment: taskDrafts[task.id]?.comment ?? null,
-      })),
+      tasks: tasksPayload,
     })
 
-    setSaving(false)
-
     if (!result.ok) {
+      setSaving(false)
+      setSaveStatus(null)
       setSaveError(result.error)
       return
     }
 
+    const entriesByTaskId = new Map<string, string[]>()
+    for (const entry of result.entries) {
+      const current = entriesByTaskId.get(entry.taskId) ?? []
+      current.push(entry.entryId)
+      entriesByTaskId.set(entry.taskId, current)
+    }
+
+    const draftsWithPhotos = Object.fromEntries(
+      Object.entries(taskDrafts).filter(([, draft]) => draft.photos.length > 0),
+    )
+
+    if (Object.keys(draftsWithPhotos).length > 0) {
+      setSaveStatus("Subiendo fotos...")
+
+      const batchId = crypto.randomUUID()
+      const photoResult = await buildAttachmentsForTaskPhotos({
+        projectId,
+        batchId,
+        entriesByTaskId,
+        taskDrafts: draftsWithPhotos,
+        onUploadProgress: (completed, total) => {
+          setSaveStatus(`Subiendo fotos (${completed}/${total})...`)
+        },
+      })
+
+      if (!photoResult.ok) {
+        setSaving(false)
+        setSaveStatus(null)
+        setSaveError(
+          `${photoResult.error} El avance se guardó, pero las fotos no. Podés editarlo desde Trabajos Cargados.`,
+        )
+        return
+      }
+
+      if (photoResult.attachments.length > 0) {
+        const registerResult = await registerProgressAttachments(
+          projectId,
+          photoResult.attachments,
+        )
+
+        if (!registerResult.ok) {
+          setSaving(false)
+          setSaveStatus(null)
+          setSaveError(
+            `${registerResult.error} El avance se guardó, pero las fotos no quedaron vinculadas.`,
+          )
+          return
+        }
+      }
+    }
+
+    setSaving(false)
+    setSaveStatus(null)
     setShowConfirmSave(false)
+    revokeAllTaskDrafts(taskDrafts)
+    setTaskDrafts({})
     onSaved()
   }
 
@@ -362,7 +471,7 @@ export function CargarAvanceView({
           </SelectionCard>
         ) : null}
 
-        {showWorkSections && selectedRubroId ? (
+        {showWorkSections && selectedRubroId && availableRubros.length > 0 ? (
           <CargarAvanceTaskPanel
             availableRubros={availableRubros}
             selectedRubroId={selectedRubroId}
@@ -377,6 +486,12 @@ export function CargarAvanceView({
             saveError={saveError}
             onReview={handleReview}
           />
+        ) : null}
+
+        {showWorkSections && availableRubros.length === 0 ? (
+          <div className="rounded-[14px] border border-dashed border-[#edeef0] px-4 py-6 text-center text-[14px] text-[#777b84]">
+            Todas las tareas de las unidades seleccionadas ya tienen avance cargado.
+          </div>
         ) : null}
 
         {!selectedFloor ? (
@@ -402,6 +517,7 @@ export function CargarAvanceView({
         rubroName={selectedRubroName}
         tasks={reviewTasks}
         saving={saving}
+        saveStatus={saveStatus}
         saveError={saveError}
         onConfirm={handleConfirmSave}
       />

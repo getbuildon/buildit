@@ -17,6 +17,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   GripVertical,
@@ -24,6 +25,7 @@ import {
   SquarePen,
   Trash2,
   Wrench,
+  X,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -54,7 +56,6 @@ type SortableTaskItemProps = {
   onSaveEditing: (groupId: string, rubroId: string, taskId: string) => void
   onCancelEditing: () => void
   onUpdateName: (name: string) => void
-  onUpdate: (groupId: string, rubroId: string, taskId: string, patch: Partial<RubroTaskDraft>) => void
   onRemove: (groupId: string, rubroId: string, taskId: string) => void
 }
 
@@ -70,7 +71,6 @@ function SortableTaskItem({
   onSaveEditing,
   onCancelEditing,
   onUpdateName,
-  onUpdate,
   onRemove,
 }: SortableTaskItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
@@ -106,22 +106,10 @@ function SortableTaskItem({
             className="h-7 min-w-0 flex-1 border px-2 text-[14px]"
             style={{ borderColor: "#e2e8f0" }}
           />
-          <button
-            type="button"
-            onClick={() => onSaveEditing(groupId, rubroId, task.id)}
-            className="shrink-0 text-[12px] font-medium leading-4 transition-opacity hover:opacity-80"
-            style={{ color: "#15803d" }}
-          >
-            Guardar
-          </button>
-          <button
-            type="button"
-            onClick={onCancelEditing}
-            className="shrink-0 text-[12px] font-medium leading-4 transition-opacity hover:opacity-80"
-            style={{ color: "#666" }}
-          >
-            Cancelar
-          </button>
+          <EditActionIcons
+            onSave={() => onSaveEditing(groupId, rubroId, task.id)}
+            onCancel={onCancelEditing}
+          />
         </>
       ) : (
         <>
@@ -140,11 +128,11 @@ function SortableTaskItem({
           >
             {rubroNumber}.{index + 1}
           </span>
-          <Input
-            value={task.name}
-            onChange={(e) => onUpdate(groupId, rubroId, task.id, { name: e.target.value })}
-            className="h-7 min-w-0 flex-1 border-0 bg-transparent px-1 text-[14px] text-[#314158] shadow-none focus-visible:ring-0 dark:text-[#314158]"
-          />
+          <span
+            className="min-w-0 flex-1 truncate text-[14px] text-[#314158]"
+          >
+            {task.name.trim() || "Tarea sin nombre"}
+          </span>
           <button
             type="button"
             onClick={() => onStartEditing(task.id, task.name)}
@@ -174,6 +162,43 @@ type CreateProjectTasksStepProps = {
 
 function rubroKey(groupId: string, rubroId: string) {
   return `${groupId}:${rubroId}`
+}
+
+function ExpandToggleIcon({ expanded }: { expanded: boolean }) {
+  return expanded ? (
+    <ChevronDown className="size-5 shrink-0 text-[#111113]" aria-hidden />
+  ) : (
+    <ChevronRight className="size-5 shrink-0 text-[#111113]" aria-hidden />
+  )
+}
+
+function EditActionIcons({
+  onSave,
+  onCancel,
+}: {
+  onSave: () => void
+  onCancel: () => void
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onSave}
+        className="inline-flex size-6 shrink-0 items-center justify-center transition-opacity hover:opacity-80"
+        aria-label="Guardar"
+      >
+        <Check className="size-4 text-[#15803d]" aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        className="inline-flex size-6 shrink-0 items-center justify-center transition-opacity hover:opacity-80"
+        aria-label="Cancelar"
+      >
+        <X className="size-4 text-[#666]" aria-hidden />
+      </button>
+    </>
+  )
 }
 
 function DashedAddButton({
@@ -496,13 +521,6 @@ export function CreateProjectTasksStep({
                 className="flex items-center gap-3 px-3 py-3"
                 style={{ backgroundColor: "#fff6f1" }}
               >
-                <span
-                  className="flex size-7 shrink-0 items-center justify-center rounded-[10px] text-[14px] font-normal leading-5 text-white"
-                  style={{ backgroundColor: "#ff7433" }}
-                >
-                  {groupNumber}
-                </span>
-
                 {editingId === group.id ? (
                   <div className="flex min-w-0 flex-1 items-center gap-2">
                     <Input
@@ -516,57 +534,48 @@ export function CreateProjectTasksStep({
                       className="h-7 flex-1 border px-2 text-[14px]"
                       style={{ borderColor: "#e2e8f0" }}
                     />
-                    <button
-                      type="button"
-                      onClick={() => saveEditingGroup(group.id)}
-                      className="shrink-0 text-[12px] font-medium leading-4 transition-opacity hover:opacity-80"
-                      style={{ color: "#15803d" }}
-                    >
-                      Guardar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelEditing}
-                      className="shrink-0 text-[12px] font-medium leading-4 transition-opacity hover:opacity-80"
-                      style={{ color: "#666" }}
-                    >
-                      Cancelar
-                    </button>
+                    <EditActionIcons
+                      onSave={() => saveEditingGroup(group.id)}
+                      onCancel={cancelEditing}
+                    />
                   </div>
                 ) : (
                   <>
                     <button
                       type="button"
                       onClick={() => toggleGroup(group.id)}
-                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      className="inline-flex shrink-0 items-center justify-center"
                       aria-expanded={isGroupExpanded}
+                      aria-label={isGroupExpanded ? "Colapsar grupo" : "Expandir grupo"}
                     >
-                      <span className="min-w-0 flex-1">
-                        <span
-                          className="block truncate text-[14px] font-medium leading-5"
-                          style={{ color: "#18191b" }}
-                        >
-                          {group.name}
-                        </span>
-                        <span
-                          className="mt-0.5 block text-[12px] leading-4"
-                          style={{ color: "#43484e" }}
-                        >
-                          {stats.rubros} {stats.rubros === 1 ? "rubro" : "rubros"} •{" "}
-                          {stats.tareas} {stats.tareas === 1 ? "tarea" : "tareas"}
-                        </span>
+                      <ExpandToggleIcon expanded={isGroupExpanded} />
+                    </button>
+
+                    <span
+                      className="flex size-7 shrink-0 items-center justify-center rounded-[10px] text-[14px] font-normal leading-5 text-white"
+                      style={{ backgroundColor: "#ff7433" }}
+                    >
+                      {groupNumber}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(group.id)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <span
+                        className="block truncate text-[14px] font-medium leading-5"
+                        style={{ color: "#18191b" }}
+                      >
+                        {group.name}
                       </span>
-                      {isGroupExpanded ? (
-                        <ChevronDown
-                          className="size-5 shrink-0 text-[#111113]"
-                          aria-hidden
-                        />
-                      ) : (
-                        <ChevronRight
-                          className="size-5 shrink-0 text-[#111113]"
-                          aria-hidden
-                        />
-                      )}
+                      <span
+                        className="mt-0.5 block text-[12px] leading-4"
+                        style={{ color: "#43484e" }}
+                      >
+                        {stats.rubros} {stats.rubros === 1 ? "rubro" : "rubros"} •{" "}
+                        {stats.tareas} {stats.tareas === 1 ? "tarea" : "tareas"}
+                      </span>
                     </button>
 
                     <button
@@ -626,55 +635,51 @@ export function CreateProjectTasksStep({
                                 className="h-7 flex-1 border px-2 text-[14px]"
                                 style={{ borderColor: "#e2e8f0" }}
                               />
-                              <button
-                                type="button"
-                                onClick={() => saveEditingRubro(group.id, rubro.id)}
-                                className="shrink-0 text-[12px] font-medium leading-4 transition-opacity hover:opacity-80"
-                                style={{ color: "#15803d" }}
-                              >
-                                Guardar
-                              </button>
-                              <button
-                                type="button"
-                                onClick={cancelEditing}
-                                className="shrink-0 text-[12px] font-medium leading-4 transition-opacity hover:opacity-80"
-                                style={{ color: "#666" }}
-                              >
-                                Cancelar
-                              </button>
+                              <EditActionIcons
+                                onSave={() => saveEditingRubro(group.id, rubro.id)}
+                                onCancel={cancelEditing}
+                              />
                             </div>
                           ) : (
                             <>
                               <button
                                 type="button"
                                 onClick={() => toggleRubro(group.id, rubro.id)}
-                                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                className="inline-flex shrink-0 items-center justify-center"
                                 aria-expanded={isRubroExpanded}
+                                aria-label={isRubroExpanded ? "Colapsar rubro" : "Expandir rubro"}
+                              >
+                                <ExpandToggleIcon expanded={isRubroExpanded} />
+                              </button>
+
+                              <span
+                                className="flex shrink-0 items-center justify-center rounded-lg px-2 py-0.5 text-[14px] font-normal leading-5"
+                                style={{ backgroundColor: "#ffd7c2", color: "#d04c00" }}
+                              >
+                                {rubroNumber}
+                              </span>
+                              <Wrench
+                                className="size-4 shrink-0 text-[#363a3f]"
+                                aria-hidden
+                              />
+
+                              <button
+                                type="button"
+                                onClick={() => toggleRubro(group.id, rubro.id)}
+                                className="min-w-0 flex-1 text-left"
                               >
                                 <span
-                                  className="flex shrink-0 items-center justify-center rounded-lg px-2 py-0.5 text-[14px] font-normal leading-5"
-                                  style={{ backgroundColor: "#ffd7c2", color: "#d04c00" }}
+                                  className="text-[16px] font-normal leading-6"
+                                  style={{ color: "#363a3f" }}
                                 >
-                                  {rubroNumber}
+                                  {rubro.name.trim() || "Rubro sin nombre"}
                                 </span>
-                                <Wrench
-                                  className="size-4 shrink-0 text-[#363a3f]"
-                                  aria-hidden
-                                />
-                                <span className="min-w-0 flex-1">
-                                  <span
-                                    className="text-[16px] font-normal leading-6"
-                                    style={{ color: "#363a3f" }}
-                                  >
-                                    {rubro.name.trim() || "Rubro sin nombre"}
-                                  </span>
-                                  <span
-                                    className="ml-2 text-[12px] font-normal leading-4"
-                                    style={{ color: "#5a6169" }}
-                                  >
-                                    ({taskCount}{" "}
-                                    {taskCount === 1 ? "tarea" : "tareas"})
-                                  </span>
+                                <span
+                                  className="ml-2 text-[12px] font-normal leading-4"
+                                  style={{ color: "#5a6169" }}
+                                >
+                                  ({taskCount}{" "}
+                                  {taskCount === 1 ? "tarea" : "tareas"})
                                 </span>
                               </button>
 
@@ -695,16 +700,6 @@ export function CreateProjectTasksStep({
                               >
                                 <Trash2 className="size-3.5" aria-hidden />
                               </button>
-                              {isRubroExpanded ? (
-                                <button
-                                  type="button"
-                                  onClick={() => toggleRubro(group.id, rubro.id)}
-                                  className="shrink-0 text-[12px] font-medium leading-4 transition-opacity hover:opacity-80"
-                                  style={{ color: "#321a10" }}
-                                >
-                                  Cerrar
-                                </button>
-                              ) : null}
                             </>
                           )}
                         </div>
@@ -741,7 +736,6 @@ export function CreateProjectTasksStep({
                                         onSaveEditing={saveEditingTask}
                                         onCancelEditing={cancelEditing}
                                         onUpdateName={setEditingName}
-                                        onUpdate={updateTaskInRubro}
                                         onRemove={removeTaskFromRubro}
                                       />
                                     ))}

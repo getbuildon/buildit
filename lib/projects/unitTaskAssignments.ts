@@ -7,6 +7,10 @@ import {
   type StructureFloorDraft,
   type StructureUnitDraft,
 } from "@/lib/projects/createProjectDraft"
+import {
+  dbFieldsToUnitDraft,
+  normalizeUnitType,
+} from "@/lib/projects/unitTypes"
 
 /**
  * Reglas de asignación unidad ↔ tarea (unit_task_assignments):
@@ -145,6 +149,7 @@ type UnitData = {
   id: string
   floor_id: string
   unit_type: string | null
+  name: string | null
   area_m2: number | null
   rooms: number | null
 }
@@ -182,12 +187,19 @@ export function buildConfigDraftFromProjectData(input: {
           units: input.units
             .filter((unit) => unit.floor_id === floor.id)
             .map(
-              (unit): StructureUnitDraft => ({
-                id: unit.id,
-                type: (unit.unit_type || "Departamento") as StructureUnitDraft["type"],
-                squareMeters: unit.area_m2?.toString() || "",
-                roomCount: unit.rooms?.toString() || "",
-              }),
+              (unit): StructureUnitDraft => {
+                const normalizedType =
+                  normalizeUnitType(unit.unit_type) ?? "Departamento"
+                const variants = dbFieldsToUnitDraft(unit)
+
+                return {
+                  id: unit.id,
+                  type: normalizedType,
+                  squareMeters: unit.area_m2?.toString() || "",
+                  roomCount: variants.roomCount,
+                  officeSize: variants.officeSize,
+                }
+              },
             ),
         }))
       : [

@@ -6,7 +6,7 @@ import type {
 } from "@/app/[projectId]/trabajo-diario/actions"
 import {
   formatUnitSequenceNumber,
-  getUnitPillLabel,
+  getUnitSequenceLabel,
 } from "@/lib/projects/floorLabels"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
 
@@ -16,32 +16,58 @@ export type CargarAvanceRubroOption = {
   groupName: string
 }
 
+export function getUnitTaskKey(unitId: string, taskId: string): string {
+  return `${unitId}:${taskId}`
+}
+
+export function buildLoadedUnitTaskKeySet(keys: string[]): Set<string> {
+  return new Set(keys)
+}
+
+export function isUnitTaskLoaded(
+  loadedKeys: Set<string>,
+  unitId: string,
+  taskId: string,
+): boolean {
+  return loadedKeys.has(getUnitTaskKey(unitId, taskId))
+}
+
+/** Tarea cargable si al menos una unidad seleccionada aún no tiene avance. */
+export function isTaskLoadableForUnits(
+  taskId: string,
+  unitIds: string[],
+  assignmentsByUnit: Record<string, string[]>,
+  loadedKeys: Set<string>,
+): boolean {
+  return unitIds.some(
+    (unitId) =>
+      isTaskAssignedToUnit(assignmentsByUnit, unitId, taskId) &&
+      !isUnitTaskLoaded(loadedKeys, unitId, taskId),
+  )
+}
+
 export function getRubrosForUnits(
   unitIds: string[],
   rubroGroups: TrabajoDiarioRubroGroup[],
   assignmentsByUnit: Record<string, string[]>,
+  loadedUnitTaskKeys: Set<string> = new Set(),
 ): CargarAvanceRubroOption[] {
   if (unitIds.length === 0) return []
-
-  const relevantTaskIds = new Set<string>()
-
-  for (const unitId of unitIds) {
-    for (const group of rubroGroups) {
-      for (const rubro of group.rubros) {
-        for (const task of rubro.tasks) {
-          if (isTaskAssignedToUnit(assignmentsByUnit, unitId, task.id)) {
-            relevantTaskIds.add(task.id)
-          }
-        }
-      }
-    }
-  }
 
   const rubros: CargarAvanceRubroOption[] = []
 
   for (const group of rubroGroups) {
     for (const rubro of group.rubros) {
-      if (rubro.tasks.some((task) => relevantTaskIds.has(task.id))) {
+      const hasLoadableTask = rubro.tasks.some((task) =>
+        isTaskLoadableForUnits(
+          task.id,
+          unitIds,
+          assignmentsByUnit,
+          loadedUnitTaskKeys,
+        ),
+      )
+
+      if (hasLoadableTask) {
         rubros.push({
           id: rubro.id,
           name: rubro.name,
@@ -125,21 +151,25 @@ export function getTasksForRubroAndUnits(
   rubroGroups: TrabajoDiarioRubroGroup[],
   unitIds: string[],
   assignmentsByUnit: Record<string, string[]>,
+  loadedUnitTaskKeys: Set<string> = new Set(),
 ): TrabajoDiarioRubroTask[] {
   const rubroMatch = findRubroById(rubroId, rubroGroups)
   if (!rubroMatch || unitIds.length === 0) return []
 
   return rubroMatch.rubro.tasks
     .filter((task) =>
-      unitIds.some((unitId) =>
-        isTaskAssignedToUnit(assignmentsByUnit, unitId, task.id),
+      isTaskLoadableForUnits(
+        task.id,
+        unitIds,
+        assignmentsByUnit,
+        loadedUnitTaskKeys,
       ),
     )
     .sort((a, b) => a.sortOrder - b.sortOrder)
 }
 
-export function getUnitDisplayLabel(floorName: string, unitIndex: number): string {
-  return getUnitPillLabel(floorName, unitIndex)
+export function getUnitDisplayLabel(_floorName: string, unitIndex: number): string {
+  return getUnitSequenceLabel(unitIndex)
 }
 
 export type CargarAvanceTaskStatus = "pending" | "in_progress" | "completed" | "blocked"
@@ -163,13 +193,43 @@ export const CARGAR_AVANCE_BADGE_STYLES: Record<
 export const CARGAR_AVANCE_BADGE_CLASSNAME =
   "shrink-0 rounded-[8px] px-3 py-1 text-[12px] font-medium leading-4"
 
+export type CargarAvancePhotoDraft = {
+  id: string
+  file: File
+  previewUrl: string
+  fileName: string
+  fileSize: number
+  fileType: string
+}
+
 export type CargarAvanceTaskDraft = {
   taskStatus: CargarAvanceTaskStatus
   comment: string
+  photos: CargarAvancePhotoDraft[]
+}
+
+export function createEmptyTaskDraft(): CargarAvanceTaskDraft {
+  return { taskStatus: "pending", comment: "", photos: [] }
+}
+
+export function revokeTaskDraftPhotos(draft: CargarAvanceTaskDraft): void {
+  for (const photo of draft.photos) {
+    URL.revokeObjectURL(photo.previewUrl)
+  }
+}
+
+export function revokeAllTaskDrafts(drafts: Record<string, CargarAvanceTaskDraft>): void {
+  for (const draft of Object.values(drafts)) {
+    revokeTaskDraftPhotos(draft)
+  }
 }
 
 export function hasTaskDraftContent(draft: CargarAvanceTaskDraft): boolean {
-  return draft.taskStatus !== "pending" || draft.comment.trim().length > 0
+  return (
+    draft.taskStatus !== "pending" ||
+    draft.comment.trim().length > 0 ||
+    draft.photos.length > 0
+  )
 }
 
 export function mapTaskStatusToDb(taskStatus: CargarAvanceTaskStatus): {
@@ -194,6 +254,8 @@ export function getUnitDisplayTitle(
   unitIndex: number,
 ): string {
   const sequence = formatUnitSequenceNumber(unitIndex)
-  const details = unit.name ?? unit.code
-  return details ? `${floorName} — ${sequence} — ${details}` : `${floorName} — ${sequence}`
+  const details = unit.name?.trim() || unit.code.trim()
+  return details
+    ? `${floorName} — Unidad ${sequence} — ${details}`
+    : `${floorName} — Unidad ${sequence}`
 }

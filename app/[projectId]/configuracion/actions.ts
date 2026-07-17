@@ -8,6 +8,7 @@ import {
   countAssignedBlockedTasks,
   countAssignedCompletedTasks,
   getAssignedTaskIdsForUnit,
+  unitHasBlockedTasks,
 } from "@/lib/projects/dashboardProgress"
 import {
   syncProjectRubros,
@@ -85,7 +86,9 @@ export type DashboardUnit = {
   code: string
   name: string | null
   unit_type: string | null
+  room_count: number | null
   progress: number
+  hasBlockedTasks: boolean
 }
 
 export type DashboardFloor = {
@@ -124,7 +127,7 @@ export async function getDashboardData(
         .order("sort_order", { ascending: true }),
       supabase
         .from("project_units")
-        .select("id, floor_id, code, name, unit_type, sort_order")
+        .select("id, floor_id, code, name, unit_type, room_count, sort_order")
         .eq("project_id", id)
         .order("sort_order", { ascending: true }),
       getUnitTaskAssignments(id),
@@ -172,6 +175,7 @@ export async function getDashboardData(
   const dashboardFloors: DashboardFloor[] = floors.map((floor) => {
     const floorUnits: DashboardUnit[] = units
       .filter((unit) => unit.floor_id === floor.id)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
       .map((unit) => {
         const assignedTaskIds = getAssignedTaskIdsForUnit(
           assignments.byUnit,
@@ -184,13 +188,16 @@ export async function getDashboardData(
           entries,
           taskWeights,
         )
+        const hasBlockedTasks = unitHasBlockedTasks(unit.id, assignedTaskIds, entries)
 
         return {
           id: unit.id,
           code: unit.code,
           name: unit.name,
           unit_type: unit.unit_type,
+          room_count: unit.room_count,
           progress,
+          hasBlockedTasks,
         }
       })
 

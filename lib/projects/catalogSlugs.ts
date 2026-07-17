@@ -3,9 +3,13 @@ import type { StructureUnitType, TaskTrackingType } from "@/lib/projects/createP
 
 export const UNIT_TYPE_SLUG: Record<StructureUnitType, string> = {
   Departamento: "departamento",
-  Cochera: "cochera",
-  Local: "local",
-  Bodega: "bodega",
+  Oficina: "oficina",
+  SUM: "sum",
+  Patio: "patio",
+  Piscina: "piscina",
+  Terraza: "terraza",
+  Estacionamiento: "estacionamiento",
+  Otro: "otro",
 }
 
 export const TASK_TRACKING_SLUG: Record<TaskTrackingType, string> = {

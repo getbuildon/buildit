@@ -8,43 +8,37 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
-  Car,
-  Users,
-  Dumbbell,
-  Trees,
-  Home,
 } from "lucide-react"
+import { formatUnitSequenceNumber } from "@/lib/projects/floorLabels"
+import { getUnitTypeIcon } from "@/lib/projects/unitTypeIcons"
+import { getUnitDashboardLabel } from "@/lib/projects/unitTypes"
 import { cn } from "@/lib/utils"
 import type { ProjectBasics, DashboardFloor, DashboardStats } from "../configuracion/actions"
-
-const UNIT_TYPE_ICONS: Record<string, React.ElementType> = {
-  Estacionamiento: Car,
-  Oficina: Users,
-  Gimnasio: Dumbbell,
-  Jardín: Trees,
-  Patio: Trees,
-}
-
-function unitIcon(unitType: string | null): React.ElementType {
-  if (!unitType) return Home
-  return UNIT_TYPE_ICONS[unitType] ?? Home
-}
 
 const mockFloors: DashboardFloor[] = [
   {
     id: "mock-1",
     name: "Planta baja",
     progress: 100,
-    units: [{ id: "u1", code: "101", name: "Estacionamiento", unit_type: "Estacionamiento", progress: 70 }],
+    units: [
+      {
+        id: "u1",
+        code: "101",
+        name: null,
+        unit_type: "Estacionamiento",
+        room_count: null,
+        progress: 70, hasBlockedTasks: false,
+      },
+    ],
   },
   {
     id: "mock-2",
     name: "Piso 2",
     progress: 87,
     units: [
-      { id: "u2", code: "201", name: "Oficina XL", unit_type: "Oficina", progress: 70 },
-      { id: "u3", code: "202", name: "Gimnasio", unit_type: "Gimnasio", progress: 45 },
-      { id: "u4", code: "203", name: "Patio", unit_type: "Patio", progress: 90 },
+      { id: "u2", code: "201", name: "XL", unit_type: "Oficina", room_count: null, progress: 70, hasBlockedTasks: false },
+      { id: "u3", code: "202", name: null, unit_type: "SUM", room_count: null, progress: 45, hasBlockedTasks: false },
+      { id: "u4", code: "203", name: null, unit_type: "Patio", room_count: null, progress: 90, hasBlockedTasks: false },
     ],
   },
   {
@@ -52,56 +46,56 @@ const mockFloors: DashboardFloor[] = [
     name: "Piso 3",
     progress: 76,
     units: [
-      { id: "u5", code: "301", name: "Depto A", unit_type: null, progress: 80 },
-      { id: "u6", code: "302", name: "Depto B", unit_type: null, progress: 65 },
-      { id: "u7", code: "303", name: "Depto C", unit_type: null, progress: 90 },
-      { id: "u8", code: "304", name: "Depto D", unit_type: null, progress: 50 },
-      { id: "u9", code: "305", name: "Depto E", unit_type: null, progress: 55 },
+      { id: "u5", code: "301", name: "L", unit_type: "Oficina", room_count: null, progress: 80, hasBlockedTasks: false },
+      { id: "u6", code: "302", name: null, unit_type: "Departamento", room_count: 3, progress: 65, hasBlockedTasks: true },
+      { id: "u7", code: "303", name: null, unit_type: "Departamento", room_count: 2, progress: 90, hasBlockedTasks: false },
+      { id: "u8", code: "304", name: null, unit_type: "Departamento", room_count: 4, progress: 50, hasBlockedTasks: true },
+      { id: "u9", code: "305", name: null, unit_type: "Departamento", room_count: 1, progress: 55, hasBlockedTasks: false },
     ],
   },
   { id: "mock-4", name: "Piso 4", progress: 50, units: [
-    { id: "u10", code: "401", name: "Depto A", unit_type: null, progress: 60 },
-    { id: "u11", code: "402", name: "Depto B", unit_type: null, progress: 40 },
-    { id: "u12", code: "403", name: "Depto C", unit_type: null, progress: 55 },
-    { id: "u13", code: "404", name: "Depto D", unit_type: null, progress: 50 },
-    { id: "u14", code: "405", name: "Depto E", unit_type: null, progress: 45 },
-    { id: "u15", code: "406", name: "Depto F", unit_type: null, progress: 50 },
+    { id: "u10", code: "401", name: null, unit_type: "Departamento", room_count: 2, progress: 60, hasBlockedTasks: false },
+    { id: "u11", code: "402", name: null, unit_type: "Departamento", room_count: 3, progress: 40, hasBlockedTasks: false },
+    { id: "u12", code: "403", name: "M", unit_type: "Oficina", room_count: null, progress: 45, hasBlockedTasks: true },
+    { id: "u13", code: "404", name: null, unit_type: "Departamento", room_count: 4, progress: 50, hasBlockedTasks: false },
+    { id: "u14", code: "405", name: null, unit_type: "Departamento", room_count: 1, progress: 45, hasBlockedTasks: false },
+    { id: "u15", code: "406", name: null, unit_type: "Departamento", room_count: 3, progress: 50, hasBlockedTasks: false },
   ]},
   { id: "mock-5", name: "Piso 5", progress: 30, units: [
-    { id: "u16", code: "501", name: "Depto A", unit_type: null, progress: 35 },
-    { id: "u17", code: "502", name: "Depto B", unit_type: null, progress: 25 },
-    { id: "u18", code: "503", name: "Depto C", unit_type: null, progress: 30 },
-    { id: "u19", code: "504", name: "Depto D", unit_type: null, progress: 30 },
-    { id: "u20", code: "505", name: "Depto E", unit_type: null, progress: 30 },
+    { id: "u16", code: "501", name: null, unit_type: "Departamento", room_count: 2, progress: 35, hasBlockedTasks: false },
+    { id: "u17", code: "502", name: null, unit_type: "Departamento", room_count: 3, progress: 25, hasBlockedTasks: false },
+    { id: "u18", code: "503", name: null, unit_type: "Departamento", room_count: 2, progress: 30, hasBlockedTasks: false },
+    { id: "u19", code: "504", name: null, unit_type: "Departamento", room_count: 4, progress: 30, hasBlockedTasks: false },
+    { id: "u20", code: "505", name: null, unit_type: "Departamento", room_count: 1, progress: 30, hasBlockedTasks: false },
   ]},
   { id: "mock-6", name: "Piso 6", progress: 30, units: [
-    { id: "u21", code: "601", name: "Depto A", unit_type: null, progress: 30 },
-    { id: "u22", code: "602", name: "Depto B", unit_type: null, progress: 30 },
-    { id: "u23", code: "603", name: "Depto C", unit_type: null, progress: 30 },
-    { id: "u24", code: "604", name: "Depto D", unit_type: null, progress: 30 },
-    { id: "u25", code: "605", name: "Depto E", unit_type: null, progress: 30 },
+    { id: "u21", code: "601", name: null, unit_type: "Departamento", room_count: 2, progress: 30, hasBlockedTasks: false },
+    { id: "u22", code: "602", name: null, unit_type: "Departamento", room_count: 3, progress: 30, hasBlockedTasks: false },
+    { id: "u23", code: "603", name: null, unit_type: "Departamento", room_count: 2, progress: 30, hasBlockedTasks: false },
+    { id: "u24", code: "604", name: null, unit_type: "Departamento", room_count: 4, progress: 30, hasBlockedTasks: false },
+    { id: "u25", code: "605", name: null, unit_type: "Departamento", room_count: 1, progress: 30, hasBlockedTasks: false },
   ]},
   { id: "mock-7", name: "Piso 7", progress: 10, units: [
-    { id: "u26", code: "701", name: "Depto A", unit_type: null, progress: 10 },
-    { id: "u27", code: "702", name: "Depto B", unit_type: null, progress: 10 },
-    { id: "u28", code: "703", name: "Depto C", unit_type: null, progress: 10 },
-    { id: "u29", code: "704", name: "Depto D", unit_type: null, progress: 10 },
+    { id: "u26", code: "701", name: null, unit_type: "Departamento", room_count: 2, progress: 10, hasBlockedTasks: false },
+    { id: "u27", code: "702", name: null, unit_type: "Departamento", room_count: 3, progress: 10, hasBlockedTasks: false },
+    { id: "u28", code: "703", name: null, unit_type: "Departamento", room_count: 2, progress: 10, hasBlockedTasks: false },
+    { id: "u29", code: "704", name: null, unit_type: "Departamento", room_count: 4, progress: 10, hasBlockedTasks: false },
   ]},
   { id: "mock-8", name: "Piso 8", progress: 10, units: [
-    { id: "u30", code: "801", name: "Depto A", unit_type: null, progress: 10 },
-    { id: "u31", code: "802", name: "Depto B", unit_type: null, progress: 10 },
-    { id: "u32", code: "803", name: "Depto C", unit_type: null, progress: 10 },
-    { id: "u33", code: "804", name: "Depto D", unit_type: null, progress: 10 },
+    { id: "u30", code: "801", name: null, unit_type: "Departamento", room_count: 2, progress: 10, hasBlockedTasks: false },
+    { id: "u31", code: "802", name: null, unit_type: "Departamento", room_count: 3, progress: 10, hasBlockedTasks: false },
+    { id: "u32", code: "803", name: null, unit_type: "Departamento", room_count: 2, progress: 10, hasBlockedTasks: false },
+    { id: "u33", code: "804", name: null, unit_type: "Departamento", room_count: 4, progress: 10, hasBlockedTasks: false },
   ]},
   { id: "mock-9", name: "Piso 9", progress: 10, units: [
-    { id: "u34", code: "901", name: "Depto A", unit_type: null, progress: 10 },
-    { id: "u35", code: "902", name: "Depto B", unit_type: null, progress: 10 },
-    { id: "u36", code: "903", name: "Depto C", unit_type: null, progress: 10 },
+    { id: "u34", code: "901", name: null, unit_type: "Departamento", room_count: 2, progress: 10, hasBlockedTasks: false },
+    { id: "u35", code: "902", name: null, unit_type: "Departamento", room_count: 3, progress: 10, hasBlockedTasks: false },
+    { id: "u36", code: "903", name: null, unit_type: "Departamento", room_count: 2, progress: 10, hasBlockedTasks: false },
   ]},
   { id: "mock-10", name: "Piso 10", progress: 10, units: [
-    { id: "u37", code: "1001", name: "Depto A", unit_type: null, progress: 10 },
-    { id: "u38", code: "1002", name: "Depto B", unit_type: null, progress: 10 },
-    { id: "u39", code: "1003", name: "Depto C", unit_type: null, progress: 10 },
+    { id: "u37", code: "1001", name: null, unit_type: "Departamento", room_count: 2, progress: 10, hasBlockedTasks: false },
+    { id: "u38", code: "1002", name: null, unit_type: "Departamento", room_count: 3, progress: 10, hasBlockedTasks: false },
+    { id: "u39", code: "1003", name: null, unit_type: "Departamento", room_count: 2, progress: 10, hasBlockedTasks: false },
   ]},
 ]
 
@@ -139,20 +133,47 @@ function StatCard({
   )
 }
 
-function UnitCard({ unit }: { unit: DashboardFloor["units"][number] }) {
-  const Icon = unitIcon(unit.unit_type)
+function UnitCard({
+  unit,
+  unitIndex,
+}: {
+  unit: DashboardFloor["units"][number]
+  unitIndex: number
+}) {
+  const Icon = getUnitTypeIcon(unit.unit_type)
+  const displayTypeLabel = getUnitDashboardLabel({
+    unit_type: unit.unit_type,
+    name: unit.name,
+    room_count: unit.room_count,
+  })
+
   return (
-    <div className="flex w-50 shrink-0 flex-col gap-2 rounded-[10px] border border-[#edeef0] p-3" style={{ backgroundColor: "#fbfdff" }}>
-      <div className="flex items-center justify-between">
-        <span className="text-[12px] leading-[1.4] text-[#212225]">{unit.code}</span>
+    <div className="flex w-[200px] shrink-0 flex-col gap-2 rounded-[10px] border border-[#edeef0] bg-[#fbfdff] p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[12px] font-medium leading-[1.4] text-[#212225]">
+          {formatUnitSequenceNumber(unitIndex)}
+        </span>
         <span className="text-[12px] leading-[1.4] text-[#696e77]">{unit.progress}%</span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#edeef0]">
-        <div className="h-full rounded-full bg-[#212225]" style={{ width: `${unit.progress}%` }} />
+        <div
+          className="h-full rounded-full bg-[#212225] transition-all"
+          style={{ width: `${unit.progress}%` }}
+        />
       </div>
-      <div className="flex items-center gap-1.5">
-        <Icon className="size-3.5 shrink-0 text-[#696e77]" />
-        <span className="text-[12px] leading-[1.4] text-[#212225]">{unit.name ?? unit.code}</span>
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Icon className="size-3.5 shrink-0 text-[#212225]" aria-hidden />
+          <span className="truncate text-[12px] font-normal leading-[1.4] text-[#212225]">
+            {displayTypeLabel}
+          </span>
+        </div>
+        {unit.hasBlockedTasks ? (
+          <AlertTriangle
+            className="size-3.5 shrink-0 text-[#CE2C31]"
+            aria-label="Tiene tareas bloqueadas"
+          />
+        ) : null}
       </div>
     </div>
   )
@@ -161,6 +182,7 @@ function UnitCard({ unit }: { unit: DashboardFloor["units"][number] }) {
 function FloorCard({ floor, defaultOpen = false }: { floor: DashboardFloor; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
   const progressColor = floor.progress === 100 ? "#208368" : "#FF7433"
+  const blockedUnitsCount = floor.units.filter((unit) => unit.hasBlockedTasks).length
 
   return (
     <div className="rounded-[14px] border border-[#edeef0] bg-white shadow-[0_0_5px_rgba(243,103,31,0.08)]">
@@ -191,16 +213,24 @@ function FloorCard({ floor, defaultOpen = false }: { floor: DashboardFloor; defa
           </span>
         </div>
 
-        <span className="min-w-17.5 text-right text-[12px] leading-[1.4] tracking-[-0.36px] text-[#696e77]">
-          {floor.units.length} unidades
-        </span>
+        <div className="flex shrink-0 items-center gap-2 text-[12px] leading-[1.4] tracking-[-0.36px] text-[#696e77]">
+          <span>
+            {floor.units.length} {floor.units.length === 1 ? "unidad" : "unidades"}
+          </span>
+          {blockedUnitsCount > 0 ? (
+            <span className="inline-flex items-center gap-1 text-[#CE2C31]">
+              <AlertTriangle className="size-3.5 shrink-0" aria-hidden />
+              <span className="font-medium">{blockedUnitsCount}</span>
+            </span>
+          ) : null}
+        </div>
       </button>
 
       {open && (
         <div className="border-t border-[#edeef0] px-4 pb-4 pt-3">
           <div className="flex gap-3 overflow-x-auto">
-            {floor.units.map((unit) => (
-              <UnitCard key={unit.id} unit={unit} />
+            {floor.units.map((unit, index) => (
+              <UnitCard key={unit.id} unit={unit} unitIndex={index + 1} />
             ))}
           </div>
         </div>

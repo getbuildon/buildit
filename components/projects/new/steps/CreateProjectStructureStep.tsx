@@ -18,6 +18,7 @@ import {
   type StructureFloorDraft,
   type StructureUnitDraft,
 } from "@/lib/projects/createProjectDraft"
+import { UnitVariantField } from "@/components/projects/UnitVariantField"
 
 type CreateProjectStructureStepProps = {
   draft: CreateProjectDraft
@@ -287,6 +288,9 @@ function StructureFloorCard({
                       onChange={(e) =>
                         onUpdateUnit(unit.id, {
                           type: e.target.value as StructureUnitDraft["type"],
+                          roomCount:
+                            e.target.value === "Departamento" ? unit.roomCount : "",
+                          officeSize: e.target.value === "Oficina" ? unit.officeSize : "",
                         })
                       }
                       className={createProjectSelectClassName}
@@ -314,22 +318,13 @@ function StructureFloorCard({
                     />
                   </CreateProjectFormField>
 
-                  <CreateProjectFormField
-                    label="Cant. ambientes"
-                    htmlFor={`unit-rooms-${unit.id}`}
-                  >
-                    <Input
-                      id={`unit-rooms-${unit.id}`}
-                      inputMode="numeric"
-                      placeholder="2"
-                      value={unit.roomCount}
-                      onChange={(e) =>
-                        onUpdateUnit(unit.id, { roomCount: e.target.value })
-                      }
-                      className={createProjectCompactInputClassName}
-                      style={createProjectCompactInputStyle}
-                    />
-                  </CreateProjectFormField>
+                  <UnitVariantField
+                    unitId={unit.id}
+                    type={unit.type}
+                    roomCount={unit.roomCount}
+                    officeSize={unit.officeSize}
+                    onChange={(patch) => onUpdateUnit(unit.id, patch)}
+                  />
 
                   <CreateProjectFormField label="Planta">
                     <Button

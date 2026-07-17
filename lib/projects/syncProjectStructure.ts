@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { normalizeUnitType } from "@/lib/projects/unitTypes"
 
 export type StructureUnitSaveInput = {
   id?: string
@@ -210,10 +211,13 @@ function resolveUnitTypeId(
   unitType: string | null,
   unitTypeMap: Map<string, string>,
 ): string {
-  const defaultTypeId = unitTypeMap.get("Departamento")
-  const unitTypeId = unitType ? unitTypeMap.get(unitType) : defaultTypeId
+  const normalized = normalizeUnitType(unitType) ?? "Otro"
+  const unitTypeId =
+    unitTypeMap.get(normalized) ??
+    unitTypeMap.get("Otro") ??
+    unitTypeMap.get("Departamento")
   if (!unitTypeId) {
-    throw new Error(`Tipo de unidad "${unitType || "Departamento"}" no encontrado`)
+    throw new Error(`Tipo de unidad "${normalized}" no encontrado`)
   }
   return unitTypeId
 }

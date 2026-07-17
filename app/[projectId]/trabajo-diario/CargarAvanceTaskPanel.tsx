@@ -2,7 +2,6 @@
 
 import {
   AlertCircle,
-  Camera,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -20,7 +19,9 @@ import {
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
+import { ProgressPhotoUpload } from "@/components/progress/ProgressPhotoUpload"
 import {
+  createEmptyTaskDraft,
   hasTaskDraftContent,
   CARGAR_AVANCE_BADGE_CLASSNAME,
   CARGAR_AVANCE_BADGE_STYLES,
@@ -198,16 +199,13 @@ export function CargarAvanceTaskPanel({
 
         {tasks.length === 0 ? (
           <p className="text-[14px] text-[#777b84]">
-            No hay tareas asignadas para las unidades seleccionadas.
+            No hay tareas pendientes de carga para las unidades seleccionadas.
           </p>
         ) : (
           <div className="flex flex-col gap-2">
             {tasks.map((task) => {
               const expanded = expandedTaskIds.has(task.id)
-              const draft = taskDrafts[task.id] ?? {
-                taskStatus: "pending" as const,
-                comment: "",
-              }
+              const draft = taskDrafts[task.id] ?? createEmptyTaskDraft()
               const showBadge = draft.taskStatus !== "pending"
 
               return (
@@ -306,20 +304,10 @@ export function CargarAvanceTaskPanel({
                           />
                         </div>
 
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2">
-                            <Camera className="size-4 text-[#777b84]" aria-hidden />
-                            <p className="text-[12px] font-normal text-[#777b84]">Fotografías</p>
-                          </div>
-                          <button
-                            type="button"
-                            disabled
-                            className="flex items-center justify-center gap-2 rounded-[10px] border border-dashed border-[#afb3ba] bg-white px-4 py-8 text-[14px] text-[#777b84]"
-                          >
-                            <Camera className="size-4" aria-hidden />
-                            Subir Fotos
-                          </button>
-                        </div>
+                        <ProgressPhotoUpload
+                          photos={draft.photos}
+                          onChange={(photos) => onUpdateTaskDraft(task.id, { photos })}
+                        />
                       </div>
                     </div>
                   ) : null}
