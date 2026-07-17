@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
+import {
+  calculateUnitProgressPercent,
+  countAssignedBlockedTasks,
+  countAssignedCompletedTasks,
+  getAssignedTaskIdsForUnit,
+} from "@/lib/projects/dashboardProgress"
 
 export type ProjectBasics = {
   id: string
@@ -86,6 +92,8 @@ export type DashboardStats = {
   totalUnits: number
   generalProgress: number
   completedUnits: number
+  completedTasksThisWeek: number | null
+  blockedTasks: number | null
 }
 
 export async function getDashboardData(
@@ -99,61 +107,99 @@ export async function getDashboardData(
 
   const supabase = await createClient()
 
-  const [floorsResult, unitsResult, snapshotsResult] = await Promise.all([
-    supabase
-      .from("project_floors")
-      .select("id, name, sort_order")
-      .eq("project_id", id)
-      .order("sort_order", { ascending: true }),
-    supabase
-      .from("project_units")
-      .select("id, floor_id, code, name, unit_type, sort_order")
-      .eq("project_id", id)
-      .order("sort_order", { ascending: true }),
-    supabase
-      .from("unit_progress_snapshots")
-      .select("unit_id, progress_percentage")
-      .eq("project_id", id),
-  ])
+  const [floorsResult, unitsResult, assignments, tasksResult, entriesResult] =
+    await Promise.all([
+      supabase
+        .from("project_floors")
+        .select("id, name, sort_order")
+        .eq("project_id", id)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("project_units")
+        .select("id, floor_id, code, name, unit_type, sort_order")
+        .eq("project_id", id)
+        .order("sort_order", { ascending: true }),
+      getUnitTaskAssignments(id),
+      supabase.from("rubro_tasks").select("id, weight_percent").eq("project_id", id),
+      supabase
+        .from("progress_entries")
+        .select("unit_id, task_id, progress_state, status, submitted_at, created_at")
+        .eq("project_id", id),
+    ])
 
-  if (floorsResult.error || unitsResult.error) return null
+  if (floorsResult.error || unitsResult.error || tasksResult.error || entriesResult.error) {
+    return null
+  }
 
   const floors = floorsResult.data ?? []
   const units = unitsResult.data ?? []
-  const snapshots = snapshotsResult.data ?? []
+  const allTaskIds = (tasksResult.data ?? []).map((task) => task.id)
+  const taskWeights = new Map<string, number | null>(
+    (tasksResult.data ?? []).map((task) => [task.id, task.weight_percent]),
+  )
+  const entries = entriesResult.data ?? []
+  const unitIds = units.map((unit) => unit.id)
 
-  const progressByUnit = new Map<string, number>(
-    snapshots.map((s: { unit_id: string; progress_percentage: number }) => [
-      s.unit_id,
-      Number(s.progress_percentage),
-    ]),
+  const weekAgo = new Date()
+  weekAgo.setDate(weekAgo.getDate() - 7)
+
+  const completedTasksThisWeek = countAssignedCompletedTasks(
+    assignments.byUnit,
+    allTaskIds,
+    unitIds,
+    entries.filter((entry) => {
+      const dateValue = entry.submitted_at ?? entry.created_at
+      if (!dateValue) return false
+      return new Date(dateValue) >= weekAgo
+    }),
+  )
+
+  const blockedTasks = countAssignedBlockedTasks(
+    assignments.byUnit,
+    allTaskIds,
+    unitIds,
+    entries,
   )
 
   const dashboardFloors: DashboardFloor[] = floors.map((floor) => {
     const floorUnits: DashboardUnit[] = units
-      .filter((u) => u.floor_id === floor.id)
-      .map((u) => ({
-        id: u.id,
-        code: u.code,
-        name: u.name,
-        unit_type: u.unit_type,
-        progress: progressByUnit.get(u.id) ?? 0,
-      }))
+      .filter((unit) => unit.floor_id === floor.id)
+      .map((unit) => {
+        const assignedTaskIds = getAssignedTaskIdsForUnit(
+          assignments.byUnit,
+          unit.id,
+          allTaskIds,
+        )
+        const progress = calculateUnitProgressPercent(
+          unit.id,
+          assignedTaskIds,
+          entries,
+          taskWeights,
+        )
+
+        return {
+          id: unit.id,
+          code: unit.code,
+          name: unit.name,
+          unit_type: unit.unit_type,
+          progress,
+        }
+      })
 
     const floorProgress =
       floorUnits.length > 0
-        ? Math.round(floorUnits.reduce((sum, u) => sum + u.progress, 0) / floorUnits.length)
+        ? Math.round(floorUnits.reduce((sum, unit) => sum + unit.progress, 0) / floorUnits.length)
         : 0
 
     return { id: floor.id, name: floor.name, progress: floorProgress, units: floorUnits }
   })
 
-  const allUnits = dashboardFloors.flatMap((f) => f.units)
+  const allUnits = dashboardFloors.flatMap((floor) => floor.units)
   const generalProgress =
     allUnits.length > 0
-      ? Math.round(allUnits.reduce((sum, u) => sum + u.progress, 0) / allUnits.length)
+      ? Math.round(allUnits.reduce((sum, unit) => sum + unit.progress, 0) / allUnits.length)
       : 0
-  const completedUnits = allUnits.filter((u) => u.progress === 100).length
+  const completedUnits = allUnits.filter((unit) => unit.progress === 100).length
 
   return {
     floors: dashboardFloors,
@@ -162,6 +208,8 @@ export async function getDashboardData(
       totalUnits: allUnits.length,
       generalProgress,
       completedUnits,
+      completedTasksThisWeek,
+      blockedTasks,
     },
   }
 }
@@ -196,6 +244,24 @@ export async function getUnitTaskAssignments(
   return { byUnit }
 }
 
+function mapConfigSaveError(err: unknown, fallback: string): string {
+  const code =
+    err && typeof err === "object" && "code" in err
+      ? String((err as { code?: string }).code)
+      : null
+
+  if (code === "23503") {
+    return "No se puede eliminar una tarea que ya tiene avances registrados."
+  }
+
+  if (err instanceof Error && err.message) return err.message
+  if (err && typeof err === "object" && "message" in err) {
+    return String((err as { message?: string }).message)
+  }
+
+  return fallback
+}
+
 export async function setUnitTaskAssignments(
   projectId: string,
   assignments: Record<string, string[]>,
@@ -207,6 +273,7 @@ export async function setUnitTaskAssignments(
   const supabase = await createClient()
 
   try {
+    // Solo unit_task_assignments: no toca progress_entries (avances históricos).
     await supabase
       .from("unit_task_assignments")
       .delete()
@@ -625,8 +692,8 @@ export async function saveProjectRubros(
 
     revalidatePath(`/${id}/configuracion`)
     return { ok: true }
-  } catch (err: any) {
-    const message = err?.message || err?.details || JSON.stringify(err) || "Error al guardar rubros"
+  } catch (err) {
+    const message = mapConfigSaveError(err, "Error al guardar rubros")
     return { ok: false, error: message }
   }
 }

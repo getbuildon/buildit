@@ -222,6 +222,8 @@ export function DashboardMainView({
     totalUnits: mockFloors.reduce((s, f) => s + f.units.length, 0),
     generalProgress: 52,
     completedUnits: 1,
+    completedTasksThisWeek: null,
+    blockedTasks: null,
   }
 
   return (
@@ -258,7 +260,7 @@ export function DashboardMainView({
           iconBg="#fefbe9"
           icon={ClipboardCheck}
           iconColor="text-[#AB6400]"
-          value="—"
+          value={stats.completedTasksThisWeek == null ? "—" : String(stats.completedTasksThisWeek)}
           label="Tareas completadas"
           sublabel="esta semana"
         />
@@ -266,7 +268,7 @@ export function DashboardMainView({
           iconBg="#feebec"
           icon={AlertTriangle}
           iconColor="text-[#CE2C31]"
-          value="—"
+          value={stats.blockedTasks == null ? "—" : String(stats.blockedTasks)}
           label="Problemas"
           sublabel="tareas bloqueadas"
         />

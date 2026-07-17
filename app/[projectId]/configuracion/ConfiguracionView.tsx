@@ -1,27 +1,29 @@
 "use client"
 
 import { useEffect, useState, type ReactNode } from "react"
-import { AlertCircle, Building2, CalendarDays, Check, Layers, MapPin, Wrench } from "lucide-react"
+import { AlertCircle, Building2, CalendarDays, Check, ChevronDown, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CreateProjectStructureStep } from "@/components/projects/new/steps/CreateProjectStructureStep"
 import { CreateProjectTasksStep } from "@/components/projects/new/steps/CreateProjectTasksStep"
+import { CreateProjectUnitTasksStep } from "@/components/projects/new/steps/CreateProjectUnitTasksStep"
 import {
-  createDefaultFloor,
-  createEmptyProjectDraft,
   type CreateProjectDraft,
-  type RubroGroupDraft,
-  type RubroItemDraft,
-  type StructureFloorDraft,
-  type StructureUnitDraft,
 } from "@/lib/projects/createProjectDraft"
+import {
+  buildConfigDraftFromProjectData,
+  exclusionsToAssignments,
+  remapUnitTaskExclusions,
+} from "@/lib/projects/unitTaskAssignments"
 import {
   updateProjectBasics,
   getProjectStructure,
   getProjectUnits,
   getProjectRubroGroups,
+  getUnitTaskAssignments,
   saveProjectStructure,
   saveProjectRubros,
+  setUnitTaskAssignments,
   type ProjectBasics,
 } from "./actions"
 
@@ -37,24 +39,50 @@ const basicInputClassName =
 const basicInputStyle = { borderColor: "#e2e8f0" } as const
 
 function SettingsCard({
-  icon,
   title,
   children,
+  collapsible = false,
+  defaultOpen = true,
 }: {
-  icon: ReactNode
   title: string
   children: ReactNode
+  collapsible?: boolean
+  defaultOpen?: boolean
 }) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  if (!collapsible) {
+    return (
+      <section
+        className="flex flex-col gap-5 rounded-[16px] border border-[#edeef0] bg-white p-6"
+        style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
+      >
+        <h2 className="text-[18px] font-normal leading-5 text-[#272a2d]">{title}</h2>
+        {children}
+      </section>
+    )
+  }
+
   return (
     <section
-      className="flex flex-col gap-5 rounded-[16px] border border-[#edeef0] bg-white p-6"
+      className="rounded-[16px] border border-[#edeef0] bg-white px-6 py-4"
       style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
     >
-      <div className="flex items-center gap-2">
-        <span className="shrink-0 text-[#ff7433]">{icon}</span>
-        <h2 className="text-[18px] font-normal leading-5 text-[#272a2d]">{title}</h2>
-      </div>
-      {children}
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center gap-2"
+        aria-expanded={open}
+      >
+        <h2 className="flex-1 text-left text-[18px] font-normal leading-5 text-[#272a2d]">
+          {title}
+        </h2>
+        <ChevronDown
+          className={`size-4 shrink-0 text-[#43484e] transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
+      {open ? <div className="mt-5 flex flex-col gap-5">{children}</div> : null}
     </section>
   )
 }
@@ -76,60 +104,23 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
 
   useEffect(() => {
     const loadProjectData = async () => {
-      const [floors, units, dbGroups] = await Promise.all([
+      const [floors, units, groups, assignments] = await Promise.all([
         getProjectStructure(project.id),
         getProjectUnits(project.id),
         getProjectRubroGroups(project.id),
+        getUnitTaskAssignments(project.id),
       ])
 
-      const base = createEmptyProjectDraft()
-
-      // Construir floors con sus units
-      const floorsWithUnits: StructureFloorDraft[] = floors.length > 0
-        ? floors.map((f) => ({
-            id: f.id,
-            name: f.name,
-            level: f.level || "",
-            units: units
-              .filter((u) => u.floor_id === f.id)
-              .map((u) => ({
-                id: u.id,
-                type: (u.unit_type || "Departamento") as StructureUnitDraft["type"],
-                squareMeters: u.area_m2?.toString() || "",
-                roomCount: u.rooms?.toString() || "",
-              })),
-          }))
-        : [
-            { ...createDefaultFloor(1), name: "Planta Baja" },
-            createDefaultFloor(2),
-            createDefaultFloor(3),
-          ]
-
-      // Usar los grupos del DB si existen, si no usar el template
-      const groups: RubroGroupDraft[] = dbGroups.length > 0
-        ? dbGroups.map((g) => ({
-            id: g.id,
-            name: g.name,
-            rubros: g.rubros.map((r) => ({
-              id: r.id,
-              name: r.name,
-              trackingType: "Porcentaje" as RubroItemDraft["trackingType"],
-              tasks: r.tasks.map((t) => ({
-                id: t.id,
-                name: t.name,
-                weightPercent: t.default_weight?.toString() || "",
-              })),
-            })),
-          }))
-        : base.groups
-
-      setDraft({
-        ...base,
-        projectName: project.name,
-        location: project.location,
-        floors: floorsWithUnits,
-        groups,
-      })
+      setDraft(
+        buildConfigDraftFromProjectData({
+          projectName: project.name,
+          location: project.location,
+          floors,
+          units,
+          groups,
+          assignmentsByUnit: assignments.byUnit,
+        }),
+      )
     }
 
     loadProjectData()
@@ -158,7 +149,10 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
 
     // Capturar snapshot síncrono del draft antes de cualquier await
     // para evitar closures stale si hay re-renders durante los awaits.
-    const floorsData = (draft?.floors || []).map((f) => ({
+    const draftSnapshot = draft
+    const exclusionsSnapshot = draft?.unitTaskExclusions ?? {}
+
+    const floorsData = (draftSnapshot?.floors || []).map((f) => ({
       name: f.name,
       level: f.level || null,
       units: f.units.map((u) => ({
@@ -170,7 +164,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
       })),
     }))
 
-    const groupsData = (draft?.groups || []).map((g) => ({
+    const groupsData = (draftSnapshot?.groups || []).map((g) => ({
       name: g.name,
       rubros: g.rubros.map((r) => ({
         name: r.name,
@@ -210,12 +204,50 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     // Guardar grupos de rubros y tareas
     const rubrosResult = await saveProjectRubros(project.id, groupsData)
 
+    if (!rubrosResult.ok) {
+      setSaving(false)
+      setFeedback({ type: "error", message: rubrosResult.error })
+      return
+    }
+
+    const [floors, units, groups, assignments] = await Promise.all([
+      getProjectStructure(project.id),
+      getProjectUnits(project.id),
+      getProjectRubroGroups(project.id),
+      getUnitTaskAssignments(project.id),
+    ])
+
+    const refreshedDraft = buildConfigDraftFromProjectData({
+      projectName: name,
+      location,
+      floors,
+      units,
+      groups,
+      assignmentsByUnit: assignments.byUnit,
+    })
+
+    const remappedExclusions = draftSnapshot
+      ? remapUnitTaskExclusions(exclusionsSnapshot, draftSnapshot, refreshedDraft)
+      : refreshedDraft.unitTaskExclusions
+
+    const assignmentsResult = await setUnitTaskAssignments(
+      project.id,
+      exclusionsToAssignments(remappedExclusions, {
+        ...refreshedDraft,
+        unitTaskExclusions: remappedExclusions,
+      }),
+    )
+
     setSaving(false)
 
-    if (rubrosResult.ok) {
+    if (assignmentsResult.ok) {
+      setDraft({
+        ...refreshedDraft,
+        unitTaskExclusions: remappedExclusions,
+      })
       setFeedback({ type: "success", message: "Cambios guardados correctamente." })
     } else {
-      setFeedback({ type: "error", message: rubrosResult.error })
+      setFeedback({ type: "error", message: assignmentsResult.error })
     }
   }
 
@@ -267,7 +299,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
       </div>
 
       {/* Información Básica */}
-      <SettingsCard icon={<Building2 className="size-5" aria-hidden />} title="Información Básica">
+      <SettingsCard title="Información Básica">
         <div className="flex flex-col gap-4">
           <div className="flex items-end gap-4">
             <div className="flex size-20 shrink-0 items-center justify-center rounded-[10px] bg-[#ff7433]">
@@ -326,15 +358,34 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
 
       {/* Configuración de Pisos y Unidades */}
       {draft ? (
-        <SettingsCard icon={<Layers className="size-5" aria-hidden />} title="Configuración de Pisos y Unidades">
+        <SettingsCard
+          title="Configuración de Pisos y Unidades"
+          collapsible
+          defaultOpen={false}
+        >
           <CreateProjectStructureStep draft={draft} onChange={updateDraft} />
         </SettingsCard>
       ) : null}
 
       {/* Rubros y Checklists */}
       {draft ? (
-        <SettingsCard icon={<Wrench className="size-5" aria-hidden />} title="Rubros y Checklists">
+        <SettingsCard
+          title="Rubros y Checklists"
+          collapsible
+          defaultOpen={false}
+        >
           <CreateProjectTasksStep draft={draft} onChange={updateDraft} />
+        </SettingsCard>
+      ) : null}
+
+      {/* Asignación por Unidad */}
+      {draft ? (
+        <SettingsCard
+          title="Asignación por Unidad"
+          collapsible
+          defaultOpen={false}
+        >
+          <CreateProjectUnitTasksStep draft={draft} onChange={updateDraft} />
         </SettingsCard>
       ) : null}
     </div>
