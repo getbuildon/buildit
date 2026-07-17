@@ -160,3 +160,6 @@ vite.config.ts.timestamp-*
 
 # Claude Code settings (contains API tokens)
 .claude/settings.json
+
+# Cursor
+.cursor

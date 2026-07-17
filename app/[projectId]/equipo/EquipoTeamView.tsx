@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
 import {
   addTeamMember,
   removeTeamMember,
@@ -29,6 +30,7 @@ import {
   type ProjectTeamRole,
   type ProjectUserType,
 } from "@/lib/projects/createProjectDraft"
+import { EQUIPO_EDIT_ROW } from "@/lib/project/designTokens"
 
 const PERMISSION_COLUMNS = ["Owner", "Admin", "Supervisor", "Operador", "Cliente"] as const
 
@@ -55,6 +57,9 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const formInputClassName =
   "h-[44px] w-full rounded-[10px] border bg-white px-3 text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:ring-0"
 const formInputStyle = { borderColor: "#edeef0" } as const
+
+const TEAM_ROW_GRID =
+  "grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-4 lg:grid-cols-[40px_minmax(0,1fr)_280px_auto]"
 
 type Props = {
   projectId: string
@@ -102,6 +107,53 @@ function FormSelect({
   )
 }
 
+function EditSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string
+  options: readonly string[]
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="appearance-none border bg-white pl-2.5 pr-7 font-normal shadow-none outline-none focus:border-[#ff7433] focus-visible:ring-0"
+        style={{
+          height: EQUIPO_EDIT_ROW.selectHeight,
+          borderRadius: EQUIPO_EDIT_ROW.selectRadius,
+          borderColor: EQUIPO_EDIT_ROW.selectBorder,
+          color: EQUIPO_EDIT_ROW.selectText,
+          fontSize: EQUIPO_EDIT_ROW.selectFontSize,
+          lineHeight: EQUIPO_EDIT_ROW.selectLineHeight,
+        }}
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-[#90a1b9]"
+        aria-hidden
+      />
+    </div>
+  )
+}
+
+function MemberEmail({ email }: { email: string }) {
+  return (
+    <div className="flex min-w-0 items-center justify-start gap-2 text-left text-[12px] leading-4 text-[#5a6169]">
+      <Mail className="size-3.5 shrink-0" aria-hidden />
+      <span className="truncate text-left">{email}</span>
+    </div>
+  )
+}
+
 function MemberRow({
   member,
   onEdit,
@@ -112,12 +164,14 @@ function MemberRow({
   onRemove?: () => void
 }) {
   return (
-    <div className="flex items-center gap-4 border-b border-[#edeef0] px-4 py-4 transition-colors last:border-b-0 hover:bg-[#fefcfb]">
+    <div
+      className={`${TEAM_ROW_GRID} border-b border-[#edeef0] transition-colors last:border-b-0 hover:bg-[#fefcfb]`}
+    >
       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ff7433] text-[12px] font-semibold text-white">
         {getInitials(member.firstName, member.lastName)}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1">
         <div className="flex items-center gap-2">
           <h3 className="truncate text-[14px] font-medium leading-5 text-[#1d293d]">
             {member.firstName} {member.lastName}
@@ -140,12 +194,11 @@ function MemberRow({
         </div>
       </div>
 
-      <div className="hidden w-[280px] shrink-0 items-center gap-2 text-[12px] text-[#5a6169] lg:flex">
-        <Mail className="size-3.5 shrink-0" aria-hidden />
-        <span className="truncate">{member.email}</span>
+      <div className="hidden min-w-0 lg:block">
+        <MemberEmail email={member.email} />
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center justify-end gap-1">
         {onEdit ? (
           <button
             type="button"
@@ -177,88 +230,140 @@ function EditMemberRow({
   member,
   onSave,
   onCancel,
+  onRemove,
 }: {
   member: ProjectTeamMember
-  onSave: (userType: ProjectUserType, role: ProjectTeamRole) => Promise<void>
+  onSave: (
+    userType: ProjectUserType,
+    role: ProjectTeamRole,
+  ) => Promise<{ ok: boolean; error?: string }>
   onCancel: () => void
+  onRemove: () => void
 }) {
   const initialUserType = (PROJECT_USER_TYPES.find(
     (t) => t === member.userTypeLabel,
-  ) ?? "") as ProjectUserType | ""
-  const [editUserType, setEditUserType] = useState<ProjectUserType | "">(initialUserType)
-  const [editRole, setEditRole] = useState<ProjectTeamRole | "">(
-    initialUserType && USER_TYPE_ROLES[initialUserType].find((r) => r === member.roleLabel)
-      ? (member.roleLabel as ProjectTeamRole)
-      : "",
-  )
+  ) ?? PROJECT_USER_TYPES[0]) as ProjectUserType
+  const initialRole = USER_TYPE_ROLES[initialUserType].find((r) => r === member.roleLabel)
+    ? (member.roleLabel as ProjectTeamRole)
+    : USER_TYPE_ROLES[initialUserType][0]
+
+  const [editUserType, setEditUserType] = useState<ProjectUserType>(initialUserType)
+  const [editRole, setEditRole] = useState<ProjectTeamRole>(initialRole)
   const [isSaving, setIsSaving] = useState(false)
   const [editError, setEditError] = useState("")
 
   const handleSave = async () => {
-    if (!editUserType) { setEditError("Seleccioná el tipo de usuario."); return }
-    if (!editRole) { setEditError("Seleccioná el rol."); return }
+    const hasChanges =
+      editUserType !== initialUserType || editRole !== initialRole
+
+    if (!hasChanges) {
+      onCancel()
+      return
+    }
+
     setIsSaving(true)
     setEditError("")
-    await onSave(editUserType, editRole)
+
+    const result = await onSave(editUserType, editRole)
+
     setIsSaving(false)
+
+    if (!result.ok) {
+      setEditError(result.error ?? "No se pudieron guardar los cambios.")
+    }
   }
 
   return (
-    <div className="flex flex-col gap-2 border-b border-[#edeef0] px-4 py-4 last:border-b-0">
-      <div className="flex items-center gap-4">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ff7433] text-[12px] font-semibold text-white">
+    <div
+      className="border-b last:border-b-0"
+      style={{
+        backgroundColor: EQUIPO_EDIT_ROW.background,
+        borderColor: EQUIPO_EDIT_ROW.border,
+      }}
+    >
+      <div className={TEAM_ROW_GRID}>
+        <div
+          className="flex size-10 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold"
+          style={{
+            backgroundColor: EQUIPO_EDIT_ROW.avatarBg,
+            color: EQUIPO_EDIT_ROW.avatarText,
+          }}
+        >
           {getInitials(member.firstName, member.lastName)}
         </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <h3 className="truncate text-[14px] font-medium leading-5 text-[#1d293d]">
+
+        <div className="flex min-w-0 flex-col gap-1">
+          <h3
+            className="truncate text-[14px] font-medium leading-5"
+            style={{ color: EQUIPO_EDIT_ROW.nameColor }}
+          >
             {member.firstName} {member.lastName}
           </h3>
-          <span className="truncate text-[12px] leading-4 text-[#5a6169]">{member.email}</span>
+          <div className="flex items-center gap-2">
+            <EditSelect
+              value={editUserType}
+              options={PROJECT_USER_TYPES}
+              onChange={(v) => {
+                const nextType = v as ProjectUserType
+                setEditUserType(nextType)
+                setEditRole(USER_TYPE_ROLES[nextType][0])
+                if (editError) setEditError("")
+              }}
+            />
+            <EditSelect
+              value={editRole}
+              options={USER_TYPE_ROLES[editUserType]}
+              onChange={(v) => {
+                setEditRole(v as ProjectTeamRole)
+                if (editError) setEditError("")
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="hidden min-w-0 lg:block">
+          <MemberEmail email={member.email} />
+        </div>
+
+        <div className="flex shrink-0 items-center justify-end gap-1">
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={isSaving}
+            className="inline-flex min-w-[72px] items-center justify-center uppercase tracking-wide transition-opacity hover:opacity-80 disabled:opacity-50"
+            style={{
+              backgroundColor: EQUIPO_EDIT_ROW.listoBg,
+              color: EQUIPO_EDIT_ROW.listoText,
+              fontSize: EQUIPO_EDIT_ROW.listoFontSize,
+              fontWeight: EQUIPO_EDIT_ROW.listoFontWeight,
+              paddingLeft: EQUIPO_EDIT_ROW.listoPaddingX,
+              paddingRight: EQUIPO_EDIT_ROW.listoPaddingX,
+              paddingTop: EQUIPO_EDIT_ROW.listoPaddingY,
+              paddingBottom: EQUIPO_EDIT_ROW.listoPaddingY,
+              borderRadius: EQUIPO_EDIT_ROW.listoRadius,
+            }}
+          >
+            {isSaving ? (
+              <Spinner className="size-3.5" style={{ color: EQUIPO_EDIT_ROW.listoText }} />
+            ) : (
+              "Listo"
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="inline-flex size-7 items-center justify-center transition-opacity hover:opacity-80"
+            style={{ color: EQUIPO_EDIT_ROW.actionIconColor }}
+            aria-label={`Eliminar a ${member.firstName} ${member.lastName}`}
+          >
+            <Trash2 className="size-4" aria-hidden />
+          </button>
         </div>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <FormSelect
-          value={editUserType}
-          placeholder="Tipo de usuario"
-          options={PROJECT_USER_TYPES}
-          onChange={(v) => {
-            setEditUserType(v as ProjectUserType)
-            setEditRole("")
-            if (editError) setEditError("")
-          }}
-        />
-        <FormSelect
-          value={editRole}
-          placeholder="Rol"
-          options={editUserType ? USER_TYPE_ROLES[editUserType] : []}
-          onChange={(v) => {
-            setEditRole(v as ProjectTeamRole)
-            if (editError) setEditError("")
-          }}
-        />
-      </div>
+
       {editError ? (
-        <p className="text-[13px] leading-5 text-[#dc2626]">{editError}</p>
+        <p className="px-4 pb-4 text-[13px] leading-5 text-[#dc2626]">{editError}</p>
       ) : null}
-      <div className="flex gap-2">
-        <Button
-          variant="brand"
-          size="brand"
-          onClick={() => void handleSave()}
-          disabled={isSaving}
-          className="text-[13px] font-normal leading-5"
-        >
-          {isSaving ? "Guardando..." : "Guardar"}
-        </Button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 text-[13px] font-normal leading-5 text-[#43484e] transition-opacity hover:opacity-80"
-          style={{ backgroundColor: "#f0f1f3", borderRadius: "8px" }}
-        >
-          Cancelar
-        </button>
-      </div>
     </div>
   )
 }
@@ -271,12 +376,14 @@ function PendingRow({
   onRevoke: () => void
 }) {
   return (
-    <div className="flex items-center gap-4 border-b border-[#edeef0] px-4 py-4 transition-colors last:border-b-0 hover:bg-[#fefcfb]">
+    <div
+      className={`${TEAM_ROW_GRID} border-b border-[#edeef0] transition-colors last:border-b-0 hover:bg-[#fefcfb]`}
+    >
       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f0f1f3] text-[12px] font-semibold text-[#777b84]">
         {getInitials(invitation.firstName, invitation.lastName)}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1">
         <div className="flex items-center gap-2">
           <h3 className="truncate text-[14px] font-medium leading-5 text-[#1d293d]">
             {invitation.firstName} {invitation.lastName}
@@ -298,12 +405,11 @@ function PendingRow({
         </div>
       </div>
 
-      <div className="hidden w-[280px] shrink-0 items-center gap-2 text-[12px] text-[#5a6169] lg:flex">
-        <Mail className="size-3.5 shrink-0" aria-hidden />
-        <span className="truncate">{invitation.email}</span>
+      <div className="hidden min-w-0 lg:block">
+        <MemberEmail email={invitation.email} />
       </div>
 
-      <div className="flex shrink-0 items-center">
+      <div className="flex shrink-0 items-center justify-end">
         <button
           type="button"
           onClick={onRevoke}
@@ -415,12 +521,18 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       setMembers((prev) =>
         prev.map((m) =>
           m.memberId === memberId
-            ? { ...m, userTypeLabel: result.userTypeLabel, roleLabel: result.roleLabel }
+            ? {
+                ...m,
+                userTypeLabel: result.userTypeLabel,
+                roleLabel: result.roleLabel,
+              }
             : m,
         ),
       )
       setEditingMemberId(null)
+      return { ok: true as const }
     }
+    return { ok: false as const, error: result.error }
   }
 
   const handleRevokeInvitation = async (invitationId: string) => {
@@ -607,6 +719,10 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
                     handleUpdateMember(member.memberId, userType, role)
                   }
                   onCancel={() => setEditingMemberId(null)}
+                  onRemove={() => {
+                    setEditingMemberId(null)
+                    void handleRemoveMember(member.memberId)
+                  }}
                 />
               ) : (
                 <MemberRow

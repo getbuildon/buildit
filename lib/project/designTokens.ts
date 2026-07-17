@@ -181,3 +181,28 @@ export const TOPBAR_USER_AVATAR_STYLE = {
   lineHeight: "16px",
   flexShrink: 0,
 }
+
+/** Figma node 1284:1709 — equipo member row in edit mode */
+export const EQUIPO_EDIT_ROW = {
+  background: "#fff6f1",
+  border: "#edeef0",
+  avatarBg: "#ff7433",
+  avatarText: "#ffffff",
+  nameColor: "#1d293d",
+  emailColor: "#5a6169",
+  selectHeight: "32px",
+  selectRadius: "10px",
+  selectBorder: "#edeef0",
+  selectBg: "#ffffff",
+  selectText: "#0a0a0a",
+  selectFontSize: "12px",
+  selectLineHeight: "16px",
+  listoBg: "#dcf5ee",
+  listoText: "#56ba9f",
+  listoFontSize: "12px",
+  listoFontWeight: 600,
+  listoPaddingX: "16px",
+  listoPaddingY: "6px",
+  listoRadius: "9999px",
+  actionIconColor: "#777b84",
+} as const
