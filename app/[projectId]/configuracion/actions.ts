@@ -9,6 +9,14 @@ import {
   countAssignedCompletedTasks,
   getAssignedTaskIdsForUnit,
 } from "@/lib/projects/dashboardProgress"
+import {
+  syncProjectRubros,
+  type RubroGroupSaveInput,
+} from "@/lib/projects/syncProjectRubros"
+import {
+  syncProjectStructure,
+  type StructureFloorSaveInput,
+} from "@/lib/projects/syncProjectStructure"
 
 export type ProjectBasics = {
   id: string
@@ -244,24 +252,6 @@ export async function getUnitTaskAssignments(
   return { byUnit }
 }
 
-function mapConfigSaveError(err: unknown, fallback: string): string {
-  const code =
-    err && typeof err === "object" && "code" in err
-      ? String((err as { code?: string }).code)
-      : null
-
-  if (code === "23503") {
-    return "No se puede eliminar una tarea que ya tiene avances registrados."
-  }
-
-  if (err instanceof Error && err.message) return err.message
-  if (err && typeof err === "object" && "message" in err) {
-    return String((err as { message?: string }).message)
-  }
-
-  return fallback
-}
-
 export async function setUnitTaskAssignments(
   projectId: string,
   assignments: Record<string, string[]>,
@@ -458,11 +448,7 @@ export async function getProjectRubroGroups(projectId: string): Promise<RubroGro
 
 export async function saveProjectStructure(
   projectId: string,
-  floors: Array<{
-    name: string
-    level: string | null
-    units: Array<{ code: string; name: string | null; unit_type: string | null; room_count: number | null; area_m2: number | null }>
-  }>,
+  floors: StructureFloorSaveInput[],
 ): Promise<UpdateProjectBasicsResult> {
   const id = projectId.trim()
   if (!id) return { ok: false, error: "Proyecto inválido." }
@@ -470,126 +456,16 @@ export async function saveProjectStructure(
   await requireAuthenticatedUser()
   const supabase = await createClient()
 
-  try {
-    // Obtener mapeo de tipos de unidades (label -> id)
-    const { data: unitTypes, error: utError } = await supabase.from("unit_types").select("id, label")
-    if (utError) {
-      throw new Error(`Error al cargar tipos de unidades: ${utError.message}`)
-    }
-    if (!unitTypes || unitTypes.length === 0) {
-      throw new Error("No se encontraron tipos de unidades en la BD")
-    }
-    const unitTypeMap = new Map((unitTypes as any[]).map((ut) => [ut.label, ut.id]))
+  const result = await syncProjectStructure(supabase, id, floors)
+  if (!result.ok) return result
 
-    // Construir datos de pisos y unidades con validaciones
-    const newFloorsData: Array<{
-      data: { project_id: string; name: string; level: string | null; sort_order: number }
-      units: Array<{
-        project_id: string
-        code: string
-        name: string | null
-        unit_type_id: string
-        unit_type: string | null
-        room_count: number | null
-        square_meters: number | null
-        sort_order: number
-      }>
-    }> = []
-
-    for (let i = 0; i < floors.length; i++) {
-      const floor = floors[i]
-      const floorData = { project_id: id, name: floor.name, level: floor.level, sort_order: i }
-
-      const unitRows = floor.units.map((u, idx) => {
-        const defaultTypeId = unitTypeMap.get("Departamento")
-        const unitTypeId = u.unit_type ? unitTypeMap.get(u.unit_type) : defaultTypeId
-        if (!unitTypeId) {
-          throw new Error(`Tipo de unidad "${u.unit_type || "Departamento"}" no encontrado`)
-        }
-        return {
-          project_id: id,
-          code: u.code,
-          name: u.name,
-          unit_type_id: unitTypeId,
-          unit_type: u.unit_type,
-          room_count: u.room_count,
-          square_meters: u.area_m2,
-          sort_order: idx,
-        }
-      })
-
-      newFloorsData.push({ data: floorData, units: unitRows })
-    }
-
-    // Ahora eliminar los antiguos
-    await supabase.from("project_floors").delete().eq("project_id", id)
-
-    // Guardar nuevos pisos y unidades, colectando IDs para reconstruir asignaciones
-    const newUnitIds: string[] = []
-
-    for (const floor of newFloorsData) {
-      const { data: insertedFloor, error: floorError } = await supabase
-        .from("project_floors")
-        .insert(floor.data)
-        .select("id")
-        .single()
-
-      if (floorError || !insertedFloor) {
-        throw new Error(`Error al guardar piso "${floor.data.name}": ${floorError?.message || "desconocido"}`)
-      }
-
-      if (floor.units.length > 0) {
-        const unitsWithFloorId = floor.units.map((u) => ({ ...u, floor_id: insertedFloor.id }))
-        const { data: insertedUnits, error: unitError } = await supabase
-          .from("project_units")
-          .insert(unitsWithFloorId)
-          .select("id")
-        if (unitError) {
-          throw new Error(`Error al guardar unidades del piso "${floor.data.name}": ${unitError.message}`)
-        }
-        if (insertedUnits) newUnitIds.push(...insertedUnits.map((u) => u.id))
-      }
-    }
-
-    // Reconstruir unit_task_assignments: asignar todas las tareas actuales a todas las unidades nuevas
-    if (newUnitIds.length > 0) {
-      const { data: currentTasks } = await supabase
-        .from("rubro_tasks")
-        .select("id")
-        .eq("project_id", id)
-
-      if (currentTasks && currentTasks.length > 0) {
-        const assignmentRows = newUnitIds.flatMap((unitId) =>
-          currentTasks.map((task) => ({
-            project_id: id,
-            unit_id: unitId,
-            rubro_task_id: task.id,
-          })),
-        )
-        const { error: assignError } = await supabase
-          .from("unit_task_assignments")
-          .insert(assignmentRows)
-        if (assignError) throw assignError
-      }
-    }
-
-    revalidatePath(`/${id}/configuracion`)
-    return { ok: true }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Error al guardar estructura"
-    return { ok: false, error: message }
-  }
+  revalidatePath(`/${id}/configuracion`)
+  return { ok: true }
 }
 
 export async function saveProjectRubros(
   projectId: string,
-  groups: Array<{
-    name: string
-    rubros: Array<{
-      name: string
-      tasks: Array<{ name: string; default_weight: number | null }>
-    }>
-  }>,
+  groups: RubroGroupSaveInput[],
 ): Promise<UpdateProjectBasicsResult> {
   const id = projectId.trim()
   if (!id) return { ok: false, error: "Proyecto inválido." }
@@ -597,103 +473,9 @@ export async function saveProjectRubros(
   await requireAuthenticatedUser()
   const supabase = await createClient()
 
-  try {
-    // Obtener el tracking type "porcentaje" (requerido por FK)
-    const { data: trackingTypes } = await supabase
-      .from("task_tracking_types")
-      .select("id")
-      .eq("slug", "porcentaje")
-      .limit(1)
+  const result = await syncProjectRubros(supabase, id, groups)
+  if (!result.ok) return result
 
-    if (!trackingTypes || trackingTypes.length === 0) {
-      return { ok: false, error: "No se encontró el tipo de seguimiento predeterminado." }
-    }
-    const defaultTrackingTypeId = trackingTypes[0].id
-
-    // Eliminar grupos y rubros existentes (rubros y tareas se cascadean desde rubro_groups,
-    // y unit_task_assignments se borra por CASCADE desde rubro_tasks — se reconstruye abajo)
-    await supabase.from("rubro_groups").delete().eq("project_id", id)
-
-    // Guardar grupos con sus rubros y tareas, colectando IDs de tareas para reconstruir asignaciones
-    const newTaskIds: string[] = []
-
-    for (let gi = 0; gi < groups.length; gi++) {
-      const group = groups[gi]
-
-      // Solo crear el grupo si tiene rubros
-      if (group.rubros.length === 0) continue
-
-      const { data: insertedGroup, error: groupError } = await supabase
-        .from("rubro_groups")
-        .insert({ project_id: id, name: group.name, sort_order: gi })
-        .select("id")
-        .single()
-
-      if (groupError || !insertedGroup) throw groupError || new Error("Error al guardar grupo")
-
-      for (let ri = 0; ri < group.rubros.length; ri++) {
-        const rubro = group.rubros[ri]
-
-        const { data: insertedRubro, error: rubroError } = await supabase
-          .from("rubros")
-          .insert({
-            project_id: id,
-            name: rubro.name,
-            tracking_scope: "unit",
-            sort_order: ri,
-            group_id: insertedGroup.id,
-            tracking_type_id: defaultTrackingTypeId,
-          })
-          .select("id")
-          .single()
-
-        if (rubroError || !insertedRubro) throw rubroError || new Error("Error al guardar rubro")
-
-        if (rubro.tasks.length > 0) {
-          const taskRows = rubro.tasks.map((t, ti) => ({
-            project_id: id,
-            rubro_id: insertedRubro.id,
-            name: t.name,
-            description: null,
-            weight_percent: t.default_weight ?? null,
-            sort_order: ti,
-          }))
-          const { data: insertedTasks, error: taskError } = await supabase
-            .from("rubro_tasks")
-            .insert(taskRows)
-            .select("id")
-          if (taskError) throw taskError
-          if (insertedTasks) newTaskIds.push(...insertedTasks.map((t) => t.id))
-        }
-      }
-    }
-
-    // Reconstruir unit_task_assignments: asignar todas las tareas nuevas a todas las unidades del proyecto
-    if (newTaskIds.length > 0) {
-      const { data: units } = await supabase
-        .from("project_units")
-        .select("id")
-        .eq("project_id", id)
-
-      if (units && units.length > 0) {
-        const assignmentRows = units.flatMap((unit) =>
-          newTaskIds.map((taskId) => ({
-            project_id: id,
-            unit_id: unit.id,
-            rubro_task_id: taskId,
-          })),
-        )
-        const { error: assignError } = await supabase
-          .from("unit_task_assignments")
-          .insert(assignmentRows)
-        if (assignError) throw assignError
-      }
-    }
-
-    revalidatePath(`/${id}/configuracion`)
-    return { ok: true }
-  } catch (err) {
-    const message = mapConfigSaveError(err, "Error al guardar rubros")
-    return { ok: false, error: message }
-  }
+  revalidatePath(`/${id}/configuracion`)
+  return { ok: true }
 }

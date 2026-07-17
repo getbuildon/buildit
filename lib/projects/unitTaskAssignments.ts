@@ -15,7 +15,9 @@ import {
  * - Destildar: borra la asignación; los avances (progress_entries) se conservan.
  * - Volver a tildar: restaura la asignación y los avances vuelven a mostrarse.
  * - Tarea nueva: se asigna por defecto a todas las unidades del proyecto.
- * - Eliminar tarea del catálogo: bloqueada si tiene avances (FK RESTRICT).
+ * - Eliminar tarea del catálogo: bloqueada si tiene avances (validación previa + FK RESTRICT).
+ * - Guardado en configuración: sincronización incremental (update/insert/delete selectivo).
+ * - Estructura (pisos/unidades): sincronización incremental; no se eliminan unidades/pisos con avances.
  */
 export function getAllTaskIds(draft: CreateProjectDraft): string[] {
   return draft.groups.flatMap((group) =>

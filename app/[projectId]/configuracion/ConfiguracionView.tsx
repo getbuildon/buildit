@@ -153,9 +153,11 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     const exclusionsSnapshot = draft?.unitTaskExclusions ?? {}
 
     const floorsData = (draftSnapshot?.floors || []).map((f) => ({
+      id: f.id,
       name: f.name,
       level: f.level || null,
       units: f.units.map((u) => ({
+        id: u.id,
         code: `${f.name}-${u.roomCount || u.squareMeters || u.id.slice(0, 4)}`,
         name: null,
         unit_type: u.type,
@@ -165,10 +167,13 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     }))
 
     const groupsData = (draftSnapshot?.groups || []).map((g) => ({
+      id: g.id,
       name: g.name,
       rubros: g.rubros.map((r) => ({
+        id: r.id,
         name: r.name,
         tasks: r.tasks.map((t) => ({
+          id: t.id,
           name: t.name,
           default_weight: t.weightPercent ? parseFloat(t.weightPercent) : null,
         })),

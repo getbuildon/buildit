@@ -1,11 +1,67 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
+import { format } from "date-fns"
 import { createClient } from "@/utils/supabase/server"
-import { getAuthenticatedUserOrNull } from "@/lib/authHelpers"
+import { createAdminClient } from "@/utils/supabase/admin"
+import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
+import {
+  mapTaskStatusToDb,
+  type CargarAvanceTaskStatus,
+} from "@/lib/projects/cargarAvance"
 import { getUnitTaskAssignments } from "../configuracion/actions"
 
+export type SaveCargarAvanceInput = {
+  projectId: string
+  floorId: string
+  rubroId: string
+  unitIds: string[]
+  tasks: Array<{
+    taskId: string
+    taskStatus: CargarAvanceTaskStatus
+    comment: string | null
+  }>
+}
+
+export type SaveCargarAvanceResult = { ok: true } | { ok: false; error: string }
+
 export type TrabajoDiarioTaskStatus = "Completado" | "En Proceso" | "Bloqueado"
+
+export type TrabajoDiarioTaskHistoryItem = {
+  id: string
+  status: TrabajoDiarioTaskStatus
+  comment: string | null
+  occurredAt: string
+  formattedDate: string
+  authorName: string
+  attachmentCount: number
+}
+
+export type TrabajoDiarioTaskDetail = {
+  entryId: string
+  taskName: string
+  rubroName: string
+  floorName: string
+  unitCode: string
+  occurredAt: string
+  formattedLongDate: string
+  status: TrabajoDiarioTaskStatus
+  comment: string | null
+  attachmentCount: number
+  history: TrabajoDiarioTaskHistoryItem[]
+}
+
+export type UpdateTrabajoDiarioTaskInput = {
+  projectId: string
+  entryId: string
+  taskStatus: CargarAvanceTaskStatus
+  comment: string | null
+}
+
+export type UpdateTrabajoDiarioTaskResult =
+  | { ok: true; entryId: string }
+  | { ok: false; error: string }
 
 export type TrabajoDiarioTask = {
   id: string
@@ -16,6 +72,7 @@ export type TrabajoDiarioTask = {
   unitId: string
   unitCode: string
   unitName: string | null
+  occurredAt: string | null
   date: string
   status: TrabajoDiarioTaskStatus
 }
@@ -29,12 +86,34 @@ export type TrabajoDiarioUnit = {
 export type TrabajoDiarioFloor = {
   id: string
   name: string
+  level: string | null
   units: TrabajoDiarioUnit[]
+}
+
+export type TrabajoDiarioRubroTask = {
+  id: string
+  name: string
+  sortOrder: number
+  weightPercent: number | null
+}
+
+export type TrabajoDiarioRubro = {
+  id: string
+  name: string
+  tasks: TrabajoDiarioRubroTask[]
+}
+
+export type TrabajoDiarioRubroGroup = {
+  id: string
+  name: string
+  rubros: TrabajoDiarioRubro[]
 }
 
 export type TrabajoDiarioData = {
   floors: TrabajoDiarioFloor[]
   tasks: TrabajoDiarioTask[]
+  rubroGroups: TrabajoDiarioRubroGroup[]
+  assignmentsByUnit: Record<string, string[]>
 }
 
 function mapProgressStatus(
@@ -54,6 +133,55 @@ function formatEntryDate(value: string | null): string {
   }).format(new Date(value))
 }
 
+function formatEntryLongDate(value: string): string {
+  const formatted = new Intl.DateTimeFormat("es-AR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(value))
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+}
+
+function formatHistoryDate(value: string): string {
+  return format(new Date(value), "dd/MM/yyyy HH:mm")
+}
+
+function formatProfileName(profile: {
+  first_name: string | null
+  last_name: string | null
+  email: string
+}): string {
+  const firstName = profile.first_name?.trim()
+  const lastName = profile.last_name?.trim()
+  if (firstName && lastName) return `${firstName} ${lastName}`
+  if (firstName) return firstName
+  return profile.email
+}
+
+async function getAttachmentCountsByEntry(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  projectId: string,
+  entryIds: string[],
+): Promise<Map<string, number>> {
+  if (entryIds.length === 0) return new Map()
+
+  const { data, error } = await supabase
+    .from("attachments")
+    .select("entity_id")
+    .eq("project_id", projectId)
+    .eq("entity_type", "progress_entry")
+    .in("entity_id", entryIds)
+
+  if (error || !data) return new Map()
+
+  const counts = new Map<string, number>()
+  for (const row of data) {
+    counts.set(row.entity_id, (counts.get(row.entity_id) ?? 0) + 1)
+  }
+  return counts
+}
+
 export async function getTrabajoDiarioData(
   projectId: string,
 ): Promise<TrabajoDiarioData | null> {
@@ -65,10 +193,11 @@ export async function getTrabajoDiarioData(
 
   const supabase = await createClient()
 
-  const [floorsResult, unitsResult, assignments, entriesResult] = await Promise.all([
+  const [floorsResult, unitsResult, assignments, rubroGroupsResult, entriesResult] =
+    await Promise.all([
     supabase
       .from("project_floors")
-      .select("id, name, sort_order")
+      .select("id, name, level, sort_order")
       .eq("project_id", id)
       .order("sort_order", { ascending: true }),
     supabase
@@ -77,6 +206,19 @@ export async function getTrabajoDiarioData(
       .eq("project_id", id)
       .order("sort_order", { ascending: true }),
     getUnitTaskAssignments(id),
+    supabase
+      .from("rubro_groups")
+      .select(
+        `
+        id, name, sort_order,
+        rubros (
+          id, name, sort_order,
+          rubro_tasks (id, name, sort_order, weight_percent)
+        )
+      `,
+      )
+      .eq("project_id", id)
+      .order("sort_order", { ascending: true }),
     supabase
       .from("progress_entries")
       .select(`
@@ -95,10 +237,13 @@ export async function getTrabajoDiarioData(
       .order("created_at", { ascending: false }),
   ])
 
-  if (floorsResult.error || unitsResult.error || entriesResult.error) return null
+  if (floorsResult.error || unitsResult.error || rubroGroupsResult.error || entriesResult.error) {
+    return null
+  }
 
   const floors = floorsResult.data ?? []
   const units = unitsResult.data ?? []
+  const rubroGroupsRaw = rubroGroupsResult.data ?? []
   const entries = entriesResult.data ?? []
 
   const floorById = new Map(floors.map((floor) => [floor.id, floor.name]))
@@ -112,12 +257,42 @@ export async function getTrabajoDiarioData(
   const trabajoFloors: TrabajoDiarioFloor[] = floors.map((floor) => ({
     id: floor.id,
     name: floor.name,
+    level: floor.level,
     units: units
       .filter((unit) => unit.floor_id === floor.id)
       .map((unit) => ({
         id: unit.id,
         code: unit.code,
         name: unit.name,
+      })),
+  }))
+
+  const rubroGroups: TrabajoDiarioRubroGroup[] = rubroGroupsRaw.map((group) => ({
+    id: group.id,
+    name: group.name,
+    rubros: ((group.rubros as Array<{
+      id: string
+      name: string
+      sort_order: number
+      rubro_tasks: Array<{
+        id: string
+        name: string
+        sort_order: number
+        weight_percent: number | null
+      }> | null
+    }>) ?? [])
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .map((rubro) => ({
+        id: rubro.id,
+        name: rubro.name,
+        tasks: (rubro.rubro_tasks ?? [])
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+          .map((task) => ({
+            id: task.id,
+            name: task.name,
+            sortOrder: task.sort_order ?? 0,
+            weightPercent: task.weight_percent ?? null,
+          })),
       })),
   }))
 
@@ -146,10 +321,295 @@ export async function getTrabajoDiarioData(
       unitId: entry.unit_id,
       unitCode: unit.code,
       unitName: unit.name,
+      occurredAt: entry.submitted_at ?? entry.created_at,
       date: formatEntryDate(entry.submitted_at ?? entry.created_at),
       status: mapProgressStatus(entry.status, entry.progress_state),
     })
   }
 
-  return { floors: trabajoFloors, tasks }
+  return {
+    floors: trabajoFloors,
+    tasks,
+    rubroGroups,
+    assignmentsByUnit: assignments.byUnit,
+  }
+}
+
+export async function saveCargarAvance(
+  input: SaveCargarAvanceInput,
+): Promise<SaveCargarAvanceResult> {
+  const projectId = input.projectId.trim()
+  if (!projectId) return { ok: false, error: "Proyecto inválido." }
+  if (!input.floorId) return { ok: false, error: "Seleccioná un piso." }
+  if (!input.rubroId) return { ok: false, error: "Seleccioná un rubro." }
+  if (input.unitIds.length === 0) {
+    return { ok: false, error: "Seleccioná al menos una unidad." }
+  }
+
+  const tasksToSave = input.tasks.filter(
+    (task) => task.taskStatus !== "pending" || (task.comment?.trim().length ?? 0) > 0,
+  )
+
+  if (tasksToSave.length === 0) {
+    return { ok: false, error: "Completá al menos una tarea antes de guardar." }
+  }
+
+  const user = await requireAuthenticatedUser()
+  const supabase = await createClient()
+
+  const assignments = await getUnitTaskAssignments(projectId)
+
+  const { data: rubro, error: rubroError } = await supabase
+    .from("rubros")
+    .select("id")
+    .eq("id", input.rubroId)
+    .eq("project_id", projectId)
+    .maybeSingle()
+
+  if (rubroError) return { ok: false, error: rubroError.message }
+  if (!rubro) return { ok: false, error: "Rubro no encontrado." }
+
+  const { data: taskRows, error: tasksError } = await supabase
+    .from("rubro_tasks")
+    .select("id, rubro_id")
+    .eq("project_id", projectId)
+    .in(
+      "id",
+      tasksToSave.map((task) => task.taskId),
+    )
+
+  if (tasksError) return { ok: false, error: tasksError.message }
+
+  const validTaskIds = new Set(
+    (taskRows ?? [])
+      .filter((task) => task.rubro_id === input.rubroId)
+      .map((task) => task.id),
+  )
+
+  for (const task of tasksToSave) {
+    if (!validTaskIds.has(task.taskId)) {
+      return { ok: false, error: "Hay tareas inválidas para el rubro seleccionado." }
+    }
+  }
+
+  const { data: units, error: unitsError } = await supabase
+    .from("project_units")
+    .select("id, floor_id")
+    .eq("project_id", projectId)
+    .in("id", input.unitIds)
+
+  if (unitsError) return { ok: false, error: unitsError.message }
+  if (!units || units.length !== input.unitIds.length) {
+    return { ok: false, error: "Una o más unidades no son válidas." }
+  }
+
+  for (const unit of units) {
+    if (unit.floor_id !== input.floorId) {
+      return { ok: false, error: "Las unidades deben pertenecer al piso seleccionado." }
+    }
+
+    for (const task of tasksToSave) {
+      if (!isTaskAssignedToUnit(assignments.byUnit, unit.id, task.taskId)) {
+        return { ok: false, error: "Hay tareas no asignadas a alguna unidad seleccionada." }
+      }
+    }
+  }
+
+  const now = new Date().toISOString()
+  const rows = input.unitIds.flatMap((unitId) =>
+    tasksToSave.map((task) => {
+      const mapped = mapTaskStatusToDb(task.taskStatus)
+      return {
+        project_id: projectId,
+        floor_id: input.floorId,
+        unit_id: unitId,
+        category_id: input.rubroId,
+        task_id: task.taskId,
+        created_by: user.id,
+        status: mapped.status,
+        progress_state: mapped.progress_state,
+        comment: task.comment?.trim() || null,
+        submitted_at: mapped.status === "draft" ? null : now,
+      }
+    }),
+  )
+
+  const { error: insertError } = await supabase.from("progress_entries").insert(rows)
+  if (insertError) return { ok: false, error: insertError.message }
+
+  revalidatePath(`/${projectId}/trabajo-diario`)
+  return { ok: true }
+}
+
+export async function getTrabajoDiarioTaskDetail(
+  projectId: string,
+  entryId: string,
+): Promise<TrabajoDiarioTaskDetail | null> {
+  const id = projectId.trim()
+  const progressEntryId = entryId.trim()
+  if (!id || !progressEntryId) return null
+
+  const user = await getAuthenticatedUserOrNull()
+  if (!user) return null
+
+  const supabase = await createClient()
+  const admin = createAdminClient()
+
+  const { data: entry, error: entryError } = await supabase
+    .from("progress_entries")
+    .select(`
+      id,
+      unit_id,
+      floor_id,
+      task_id,
+      category_id,
+      status,
+      progress_state,
+      comment,
+      created_at,
+      submitted_at,
+      created_by,
+      rubros:category_id (name),
+      rubro_tasks:task_id (name),
+      project_floors:floor_id (name),
+      project_units:unit_id (code)
+    `)
+    .eq("project_id", id)
+    .eq("id", progressEntryId)
+    .maybeSingle()
+
+  if (entryError || !entry || !entry.unit_id || !entry.task_id) return null
+
+  const { data: historyRows, error: historyError } = await supabase
+    .from("progress_entries")
+    .select(`
+      id,
+      status,
+      progress_state,
+      comment,
+      created_at,
+      submitted_at,
+      created_by
+    `)
+    .eq("project_id", id)
+    .eq("unit_id", entry.unit_id)
+    .eq("task_id", entry.task_id)
+    .order("created_at", { ascending: false })
+
+  if (historyError || !historyRows) return null
+
+  const historyEntryIds = historyRows.map((row) => row.id)
+  const attachmentCounts = await getAttachmentCountsByEntry(supabase, id, historyEntryIds)
+
+  const authorIds = [...new Set(historyRows.map((row) => row.created_by))]
+  const { data: profiles } =
+    authorIds.length > 0
+      ? await admin
+          .from("profiles")
+          .select("id, first_name, last_name, email")
+          .in("id", authorIds)
+      : { data: [] as Array<{
+          id: string
+          first_name: string | null
+          last_name: string | null
+          email: string
+        }> }
+
+  const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]))
+
+  const rubro = entry.rubros as { name: string } | { name: string }[] | null
+  const task = entry.rubro_tasks as { name: string } | { name: string }[] | null
+  const floor = entry.project_floors as { name: string } | { name: string }[] | null
+  const unit = entry.project_units as { code: string } | { code: string }[] | null
+
+  const rubroName = Array.isArray(rubro) ? rubro[0]?.name : rubro?.name
+  const taskName = Array.isArray(task) ? task[0]?.name : task?.name
+  const floorName = Array.isArray(floor) ? floor[0]?.name : floor?.name
+  const unitCode = Array.isArray(unit) ? unit[0]?.code : unit?.code
+
+  const occurredAt = entry.submitted_at ?? entry.created_at
+
+  const history: TrabajoDiarioTaskHistoryItem[] = historyRows.map((row) => {
+    const rowOccurredAt = row.submitted_at ?? row.created_at
+    const profile = profileById.get(row.created_by)
+    return {
+      id: row.id,
+      status: mapProgressStatus(row.status, row.progress_state),
+      comment: row.comment,
+      occurredAt: rowOccurredAt,
+      formattedDate: formatHistoryDate(rowOccurredAt),
+      authorName: profile ? formatProfileName(profile) : "Usuario",
+      attachmentCount: attachmentCounts.get(row.id) ?? 0,
+    }
+  })
+
+  return {
+    entryId: entry.id,
+    taskName: taskName ?? "Tarea",
+    rubroName: rubroName ?? "Rubro",
+    floorName: floorName ?? "—",
+    unitCode: unitCode ?? "—",
+    occurredAt,
+    formattedLongDate: formatEntryLongDate(occurredAt),
+    status: mapProgressStatus(entry.status, entry.progress_state),
+    comment: entry.comment,
+    attachmentCount: attachmentCounts.get(entry.id) ?? 0,
+    history,
+  }
+}
+
+export async function updateTrabajoDiarioTask(
+  input: UpdateTrabajoDiarioTaskInput,
+): Promise<UpdateTrabajoDiarioTaskResult> {
+  const projectId = input.projectId.trim()
+  const entryId = input.entryId.trim()
+  if (!projectId || !entryId) return { ok: false, error: "Datos inválidos." }
+  if (input.taskStatus === "pending") {
+    return { ok: false, error: "Seleccioná un estado válido." }
+  }
+
+  const user = await requireAuthenticatedUser()
+  const supabase = await createClient()
+
+  const { data: entry, error: entryError } = await supabase
+    .from("progress_entries")
+    .select("id, floor_id, unit_id, category_id, task_id")
+    .eq("project_id", projectId)
+    .eq("id", entryId)
+    .maybeSingle()
+
+  if (entryError) return { ok: false, error: entryError.message }
+  if (!entry || !entry.unit_id || !entry.task_id || !entry.floor_id) {
+    return { ok: false, error: "Avance no encontrado." }
+  }
+
+  const assignments = await getUnitTaskAssignments(projectId)
+  if (!isTaskAssignedToUnit(assignments.byUnit, entry.unit_id, entry.task_id)) {
+    return { ok: false, error: "La tarea no está asignada a esta unidad." }
+  }
+
+  const mapped = mapTaskStatusToDb(input.taskStatus)
+  const now = new Date().toISOString()
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("progress_entries")
+    .insert({
+      project_id: projectId,
+      floor_id: entry.floor_id,
+      unit_id: entry.unit_id,
+      category_id: entry.category_id,
+      task_id: entry.task_id,
+      created_by: user.id,
+      status: mapped.status,
+      progress_state: mapped.progress_state,
+      comment: input.comment?.trim() || null,
+      submitted_at: mapped.status === "draft" ? null : now,
+    })
+    .select("id")
+    .single()
+
+  if (insertError) return { ok: false, error: insertError.message }
+
+  revalidatePath(`/${projectId}/trabajo-diario`)
+  return { ok: true, entryId: inserted.id }
 }

@@ -1,0 +1,29 @@
+.rdp-root.build-on-calendar {
+  --rdp-accent-color: #ff7433;
+  --rdp-accent-background-color: #fff1ea;
+  --rdp-day_button-border-radius: 10px;
+  --rdp-today-color: #ff7433;
+  --rdp-selected-border: 2px solid #ff7433;
+}
+
+.rdp-root.build-on-calendar .rdp-chevron {
+  fill: #ff7433;
+}
+
+.rdp-root.build-on-calendar .rdp-selected .rdp-day_button {
+  background-color: #ff7433;
+  border-color: #ff7433;
+  color: #ffffff;
+}
+
+.rdp-root.build-on-calendar .rdp-day_button:focus-visible {
+  outline: 2px solid rgb(255 116 51 / 0.45);
+  outline-offset: 2px;
+}
+
+.rdp-root.build-on-calendar .rdp-button_next:focus-visible,
+.rdp-root.build-on-calendar .rdp-button_previous:focus-visible {
+  outline: 2px solid #ff7433;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
