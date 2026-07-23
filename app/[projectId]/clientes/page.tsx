@@ -1,3 +1,4 @@
+import { assertProjectSectionAccess } from "@/lib/project/projectAccess"
 import { getProjectById } from "@/lib/projects/listUserProjects"
 import { getProjectClientsData } from "./actions"
 import { ClientesView } from "./ClientesView"
@@ -8,6 +9,7 @@ type PageProps = {
 
 export default async function ClientesPage({ params }: PageProps) {
   const { projectId } = await params
+  await assertProjectSectionAccess(projectId, "clientes")
   const project = await getProjectById(projectId)
   if (!project) return null
 

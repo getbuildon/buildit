@@ -41,27 +41,15 @@ import {
   type ProjectUserType,
 } from "@/lib/projects/createProjectDraft"
 import { UserAvatar } from "@/components/user/UserAvatar"
+import { useProjectPermission } from "@/components/project-shell/ProjectAccessProvider"
 import { EQUIPO_EDIT_ROW } from "@/lib/project/designTokens"
+import {
+  PROJECT_PERMISSION_TABLE,
+  PROJECT_USER_TYPE_COLUMNS,
+  type ProjectPermissionValue,
+} from "@/lib/project/projectPermissions"
 
-const PERMISSION_COLUMNS = ["Owner", "Admin", "Supervisor", "Operador", "Cliente"] as const
-
-type PermissionValue = boolean | "unidad"
-
-const PERMISSIONS: { action: string; values: PermissionValue[] }[] = [
-  { action: "Facturación/Licencias", values: [true, false, false, false, false] },
-  { action: "Crear proyecto", values: [true, true, false, false, false] },
-  { action: "Agregar usuarios", values: [true, true, false, false, false] },
-  { action: "Editar permisos", values: [true, true, false, false, false] },
-  { action: "Configurar proyecto", values: [true, true, false, false, false] },
-  { action: "Ver dashboard general", values: [true, true, true, true, false] },
-  { action: "Ver avance detallado", values: [true, true, true, true, "unidad"] },
-  { action: "Cargar avances", values: [true, true, true, true, false] },
-  { action: "Certificar tareas", values: [true, false, true, false, false] },
-  { action: "Editar tareas", values: [true, false, true, true, false] },
-  { action: "Ver auditoría (log)", values: [true, true, true, false, false] },
-  { action: "Portal cliente", values: [false, false, false, false, true] },
-  { action: "Ver/agregar clientes", values: [true, true, false, false, false] },
-]
+const PERMISSION_COLUMNS = PROJECT_USER_TYPE_COLUMNS
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -419,9 +407,11 @@ function EditMemberRow({
 
 function PendingRow({
   invitation,
+  canRevoke,
   onRevoke,
 }: {
   invitation: ProjectTeamInvitation
+  canRevoke: boolean
   onRevoke: () => void
 }) {
   return (
@@ -467,6 +457,7 @@ function PendingRow({
         </RowActionButton>
         <RowActionButton
           label={`Revocar invitación de ${invitation.firstName} ${invitation.lastName}`}
+          disabled={!canRevoke}
           onClick={onRevoke}
         >
           <Trash2 className="size-4" aria-hidden />
@@ -476,14 +467,14 @@ function PendingRow({
   )
 }
 
-function PermissionCell({ value }: { value: PermissionValue }) {
+function PermissionCell({ value }: { value: ProjectPermissionValue }) {
   if (value === false) {
     return <span className="text-[16px] font-bold text-[#e5484d]">✕</span>
   }
   return (
     <span className="inline-flex flex-col items-center">
       <span className="text-[16px] font-bold text-[#56ba9f]">✓</span>
-      {value === "unidad" ? (
+      {value === "unitOnly" ? (
         <span className="text-[10px] leading-3 text-[#90a1b9]">Su unidad</span>
       ) : null}
     </span>
@@ -509,6 +500,8 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [permisosOpen, setPermisosOpen] = useState(true)
+  const canAddUsers = useProjectPermission("addUsers")
+  const canEditPermissions = useProjectPermission("editPermissions")
 
   const refreshSeatSummary = async () => {
     const summary = await getProjectTeamSeatSummary(projectId)
@@ -645,6 +638,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
             setShowForm((v) => !v)
             setFormError("")
           }}
+          disabled={!canAddUsers}
           className="text-[14px] font-normal leading-5"
         >
           {showForm ? (
@@ -662,7 +656,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       </div>
 
       {/* Nuevo miembro form */}
-      {showForm ? (
+      {showForm && canAddUsers ? (
         <div
           className="flex flex-col gap-3 rounded-[16px] border border-[#edeef0] bg-white px-6 py-4"
           style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
@@ -778,6 +772,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
           ) : (
             filteredMembers.map((member) =>
               editingMemberId === member.memberId ? (
+                canEditPermissions ? (
                 <EditMemberRow
                   key={member.memberId}
                   member={member}
@@ -790,12 +785,13 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
                     void handleRemoveMember(member.memberId)
                   }}
                 />
+                ) : null
               ) : (
                 <MemberRow
                   key={member.memberId}
                   member={member}
-                  canEdit={!member.isYou}
-                  canRemove={!member.isYou}
+                  canEdit={canEditPermissions && !member.isYou}
+                  canRemove={canEditPermissions && !member.isYou}
                   onEdit={() => setEditingMemberId(member.memberId)}
                   onRemove={() => void handleRemoveMember(member.memberId)}
                 />
@@ -827,6 +823,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
                 <PendingRow
                   key={invitation.invitationId}
                   invitation={invitation}
+                  canRevoke={canAddUsers}
                   onRevoke={() => void handleRevokeInvitation(invitation.invitationId)}
                 />
               ))
@@ -876,7 +873,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {PERMISSIONS.map((row, index) => (
+                {PROJECT_PERMISSION_TABLE.map((row, index) => (
                   <tr
                     key={row.action}
                     style={{ backgroundColor: index % 2 === 0 ? "#ffffff" : "#edeef0" }}

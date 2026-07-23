@@ -6,7 +6,8 @@ import { type ReactNode, useState } from "react"
 import { ArrowLeftRight, ChevronDown } from "lucide-react"
 import { BuiltItIsoIcon } from "@/components/brand/BuiltItIsoIcon"
 import { SHELL_COLORS, SHELL_LAYOUT } from "@/lib/project/designTokens"
-import { isProjectNavActive, PROJECT_NAV_ITEMS } from "@/lib/project/navigation"
+import { isProjectNavActive, getAllowedProjectNavItems } from "@/lib/project/navigation"
+import { useProjectAccess } from "@/components/project-shell/ProjectAccessProvider"
 import { projectHref } from "@/lib/project/routes"
 import type { UserProjectListItem } from "@/lib/projects/types"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
@@ -40,6 +41,8 @@ type ProjectSidebarProps = {
 export function ProjectSidebar({ project, userProfile }: ProjectSidebarProps) {
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
+  const { permissions } = useProjectAccess()
+  const navItems = getAllowedProjectNavItems(permissions)
 
   return (
     <aside
@@ -117,7 +120,7 @@ export function ProjectSidebar({ project, userProfile }: ProjectSidebarProps) {
         className="flex flex-1 flex-col overflow-y-auto"
         style={{ padding: "16px 12px 12px", gap: "4px" }}
       >
-        {PROJECT_NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const href = projectHref(project.projectId, item.segment || undefined)
           const active = isProjectNavActive(pathname, project.projectId, item.segment)
           const Icon = item.icon

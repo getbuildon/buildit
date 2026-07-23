@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
+import { checkProjectPermission } from "@/lib/project/projectAccess"
 import { assertCanAddProjectSeat, loadClientSeatSummary } from "@/lib/company/projectSubscriptionLimits"
 import type { ClientSeatSummary } from "@/lib/company/subscriptionTypes"
 import { getUnitPillLabel } from "@/lib/projects/floorLabels"
@@ -428,6 +429,9 @@ export async function addProjectClientInvitation(
   | { ok: true; invitation: ProjectClientInvitation }
   | { ok: false; error: string }
 > {
+  const permission = await checkProjectPermission(projectId, "manageClients")
+  if (!permission.ok) return permission
+
   const user = await requireAuthenticatedUser()
   const supabase = await createClient()
   const admin = createAdminClient()
@@ -518,6 +522,9 @@ export async function updateProjectClientInvitation(
   | { ok: true; invitation: ProjectClientInvitation }
   | { ok: false; error: string }
 > {
+  const permission = await checkProjectPermission(projectId, "manageClients")
+  if (!permission.ok) return permission
+
   await requireAuthenticatedUser()
   const supabase = await createClient()
   const admin = createAdminClient()
@@ -579,6 +586,9 @@ export async function updateProjectClient(
     unitIds: string[]
   },
 ): Promise<{ ok: true; client: ProjectClient } | { ok: false; error: string }> {
+  const permission = await checkProjectPermission(projectId, "manageClients")
+  if (!permission.ok) return permission
+
   await requireAuthenticatedUser()
   const admin = createAdminClient()
 
@@ -619,6 +629,9 @@ export async function revokeClientInvitation(
   invitationId: string,
   projectId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const permission = await checkProjectPermission(projectId, "manageClients")
+  if (!permission.ok) return permission
+
   await requireAuthenticatedUser()
   const supabase = await createClient()
   const admin = createAdminClient()
@@ -641,6 +654,9 @@ export async function removeProjectClient(
   projectId: string,
   userId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const permission = await checkProjectPermission(projectId, "manageClients")
+  if (!permission.ok) return permission
+
   await requireAuthenticatedUser()
   const supabase = await createClient()
 

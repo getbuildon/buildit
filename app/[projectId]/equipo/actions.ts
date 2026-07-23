@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
+import { checkProjectPermission } from "@/lib/project/projectAccess"
 import { assertCanAddProjectSeat, loadTeamSeatSummary } from "@/lib/company/projectSubscriptionLimits"
 import type { TeamSeatSummary } from "@/lib/company/subscriptionTypes"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
@@ -149,6 +150,9 @@ export async function addTeamMember(
   | { ok: true; invitation: ProjectTeamInvitation }
   | { ok: false; error: string }
 > {
+  const permission = await checkProjectPermission(projectId, "addUsers")
+  if (!permission.ok) return permission
+
   const user = await requireAuthenticatedUser()
   const supabase = await createClient()
   const admin = createAdminClient()
@@ -213,6 +217,9 @@ export async function removeTeamMember(
   memberId: string,
   projectId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const permission = await checkProjectPermission(projectId, "editPermissions")
+  if (!permission.ok) return permission
+
   const user = await requireAuthenticatedUser()
   const supabase = await createClient()
 
@@ -245,6 +252,9 @@ export async function updateTeamMember(
   | { ok: true; userTypeLabel: string | null; roleLabel: string }
   | { ok: false; error: string }
 > {
+  const permission = await checkProjectPermission(projectId, "editPermissions")
+  if (!permission.ok) return permission
+
   await requireAuthenticatedUser()
   const supabase = await createClient()
   const admin = createAdminClient()
@@ -292,6 +302,9 @@ export async function revokeTeamInvitation(
   invitationId: string,
   projectId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const permission = await checkProjectPermission(projectId, "addUsers")
+  if (!permission.ok) return permission
+
   await requireAuthenticatedUser()
   const supabase = await createClient()
 

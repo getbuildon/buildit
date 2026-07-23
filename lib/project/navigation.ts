@@ -7,6 +7,10 @@ import {
   UserCircle2,
   Settings,
 } from "lucide-react"
+import {
+  isNavSegmentAllowed,
+  type ProjectPermissions,
+} from "@/lib/project/projectPermissions"
 
 export type ProjectNavItem = {
   label: string
@@ -22,6 +26,12 @@ export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
   { label: "Clientes", segment: "clientes", icon: UserCircle2 },
   { label: "Configuración", segment: "configuracion", icon: Settings },
 ]
+
+export function getAllowedProjectNavItems(
+  permissions: ProjectPermissions,
+): ProjectNavItem[] {
+  return PROJECT_NAV_ITEMS.filter((item) => isNavSegmentAllowed(permissions, item.segment))
+}
 
 export function isProjectNavActive(
   pathname: string,

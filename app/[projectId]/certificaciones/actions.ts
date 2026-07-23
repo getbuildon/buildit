@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
+import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
+import { hasProjectPermission } from "@/lib/project/projectPermissions"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
 import { getUnitPillLabel } from "@/lib/projects/floorLabels"
 import { getUnitTaskAssignments } from "../configuracion/actions"
@@ -37,8 +39,6 @@ export type CertificacionesData = {
   members: CertificacionMember[]
   canCertify: boolean
 }
-
-const CERTIFY_ROLE_SLUGS = new Set(["administrador", "director_obra"])
 
 function formatProfileName(profile: {
   first_name: string | null
@@ -76,7 +76,7 @@ export async function getCertificacionesData(
   const supabase = await createClient()
   const admin = createAdminClient()
 
-  const [floorsResult, unitsResult, assignments, entriesResult, roleResult] =
+  const [floorsResult, unitsResult, assignments, entriesResult, accessContext] =
     await Promise.all([
       supabase
         .from("project_floors")
@@ -107,7 +107,7 @@ export async function getCertificacionesData(
         .eq("project_id", id)
         .in("status", ["submitted", "approved"])
         .order("created_at", { ascending: false }),
-      supabase.rpc("user_project_role", { p_project_id: id }),
+      getProjectAccessContext(id),
     ])
 
   if (floorsResult.error || unitsResult.error || entriesResult.error) {
@@ -117,8 +117,9 @@ export async function getCertificacionesData(
   const floors = floorsResult.data ?? []
   const units = unitsResult.data ?? []
   const entries = entriesResult.data ?? []
-  const roleSlug = typeof roleResult.data === "string" ? roleResult.data : null
-  const canCertify = roleSlug != null && CERTIFY_ROLE_SLUGS.has(roleSlug)
+  const canCertify =
+    accessContext != null &&
+    hasProjectPermission(accessContext.permissions, "certifyTasks")
 
   const floorById = new Map(floors.map((floor) => [floor.id, floor.name]))
 
@@ -240,6 +241,9 @@ export async function certifyProgressEntries(
   if (uniqueEntryIds.length === 0) {
     return { ok: false, error: "Seleccioná al menos una tarea." }
   }
+
+  const permission = await checkProjectPermission(id, "certifyTasks")
+  if (!permission.ok) return permission
 
   const user = await requireAuthenticatedUser()
   const supabase = await createClient()

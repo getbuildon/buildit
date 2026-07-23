@@ -31,6 +31,7 @@ import {
   type ProjectUnitOption,
 } from "./actions"
 import { ClientSeatSummarySubtitle } from "@/components/clients/ClientSeatSummarySubtitle"
+import { useProjectPermission } from "@/components/project-shell/ProjectAccessProvider"
 import type { ClientSeatSummary } from "@/lib/company/subscriptionTypes"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -203,17 +204,20 @@ function UnitsSummary({ units }: { units: ProjectClient["units"] }) {
 function RowActionButton({
   label,
   onClick,
+  disabled,
   children,
 }: {
   label: string
   onClick: () => void
+  disabled?: boolean
   children: ReactNode
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex size-4 items-center justify-center text-[#777b84] transition-opacity hover:opacity-80"
+      disabled={disabled}
+      className="inline-flex size-4 items-center justify-center text-[#777b84] disabled:cursor-not-allowed disabled:opacity-40 enabled:transition-opacity enabled:hover:opacity-80"
       aria-label={label}
     >
       {children}
@@ -223,10 +227,12 @@ function RowActionButton({
 
 function ClientRow({
   client,
+  canManage,
   onEdit,
   onRemove,
 }: {
   client: ProjectClient
+  canManage: boolean
   onEdit: () => void
   onRemove: () => void
 }) {
@@ -262,12 +268,14 @@ function ClientRow({
         <div className="flex shrink-0 items-center gap-2">
           <RowActionButton
             label={`Editar a ${client.firstName} ${client.lastName}`}
+            disabled={!canManage}
             onClick={onEdit}
           >
             <SquarePen className="size-4" aria-hidden />
           </RowActionButton>
           <RowActionButton
             label={`Eliminar a ${client.firstName} ${client.lastName}`}
+            disabled={!canManage}
             onClick={onRemove}
           >
             <Trash2 className="size-4" aria-hidden />
@@ -280,10 +288,12 @@ function ClientRow({
 
 function PendingClientRow({
   invitation,
+  canManage,
   onEdit,
   onRevoke,
 }: {
   invitation: ProjectClientInvitation
+  canManage: boolean
   onEdit: () => void
   onRevoke: () => void
 }) {
@@ -324,12 +334,14 @@ function PendingClientRow({
         <div className="flex shrink-0 items-center gap-2">
           <RowActionButton
             label={`Editar invitación de ${invitation.firstName} ${invitation.lastName}`}
+            disabled={!canManage}
             onClick={onEdit}
           >
             <SquarePen className="size-4" aria-hidden />
           </RowActionButton>
           <RowActionButton
             label={`Revocar invitación de ${invitation.firstName} ${invitation.lastName}`}
+            disabled={!canManage}
             onClick={onRevoke}
           >
             <Trash2 className="size-4" aria-hidden />
@@ -359,6 +371,7 @@ export function ClientesView({ projectId, initialData }: Props) {
   const [editingTarget, setEditingTarget] = useState<EditingTarget>(null)
   const [formError, setFormError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const canManageClients = useProjectPermission("manageClients")
 
   const refreshSeatSummary = async () => {
     const summary = await getProjectClientSeatSummary(projectId)
@@ -594,6 +607,7 @@ export function ClientesView({ projectId, initialData }: Props) {
               openAddForm()
             }
           }}
+          disabled={!canManageClients}
           className="text-[14px] font-normal leading-[1.4]"
         >
           {isFormOpen ? (
@@ -610,7 +624,7 @@ export function ClientesView({ projectId, initialData }: Props) {
         </Button>
       </div>
 
-      {isFormOpen ? (
+      {isFormOpen && canManageClients ? (
         <div
           className="flex flex-col gap-3 rounded-[16px] border border-[#edeef0] bg-white px-4 pb-8 pt-4"
           style={{ boxShadow: CLIENTES_CARD_SHADOW }}
@@ -706,6 +720,7 @@ export function ClientesView({ projectId, initialData }: Props) {
                 <ClientRow
                   key={client.userId}
                   client={client}
+                  canManage={canManageClients}
                   onEdit={() => startEditClient(client)}
                   onRemove={() => void handleRemoveClient(client.userId)}
                 />
@@ -714,6 +729,7 @@ export function ClientesView({ projectId, initialData }: Props) {
                 <PendingClientRow
                   key={invitation.invitationId}
                   invitation={invitation}
+                  canManage={canManageClients}
                   onEdit={() => startEditInvitation(invitation)}
                   onRevoke={() =>
                     void handleRevokeInvitation(invitation.invitationId)

@@ -5,6 +5,7 @@ import { format } from "date-fns"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
+import { checkProjectPermission } from "@/lib/project/projectAccess"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
 import {
   getUnitTaskKey,
@@ -427,6 +428,9 @@ export async function saveCargarAvance(
     return { ok: false, error: "Completá al menos una tarea antes de guardar." }
   }
 
+  const permission = await checkProjectPermission(projectId, "loadProgress")
+  if (!permission.ok) return permission
+
   const user = await requireAuthenticatedUser()
   const supabase = await createClient()
 
@@ -561,6 +565,9 @@ export async function registerProgressAttachments(
   const id = projectId.trim()
   if (!id) return { ok: false, error: "Proyecto inválido." }
   if (attachments.length === 0) return { ok: true }
+
+  const permission = await checkProjectPermission(id, "loadProgress")
+  if (!permission.ok) return permission
 
   const user = await requireAuthenticatedUser()
   const supabase = await createClient()
@@ -753,6 +760,9 @@ export async function updateTrabajoDiarioTask(
   if (input.taskStatus === "pending") {
     return { ok: false, error: "Seleccioná un estado válido." }
   }
+
+  const permission = await checkProjectPermission(projectId, "loadProgress")
+  if (!permission.ok) return permission
 
   const user = await requireAuthenticatedUser()
   const supabase = await createClient()

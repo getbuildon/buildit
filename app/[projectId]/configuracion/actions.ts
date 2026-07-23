@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
+import { checkProjectPermission } from "@/lib/project/projectAccess"
 import {
   calculateUnitProgressPercent,
   countAssignedBlockedTasks,
@@ -282,6 +283,9 @@ export async function setUnitTaskAssignments(
   const id = projectId.trim()
   if (!id) return { ok: false, error: "Proyecto inválido." }
 
+  const permission = await checkProjectPermission(id, "editTasks")
+  if (!permission.ok) return permission
+
   await requireAuthenticatedUser()
   const supabase = await createClient()
 
@@ -383,6 +387,9 @@ export async function updateProjectBasics(
   if (!name) {
     return { ok: false, error: "El nombre del proyecto es obligatorio." }
   }
+
+  const permission = await checkProjectPermission(id, "configureProject")
+  if (!permission.ok) return permission
 
   await requireAuthenticatedUser()
   const supabase = await createClient()
@@ -500,6 +507,9 @@ export async function saveProjectStructure(
   const id = projectId.trim()
   if (!id) return { ok: false, error: "Proyecto inválido." }
 
+  const permission = await checkProjectPermission(id, "configureProject")
+  if (!permission.ok) return permission
+
   await requireAuthenticatedUser()
   const supabase = await createClient()
 
@@ -516,6 +526,9 @@ export async function saveProjectRubros(
 ): Promise<UpdateProjectBasicsResult> {
   const id = projectId.trim()
   if (!id) return { ok: false, error: "Proyecto inválido." }
+
+  const permission = await checkProjectPermission(id, "editTasks")
+  if (!permission.ok) return permission
 
   await requireAuthenticatedUser()
   const supabase = await createClient()

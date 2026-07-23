@@ -1,3 +1,4 @@
+import { assertProjectSectionAccess } from "@/lib/project/projectAccess"
 import { getProjectBasics } from "./actions"
 import { ConfiguracionView } from "./ConfiguracionView"
 
@@ -7,6 +8,7 @@ type PageProps = {
 
 export default async function ConfiguracionPage({ params }: PageProps) {
   const { projectId } = await params
+  await assertProjectSectionAccess(projectId, "configuracion")
   const project = await getProjectBasics(projectId)
   if (!project) return null
 
