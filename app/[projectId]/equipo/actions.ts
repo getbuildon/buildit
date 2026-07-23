@@ -9,6 +9,13 @@ import type { TeamSeatSummary } from "@/lib/company/subscriptionTypes"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
 import { PROJECT_ROLE_SLUG } from "@/lib/projects/catalogSlugs"
 import type { ProjectTeamRole, ProjectUserType } from "@/lib/projects/createProjectDraft"
+import {
+  addExistingUserToProject,
+  buildInvitationInsertExtras,
+  dispatchProjectInvitation,
+  findActiveProjectMemberUserId,
+  findProfileByEmail,
+} from "@/lib/invitations/projectInvitationService"
 
 export type ProjectTeamMember = {
   memberId: string
@@ -147,7 +154,8 @@ export async function addTeamMember(
     role: ProjectTeamRole
   },
 ): Promise<
-  | { ok: true; invitation: ProjectTeamInvitation }
+  | { ok: true; kind: "invitation"; invitation: ProjectTeamInvitation }
+  | { ok: true; kind: "member_added"; member: ProjectTeamMember }
   | { ok: false; error: string }
 > {
   const permission = await checkProjectPermission(projectId, "addUsers")
@@ -156,6 +164,8 @@ export async function addTeamMember(
   const user = await requireAuthenticatedUser()
   const supabase = await createClient()
   const admin = createAdminClient()
+
+  const normalizedEmail = data.email.trim().toLowerCase()
 
   let catalog
   try {
@@ -171,17 +181,89 @@ export async function addTeamMember(
     return { ok: false, error: "No se pudo validar los límites del plan." }
   }
 
+  const activeMemberUserId = await findActiveProjectMemberUserId(
+    admin,
+    projectId,
+    normalizedEmail,
+  )
+  if (activeMemberUserId) {
+    return { ok: false, error: "Ese usuario ya es miembro del proyecto." }
+  }
+
+  const roleId = catalog.roleIds[data.role]
+  const userTypeId = catalog.userTypeIds[data.userType]
+
+  const [roleRes, userTypeRes] = await Promise.all([
+    admin.from("project_roles").select("label").eq("id", roleId).single(),
+    admin.from("user_types").select("label").eq("id", userTypeId).single(),
+  ])
+
+  const existingProfile = await findProfileByEmail(admin, normalizedEmail)
+  if (existingProfile) {
+    const addResult = await addExistingUserToProject(admin, {
+      projectId,
+      userId: existingProfile.id,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      userTypeId,
+      roleId,
+      isClient: false,
+    })
+    if (!addResult.ok) return addResult
+
+    const { data: memberRow } = await admin
+      .from("project_members")
+      .select("id, user_id")
+      .eq("project_id", projectId)
+      .eq("user_id", existingProfile.id)
+      .eq("is_active", true)
+      .single()
+
+    const { data: profileRow } = await admin
+      .from("profiles")
+      .select("first_name, last_name, email, avatar_url")
+      .eq("id", existingProfile.id)
+      .single()
+
+    return {
+      ok: true,
+      kind: "member_added",
+      member: {
+        memberId: memberRow?.id ?? existingProfile.id,
+        userId: existingProfile.id,
+        firstName: profileRow?.first_name ?? data.firstName.trim(),
+        lastName: profileRow?.last_name ?? data.lastName.trim(),
+        email: profileRow?.email ?? normalizedEmail,
+        roleLabel: roleRes.data?.label ?? data.role,
+        userTypeLabel: userTypeRes.data?.label ?? data.userType,
+        avatarUrl: profileRow?.avatar_url ?? null,
+        isYou: existingProfile.id === user.id,
+      },
+    }
+  }
+
+  const { data: projectRow } = await admin
+    .from("projects")
+    .select("company_id")
+    .eq("id", projectId)
+    .single()
+
+  const invitationExtras = buildInvitationInsertExtras()
+
   const { data: invitation, error } = await supabase
     .from("project_invitations")
     .insert({
       project_id: projectId,
-      email: data.email.trim().toLowerCase(),
+      company_id: projectRow?.company_id ?? null,
+      email: normalizedEmail,
       first_name: data.firstName.trim(),
       last_name: data.lastName.trim(),
-      user_type_id: catalog.userTypeIds[data.userType],
-      role_id: catalog.roleIds[data.role],
+      user_type_id: userTypeId,
+      role_id: roleId,
       status: "pending",
       invited_by: user.id,
+      expires_at: invitationExtras.expires_at,
+      token_hash: invitationExtras.token_hash,
     })
     .select("id, email, first_name, last_name, role_id, user_type_id")
     .single()
@@ -193,15 +275,21 @@ export async function addTeamMember(
     return { ok: false, error: error.message }
   }
 
-  const [roleRes, userTypeRes] = await Promise.all([
-    admin.from("project_roles").select("label").eq("id", invitation.role_id).single(),
-    invitation.user_type_id
-      ? admin.from("user_types").select("label").eq("id", invitation.user_type_id).single()
-      : Promise.resolve({ data: null }),
-  ])
+  const emailResult = await dispatchProjectInvitation(admin, {
+    invitationId: invitation.id,
+    email: invitation.email,
+    firstName: invitation.first_name,
+    lastName: invitation.last_name,
+  })
+
+  if (!emailResult.ok) {
+    await admin.from("project_invitations").update({ status: "revoked" }).eq("id", invitation.id)
+    return emailResult
+  }
 
   return {
     ok: true,
+    kind: "invitation",
     invitation: {
       invitationId: invitation.id,
       firstName: invitation.first_name,

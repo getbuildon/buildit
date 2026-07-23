@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
+import { useToast } from "@/components/ui/toast"
 import {
   addTeamMember,
   getProjectTeamSeatSummary,
@@ -482,6 +483,7 @@ function PermissionCell({ value }: { value: ProjectPermissionValue }) {
 }
 
 export function EquipoTeamView({ projectId, initialData }: Props) {
+  const toast = useToast()
   const [members, setMembers] = useState(initialData.members)
   const [pendingInvitations, setPendingInvitations] = useState(
     initialData.pendingInvitations,
@@ -549,7 +551,14 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       return
     }
 
-    setPendingInvitations((prev) => [...prev, result.invitation])
+    if (result.kind === "member_added") {
+      setMembers((prev) => [...prev, result.member])
+      toast.success(`${result.member.firstName} ${result.member.lastName} fue agregado al equipo.`)
+    } else {
+      setPendingInvitations((prev) => [...prev, result.invitation])
+      toast.success(`Invitación enviada a ${result.invitation.email}.`)
+    }
+
     void refreshSeatSummary()
     setFirstName("")
     setLastName("")

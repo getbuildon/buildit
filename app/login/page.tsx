@@ -35,6 +35,9 @@ function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   const callbackError = searchParams.get("error")
+  const nextPath = searchParams.get("next")
+  const safeNextPath =
+    nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/home"
   const mergedBanner =
     callbackError === "callback"
       ? "No pudimos completar el inicio de sesión. Intentá de nuevo."
@@ -85,7 +88,7 @@ function LoginPage() {
         return
       }
 
-      router.replace("/home")
+      router.replace(safeNextPath)
     } catch {
       setError("Error al iniciar sesión")
     } finally {

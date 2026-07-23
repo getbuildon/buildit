@@ -31,6 +31,7 @@ import {
   type ProjectUnitOption,
 } from "./actions"
 import { ClientSeatSummarySubtitle } from "@/components/clients/ClientSeatSummarySubtitle"
+import { useToast } from "@/components/ui/toast"
 import { useProjectPermission } from "@/components/project-shell/ProjectAccessProvider"
 import type { ClientSeatSummary } from "@/lib/company/subscriptionTypes"
 
@@ -353,6 +354,7 @@ function PendingClientRow({
 }
 
 export function ClientesView({ projectId, initialData }: Props) {
+  const toast = useToast()
   const [clients, setClients] = useState(initialData.clients)
   const [pendingInvitations, setPendingInvitations] = useState(
     initialData.pendingInvitations,
@@ -545,7 +547,14 @@ export function ClientesView({ projectId, initialData }: Props) {
       return
     }
 
-    setPendingInvitations((prev) => [...prev, result.invitation])
+    if (result.kind === "client_added") {
+      setClients((prev) => [...prev, result.client])
+      toast.success(`${result.client.firstName} ${result.client.lastName} fue agregado como cliente.`)
+    } else {
+      setPendingInvitations((prev) => [...prev, result.invitation])
+      toast.success(`Invitación enviada a ${result.invitation.email}.`)
+    }
+
     resetForm()
     void refreshSeatSummary()
   }

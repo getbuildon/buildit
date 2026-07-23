@@ -10,6 +10,13 @@ import type { ClientSeatSummary } from "@/lib/company/subscriptionTypes"
 import { getUnitPillLabel } from "@/lib/projects/floorLabels"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
 import { PROJECT_ROLE_SLUG } from "@/lib/projects/catalogSlugs"
+import {
+  addExistingUserToProject,
+  buildInvitationInsertExtras,
+  dispatchProjectInvitation,
+  findActiveProjectMemberUserId,
+  findProfileByEmail,
+} from "@/lib/invitations/projectInvitationService"
 
 export type ProjectClientUnit = {
   id: string
@@ -426,7 +433,8 @@ export async function addProjectClientInvitation(
     unitIds: string[]
   },
 ): Promise<
-  | { ok: true; invitation: ProjectClientInvitation }
+  | { ok: true; kind: "invitation"; invitation: ProjectClientInvitation }
+  | { ok: true; kind: "client_added"; client: ProjectClient }
   | { ok: false; error: string }
 > {
   const permission = await checkProjectPermission(projectId, "manageClients")
@@ -435,6 +443,8 @@ export async function addProjectClientInvitation(
   const user = await requireAuthenticatedUser()
   const supabase = await createClient()
   const admin = createAdminClient()
+
+  const normalizedEmail = data.email.trim().toLowerCase()
 
   const unitValidation = await validateUnitAssignment(
     admin,
@@ -457,18 +467,67 @@ export async function addProjectClientInvitation(
     return { ok: false, error: "No se pudo validar los límites del plan." }
   }
 
+  const activeMemberUserId = await findActiveProjectMemberUserId(
+    admin,
+    projectId,
+    normalizedEmail,
+  )
+  if (activeMemberUserId) {
+    return { ok: false, error: "Ese cliente ya tiene acceso al proyecto." }
+  }
+
+  const roleId = catalog.roleIds.Cliente
+  const userTypeId = catalog.userTypeIds.Cliente
+
+  const existingProfile = await findProfileByEmail(admin, normalizedEmail)
+  if (existingProfile) {
+    const addResult = await addExistingUserToProject(admin, {
+      projectId,
+      userId: existingProfile.id,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phone: data.phone,
+      userTypeId,
+      roleId,
+      isClient: true,
+      unitIds: data.unitIds,
+    })
+    if (!addResult.ok) return addResult
+
+    const refreshed = await getProjectClientsData(projectId)
+    const created = refreshed.clients.find((client) => client.userId === existingProfile.id)
+
+    if (!created) {
+      return { ok: false, error: "No se pudo cargar el cliente agregado." }
+    }
+
+    revalidatePath(`/${projectId}/clientes`)
+    return { ok: true, kind: "client_added", client: created }
+  }
+
+  const { data: projectRow } = await admin
+    .from("projects")
+    .select("company_id")
+    .eq("id", projectId)
+    .single()
+
+  const invitationExtras = buildInvitationInsertExtras()
+
   const { data: invitation, error } = await supabase
     .from("project_invitations")
     .insert({
       project_id: projectId,
-      email: data.email.trim().toLowerCase(),
+      company_id: projectRow?.company_id ?? null,
+      email: normalizedEmail,
       first_name: data.firstName.trim(),
       last_name: data.lastName.trim(),
       phone: data.phone?.trim() || null,
-      user_type_id: catalog.userTypeIds.Cliente,
-      role_id: catalog.roleIds.Cliente,
+      user_type_id: userTypeId,
+      role_id: roleId,
       status: "pending",
       invited_by: user.id,
+      expires_at: invitationExtras.expires_at,
+      token_hash: invitationExtras.token_hash,
     })
     .select("id, email, first_name, last_name, phone")
     .single()
@@ -485,7 +544,26 @@ export async function addProjectClientInvitation(
     invitation.id,
     data.unitIds,
   )
-  if (!unitsResult.ok) return unitsResult
+  if (!unitsResult.ok) {
+    await admin.from("project_invitations").update({ status: "revoked" }).eq("id", invitation.id)
+    return unitsResult
+  }
+
+  const emailResult = await dispatchProjectInvitation(admin, {
+    invitationId: invitation.id,
+    email: invitation.email,
+    firstName: invitation.first_name,
+    lastName: invitation.last_name,
+  })
+
+  if (!emailResult.ok) {
+    await admin
+      .from("project_invitations")
+      .update({ status: "revoked" })
+      .eq("id", invitation.id)
+    await admin.from("client_invitation_units").delete().eq("invitation_id", invitation.id)
+    return emailResult
+  }
 
   const refreshed = await getProjectClientsData(projectId)
   const created =
@@ -505,7 +583,7 @@ export async function addProjectClientInvitation(
     } satisfies ProjectClientInvitation)
 
   revalidatePath(`/${projectId}/clientes`)
-  return { ok: true, invitation: created }
+  return { ok: true, kind: "invitation", invitation: created }
 }
 
 export async function updateProjectClientInvitation(
