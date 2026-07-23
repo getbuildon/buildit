@@ -344,7 +344,7 @@ export async function loadTeamSeatSummary(
 }
 
 export function formatClientSeatSummarySubtitle(summary: ClientSeatSummary): string {
-  return `${summary.usage}/${summary.limit} Clientes`
+  return `${summary.usage}/${summary.limit} Clientes en este proyecto`
 }
 
 export async function loadClientSeatSummary(

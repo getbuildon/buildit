@@ -6,6 +6,8 @@ export type UserProjectListItem = {
   address: string
   floors: number
   units: number
-  progressPercent: number
-  generalProgressPercent?: number
+  /** Progreso general del proyecto (promedio de unidades). */
+  generalProgressPercent: number
+  /** Variación del progreso respecto a hace 7 días. */
+  weeklyProgressDelta: number
 }

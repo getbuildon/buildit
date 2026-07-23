@@ -9,8 +9,8 @@ export const MOCK_USER_PROJECTS: UserProjectListItem[] = [
     address: "Padre Patiño 651, Formosa",
     floors: 10,
     units: 38,
-    progressPercent: 67,
     generalProgressPercent: 52,
+    weeklyProgressDelta: 7,
   },
   {
     projectId: "life-recoleta",
@@ -20,7 +20,8 @@ export const MOCK_USER_PROJECTS: UserProjectListItem[] = [
     address: "San Roque Gonzalez 390, Asunción",
     floors: 12,
     units: 42,
-    progressPercent: 42,
+    generalProgressPercent: 42,
+    weeklyProgressDelta: 3,
   },
 ]
 

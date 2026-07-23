@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { getAuthenticatedUserOrNull } from "@/lib/authHelpers"
 import type { UserProjectListItem } from "@/lib/projects/types"
+import { loadProjectsHomeProgress } from "@/lib/projects/homeProjectProgress"
 
 type ProjectRow = {
   id: string
@@ -33,6 +34,7 @@ async function countFloorsAndUnits(
 function toUserProjectListItem(
   project: ProjectRow,
   counts: { floors: number; units: number },
+  progress: { generalProgressPercent: number; weeklyProgressDelta: number },
 ): UserProjectListItem {
   return {
     projectId: project.id,
@@ -42,8 +44,8 @@ function toUserProjectListItem(
     address: project.location?.trim() || "Sin dirección",
     floors: counts.floors,
     units: counts.units,
-    progressPercent: 0,
-    generalProgressPercent: 0,
+    generalProgressPercent: progress.generalProgressPercent,
+    weeklyProgressDelta: progress.weeklyProgressDelta,
   }
 }
 
@@ -77,7 +79,12 @@ export async function getProjectById(
   }
 
   const counts = await countFloorsAndUnits(supabase, project.id)
-  return toUserProjectListItem(project, counts)
+  const progressMap = await loadProjectsHomeProgress(supabase, [project.id])
+  const progress = progressMap.get(project.id) ?? {
+    generalProgressPercent: 0,
+    weeklyProgressDelta: 0,
+  }
+  return toUserProjectListItem(project, counts, progress)
 }
 
 function normalizeProjects(rows: any[]): ProjectRow[] {
@@ -173,10 +180,17 @@ export async function listUserProjects(): Promise<UserProjectListItem[]> {
 
   if (deduped.length === 0) return []
 
+  const projectIds = deduped.map((project) => project.id)
+  const progressMap = await loadProjectsHomeProgress(supabase, projectIds)
+
   const results = await Promise.all(
     deduped.map(async (project) => {
       const counts = await countFloorsAndUnits(supabase, project.id)
-      return toUserProjectListItem(project, counts)
+      const progress = progressMap.get(project.id) ?? {
+        generalProgressPercent: 0,
+        weeklyProgressDelta: 0,
+      }
+      return toUserProjectListItem(project, counts, progress)
     }),
   )
 

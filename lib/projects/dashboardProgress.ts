@@ -12,6 +12,17 @@ function getEntryTimestamp(entry: ProgressEntryRow): number {
   return value ? new Date(value).getTime() : 0
 }
 
+export function filterProgressEntriesBefore(
+  entries: ProgressEntryRow[],
+  beforeDate: Date,
+): ProgressEntryRow[] {
+  const cutoff = beforeDate.getTime()
+  return entries.filter((entry) => {
+    const timestamp = getEntryTimestamp(entry)
+    return timestamp > 0 && timestamp <= cutoff
+  })
+}
+
 export function getAssignedTaskIdsForUnit(
   byUnit: Record<string, string[]>,
   unitId: string,
