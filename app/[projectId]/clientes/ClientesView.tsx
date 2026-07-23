@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 import { CLIENTES_LAYOUT } from "@/lib/project/designTokens"
 import {
   addProjectClientInvitation,
+  getProjectClientSeatSummary,
   removeProjectClient,
   revokeClientInvitation,
   updateProjectClient,
@@ -29,6 +30,8 @@ import {
   type ProjectClientsData,
   type ProjectUnitOption,
 } from "./actions"
+import { ClientSeatSummarySubtitle } from "@/components/clients/ClientSeatSummarySubtitle"
+import type { ClientSeatSummary } from "@/lib/company/subscriptionTypes"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -343,6 +346,9 @@ export function ClientesView({ projectId, initialData }: Props) {
     initialData.pendingInvitations,
   )
   const [unitOptions] = useState(initialData.unitOptions)
+  const [seatSummary, setSeatSummary] = useState<ClientSeatSummary | null>(
+    initialData.seatSummary,
+  )
 
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -353,6 +359,11 @@ export function ClientesView({ projectId, initialData }: Props) {
   const [editingTarget, setEditingTarget] = useState<EditingTarget>(null)
   const [formError, setFormError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const refreshSeatSummary = async () => {
+    const summary = await getProjectClientSeatSummary(projectId)
+    setSeatSummary(summary)
+  }
 
   const assignedEmails = useMemo(() => {
     const emails = new Set<string>()
@@ -502,6 +513,7 @@ export function ClientesView({ projectId, initialData }: Props) {
         ),
       )
       resetForm()
+      void refreshSeatSummary()
       return
     }
 
@@ -522,6 +534,7 @@ export function ClientesView({ projectId, initialData }: Props) {
 
     setPendingInvitations((prev) => [...prev, result.invitation])
     resetForm()
+    void refreshSeatSummary()
   }
 
   const handleRemoveClient = async (userId: string) => {
@@ -531,6 +544,7 @@ export function ClientesView({ projectId, initialData }: Props) {
       if (editingTarget?.type === "client" && editingTarget.id === userId) {
         resetForm()
       }
+      void refreshSeatSummary()
     }
   }
 
@@ -546,12 +560,13 @@ export function ClientesView({ projectId, initialData }: Props) {
       ) {
         resetForm()
       }
+      void refreshSeatSummary()
     }
   }
 
-  const totalCount = clients.length + pendingInvitations.length
   const isEditing = editingTarget !== null
   const isFormOpen = showAddForm || isEditing
+  const totalCount = clients.length + pendingInvitations.length
 
   return (
     <div
@@ -563,13 +578,11 @@ export function ClientesView({ projectId, initialData }: Props) {
       }}
     >
       <div className="flex items-end justify-between gap-4">
-        <div className="flex flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-2">
           <h1 className="font-recoleta text-[28px] font-normal leading-[1.05] text-[#272a2d]">
             Clientes
           </h1>
-          <p className="text-[14px] leading-[1.4] text-[#43484e]">
-            {totalCount} cliente{totalCount !== 1 ? "s" : ""} en este proyecto
-          </p>
+          {seatSummary ? <ClientSeatSummarySubtitle summary={seatSummary} /> : null}
         </div>
         <Button
           variant="brand"

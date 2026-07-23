@@ -9,6 +9,10 @@ import type {
   ProjectTeamRole,
   ProjectUserType,
 } from "@/lib/projects/createProjectDraft"
+import {
+  assignDefaultProjectSubscription,
+  validateProjectSeatAllocation,
+} from "@/lib/company/projectSubscriptionLimits"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
 import { PROJECT_ROLE_SLUG, USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
 import { unitTypeToDbFields } from "@/lib/projects/unitTypes"
@@ -190,6 +194,12 @@ export async function createProjectFromDraft(
 
     projectId = project.id
 
+    await assignDefaultProjectSubscription(
+      supabase,
+      project.id,
+      parseOptionalNumber(draft.totalSurface),
+    )
+
     // Obtener roles de empresa para determinar user_type de cada admin/owner
     const adminClient = createAdminClient()
     const { data: companyAdmins } = await adminClient
@@ -199,10 +209,26 @@ export async function createProjectFromDraft(
       .in("role", ["admin", "owner"])
 
     const creatorCompanyRole = companyAdmins?.find((cm) => cm.user_id === user.id)?.role
-    const creatorUserTypeId =
-      creatorCompanyRole === "owner"
-        ? catalog.userTypeIds.Owner
-        : catalog.userTypeIds.Admin
+    const creatorUserType: ProjectUserType =
+      creatorCompanyRole === "owner" ? "Owner" : "Admin"
+
+    const coAdmins = (companyAdmins ?? []).filter((cm) => cm.user_id !== user.id)
+    const plannedUserTypes: ProjectUserType[] = [
+      creatorUserType,
+      ...coAdmins.map((cm) => (cm.role === "owner" ? "Owner" : "Admin")),
+      ...draft.teamMembers.map((member) => member.userType),
+    ]
+
+    const seatValidation = await validateProjectSeatAllocation(
+      supabase,
+      project.id,
+      plannedUserTypes,
+    )
+    if (!seatValidation.ok) {
+      throw new Error(seatValidation.error)
+    }
+
+    const creatorUserTypeId = catalog.userTypeIds[creatorUserType]
 
     const { error: memberError } = await supabase.from("project_members").insert({
       project_id: projectId,
@@ -215,7 +241,6 @@ export async function createProjectFromDraft(
     if (memberError) throw memberError
 
     // Agregar automáticamente a los demás admins/owners de la empresa
-    const coAdmins = (companyAdmins ?? []).filter((cm) => cm.user_id !== user.id)
     if (coAdmins.length > 0) {
       const { error: coAdminError } = await adminClient
         .from("project_members")

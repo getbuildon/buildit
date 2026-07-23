@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
+import { assertCanAddProjectSeat, loadClientSeatSummary } from "@/lib/company/projectSubscriptionLimits"
+import type { ClientSeatSummary } from "@/lib/company/subscriptionTypes"
 import { getUnitPillLabel } from "@/lib/projects/floorLabels"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
 import { PROJECT_ROLE_SLUG } from "@/lib/projects/catalogSlugs"
@@ -43,6 +45,15 @@ export type ProjectClientsData = {
   clients: ProjectClient[]
   pendingInvitations: ProjectClientInvitation[]
   unitOptions: ProjectUnitOption[]
+  seatSummary: ClientSeatSummary | null
+}
+
+export async function getProjectClientSeatSummary(
+  projectId: string,
+): Promise<ClientSeatSummary | null> {
+  await requireAuthenticatedUser()
+  const supabase = await createClient()
+  return loadClientSeatSummary(supabase, projectId)
 }
 
 type RawUnit = {
@@ -399,7 +410,9 @@ export async function getProjectClientsData(
       ),
     }))
 
-  return { clients, pendingInvitations, unitOptions }
+  const seatSummary = await loadClientSeatSummary(supabase, projectId)
+
+  return { clients, pendingInvitations, unitOptions, seatSummary }
 }
 
 export async function addProjectClientInvitation(
@@ -431,6 +444,13 @@ export async function addProjectClientInvitation(
     catalog = await loadProjectCatalogIds(supabase)
   } catch {
     return { ok: false, error: "No se pudo cargar la configuración del proyecto." }
+  }
+
+  try {
+    const seatCheck = await assertCanAddProjectSeat(supabase, projectId, "Cliente")
+    if (!seatCheck.ok) return seatCheck
+  } catch {
+    return { ok: false, error: "No se pudo validar los límites del plan." }
   }
 
   const { data: invitation, error } = await supabase

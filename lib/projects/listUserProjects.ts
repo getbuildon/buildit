@@ -120,8 +120,34 @@ export async function listUserProjects(): Promise<UserProjectListItem[]> {
     .eq("status", "active")
     .in("role", ["owner", "admin"])
 
+  // Proyectos donde el usuario es cliente asignado a unidades
+  const { data: clientUnitRows } = await supabase
+    .from("unit_clients")
+    .select(
+      `unit:project_units!inner (
+        project:projects (
+          id,
+          name,
+          location,
+          company_id,
+          company:companies ( name )
+        )
+      )`,
+    )
+    .eq("user_id", user.id)
+    .eq("status", "active")
+
   const explicitProjects = normalizeProjects(
-    (memberships || []).map((m) => m.project)
+    (memberships || []).map((m) => m.project),
+  )
+
+  const clientProjects = normalizeProjects(
+    (clientUnitRows || []).map((row) => {
+      const unit = row.unit as { project?: unknown } | { project?: unknown }[] | null
+      if (!unit) return null
+      const unitData = Array.isArray(unit) ? unit[0] : unit
+      return unitData?.project ?? null
+    }).filter(Boolean),
   )
 
   let companyProjects: ProjectRow[] = []
@@ -135,17 +161,20 @@ export async function listUserProjects(): Promise<UserProjectListItem[]> {
     companyProjects = normalizeProjects(rawProjects || [])
   }
 
-  // Unir sin duplicados (priorizar explícitos)
-  const seen = new Set(explicitProjects.map((p) => p.id))
-  const merged = [
-    ...explicitProjects,
-    ...companyProjects.filter((p) => !seen.has(p.id)),
-  ]
+  // Unir sin duplicados: membresía explícita, clientes por unidad, acceso por empresa
+  const seen = new Set<string>()
+  const deduped: ProjectRow[] = []
 
-  if (merged.length === 0) return []
+  for (const project of [...explicitProjects, ...clientProjects, ...companyProjects]) {
+    if (seen.has(project.id)) continue
+    seen.add(project.id)
+    deduped.push(project)
+  }
+
+  if (deduped.length === 0) return []
 
   const results = await Promise.all(
-    merged.map(async (project) => {
+    deduped.map(async (project) => {
       const counts = await countFloorsAndUnits(supabase, project.id)
       return toUserProjectListItem(project, counts)
     }),

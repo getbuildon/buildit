@@ -24,6 +24,7 @@ import {
 import { Spinner } from "@/components/ui/spinner"
 import {
   addTeamMember,
+  getProjectTeamSeatSummary,
   removeTeamMember,
   revokeTeamInvitation,
   updateTeamMember,
@@ -31,6 +32,8 @@ import {
   type ProjectTeamMember,
   type ProjectTeamInvitation,
 } from "./actions"
+import { TeamSeatSummarySubtitle } from "@/components/team/TeamSeatSummarySubtitle"
+import type { TeamSeatSummary } from "@/lib/company/subscriptionTypes"
 import {
   PROJECT_USER_TYPES,
   USER_TYPE_ROLES,
@@ -492,6 +495,9 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
   const [pendingInvitations, setPendingInvitations] = useState(
     initialData.pendingInvitations,
   )
+  const [seatSummary, setSeatSummary] = useState<TeamSeatSummary | null>(
+    initialData.seatSummary,
+  )
   const [showForm, setShowForm] = useState(false)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -503,6 +509,11 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [permisosOpen, setPermisosOpen] = useState(true)
+
+  const refreshSeatSummary = async () => {
+    const summary = await getProjectTeamSeatSummary(projectId)
+    setSeatSummary(summary)
+  }
 
   const assignedEmails = new Set([
     ...members.map((m) => m.email.toLowerCase()),
@@ -546,6 +557,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
     }
 
     setPendingInvitations((prev) => [...prev, result.invitation])
+    void refreshSeatSummary()
     setFirstName("")
     setLastName("")
     setEmail("")
@@ -558,6 +570,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
     const result = await removeTeamMember(memberId, projectId)
     if (result.ok) {
       setMembers((prev) => prev.filter((m) => m.memberId !== memberId))
+      void refreshSeatSummary()
     }
   }
 
@@ -580,6 +593,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
         ),
       )
       setEditingMemberId(null)
+      void refreshSeatSummary()
       return { ok: true as const }
     }
     return { ok: false as const, error: result.error }
@@ -591,6 +605,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       setPendingInvitations((prev) =>
         prev.filter((i) => i.invitationId !== invitationId),
       )
+      void refreshSeatSummary()
     }
   }
 
@@ -616,15 +631,12 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       style={{ maxWidth: "747px", width: "100%", margin: "0 auto" }}
     >
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-recoleta text-[28px] font-normal leading-tight text-[#272a2d]">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-2">
+          <h1 className="font-recoleta text-[28px] font-normal leading-[1.05] text-[#272a2d]">
             Equipo de trabajo
           </h1>
-          <p className="text-[14px] leading-5 text-[#43484e]">
-            {members.length} miembro{members.length !== 1 ? "s" : ""} activo
-            {members.length !== 1 ? "s" : ""} en este proyecto
-          </p>
+          {seatSummary ? <TeamSeatSummarySubtitle summary={seatSummary} /> : null}
         </div>
         <Button
           variant="brand"

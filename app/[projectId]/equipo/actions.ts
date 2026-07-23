@@ -3,6 +3,8 @@
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
+import { assertCanAddProjectSeat, loadTeamSeatSummary } from "@/lib/company/projectSubscriptionLimits"
+import type { TeamSeatSummary } from "@/lib/company/subscriptionTypes"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
 import { PROJECT_ROLE_SLUG } from "@/lib/projects/catalogSlugs"
 import type { ProjectTeamRole, ProjectUserType } from "@/lib/projects/createProjectDraft"
@@ -31,6 +33,15 @@ export type ProjectTeamInvitation = {
 export type ProjectTeamData = {
   members: ProjectTeamMember[]
   pendingInvitations: ProjectTeamInvitation[]
+  seatSummary: TeamSeatSummary | null
+}
+
+export async function getProjectTeamSeatSummary(
+  projectId: string,
+): Promise<TeamSeatSummary | null> {
+  await requireAuthenticatedUser()
+  const supabase = await createClient()
+  return loadTeamSeatSummary(supabase, projectId)
 }
 
 export async function getProjectTeamData(projectId: string): Promise<ProjectTeamData> {
@@ -120,7 +131,9 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
       }
     })
 
-  return { members: teamMembers, pendingInvitations }
+  const seatSummary = await loadTeamSeatSummary(supabase, projectId)
+
+  return { members: teamMembers, pendingInvitations, seatSummary }
 }
 
 export async function addTeamMember(
@@ -145,6 +158,13 @@ export async function addTeamMember(
     catalog = await loadProjectCatalogIds(supabase)
   } catch {
     return { ok: false, error: "No se pudo cargar la configuración del proyecto." }
+  }
+
+  try {
+    const seatCheck = await assertCanAddProjectSeat(supabase, projectId, data.userType)
+    if (!seatCheck.ok) return seatCheck
+  } catch {
+    return { ok: false, error: "No se pudo validar los límites del plan." }
   }
 
   const { data: invitation, error } = await supabase
@@ -234,6 +254,15 @@ export async function updateTeamMember(
     catalog = await loadProjectCatalogIds(supabase)
   } catch {
     return { ok: false, error: "No se pudo cargar la configuración del proyecto." }
+  }
+
+  try {
+    const seatCheck = await assertCanAddProjectSeat(supabase, projectId, data.userType, {
+      excludeMemberId: memberId,
+    })
+    if (!seatCheck.ok) return seatCheck
+  } catch {
+    return { ok: false, error: "No se pudo validar los límites del plan." }
   }
 
   const { error } = await supabase

@@ -1,15 +1,12 @@
 "use server"
 
 import { getCompanyById, type CompanyData } from "@/lib/company/getCompanies"
-import {
-  buildHardcodedSubscriptions,
-  type HardcodedSubscription,
-} from "@/lib/company/subscriptionMocks"
-import { listUserProjects } from "@/lib/projects/listUserProjects"
+import { listCompanyProjectSubscriptions } from "@/lib/company/projectSubscriptions"
+import type { ProjectSubscriptionSummary } from "@/lib/company/subscriptionTypes"
 
 export type CompanySubscriptionsData = {
   company: CompanyData
-  subscriptions: HardcodedSubscription[]
+  subscriptions: ProjectSubscriptionSummary[]
 }
 
 export async function getCompanySubscriptionsData(
@@ -18,12 +15,10 @@ export async function getCompanySubscriptionsData(
   const company = await getCompanyById(companyId)
   if (!company) return null
 
-  const projects = (await listUserProjects()).filter(
-    (project) => project.company_id === companyId,
-  )
+  const subscriptions = await listCompanyProjectSubscriptions(companyId)
 
   return {
     company,
-    subscriptions: buildHardcodedSubscriptions(projects),
+    subscriptions,
   }
 }

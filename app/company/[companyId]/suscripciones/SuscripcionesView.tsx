@@ -1,13 +1,13 @@
 "use client"
 
 import { BackButton } from "@/components/ui/BackButton"
-import type { HardcodedSubscription } from "@/lib/company/subscriptionMocks"
+import type { ProjectSubscriptionSummary } from "@/lib/company/subscriptionTypes"
 
 type SuscripcionesViewProps = {
-  subscriptions: HardcodedSubscription[]
+  subscriptions: ProjectSubscriptionSummary[]
 }
 
-function SubscriptionCard({ subscription }: { subscription: HardcodedSubscription }) {
+function SubscriptionCard({ subscription }: { subscription: ProjectSubscriptionSummary }) {
   return (
     <article className="rounded-[16px] border border-[#edeef0] bg-white p-5 shadow-[0_0_5px_rgba(243,103,31,0.08)]">
       <div className="mb-5 flex flex-col gap-4 border-b border-[#edeef0] pb-5 sm:flex-row sm:items-start sm:justify-between">
