@@ -5,13 +5,13 @@ import { usePathname } from "next/navigation"
 import { type ReactNode, useState } from "react"
 import { ArrowLeftRight, ChevronDown } from "lucide-react"
 import { BuiltItIsoIcon } from "@/components/brand/BuiltItIsoIcon"
-import { useAuth } from "@/context/AuthContextSupabase"
 import { SHELL_COLORS, SHELL_LAYOUT } from "@/lib/project/designTokens"
 import { isProjectNavActive, PROJECT_NAV_ITEMS } from "@/lib/project/navigation"
 import { projectHref } from "@/lib/project/routes"
 import type { UserProjectListItem } from "@/lib/projects/types"
-import { userProfileFromEmail } from "@/lib/projects/mockProjects"
+import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
 import { cn } from "@/lib/utils"
+import { UserAvatar } from "@/components/user/UserAvatar"
 import { UserMenuDropdown } from "./UserMenuDropdown"
 
 // Figma node 1157:2701 — exact specs
@@ -34,12 +34,11 @@ import { UserMenuDropdown } from "./UserMenuDropdown"
 
 type ProjectSidebarProps = {
   project: UserProjectListItem
+  userProfile: SidebarUserProfile
 }
 
-export function ProjectSidebar({ project }: ProjectSidebarProps) {
+export function ProjectSidebar({ project, userProfile }: ProjectSidebarProps) {
   const pathname = usePathname()
-  const { user } = useAuth()
-  const profile = userProfileFromEmail(user?.email)
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
@@ -171,7 +170,13 @@ export function ProjectSidebar({ project }: ProjectSidebarProps) {
         className="relative shrink-0 border-t"
         style={{ padding: "17px 12px 16px", borderColor: "#dadada" }}
       >
-        {menuOpen && <UserMenuDropdown onClose={() => setMenuOpen(false)} projectId={project.projectId} />}
+        {menuOpen && (
+          <UserMenuDropdown
+            onClose={() => setMenuOpen(false)}
+            projectId={project.projectId}
+            userProfile={userProfile}
+          />
+        )}
 
         {/* User card: bg=#f9f9fb, radius=10, padding=12, gap=12 */}
         <div
@@ -183,20 +188,13 @@ export function ProjectSidebar({ project }: ProjectSidebarProps) {
             gap: "12px",
           }}
         >
-          {/* Avatar: 31x31 orange circle with initials */}
-          <div
-            className="flex shrink-0 items-center justify-center rounded-full"
-            style={{
-              width: "31px",
-              height: "31px",
-              backgroundColor: "#ff7433",
-              color: "#ffffff",
-              fontSize: "12px",
-              fontWeight: 600,
-            }}
-          >
-            {profile.initials}
-          </div>
+          <UserAvatar
+            firstName={userProfile.firstName}
+            lastName={userProfile.lastName}
+            email={userProfile.email}
+            avatarUrl={userProfile.avatarUrl}
+            size="sidebar"
+          />
 
           {/* Name + role */}
           <div className="min-w-0 flex-1">
@@ -204,13 +202,13 @@ export function ProjectSidebar({ project }: ProjectSidebarProps) {
               className="truncate"
               style={{ fontSize: "14px", fontWeight: 600, lineHeight: "19.6px", color: "#000000" }}
             >
-              {profile.fullName}
+              {userProfile.fullName}
             </p>
             <p
               className="truncate"
               style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16.8px", color: "#000000" }}
             >
-              {profile.role}
+              {userProfile.roleLabel}
             </p>
           </div>
 
@@ -250,13 +248,14 @@ export function ProjectSidebar({ project }: ProjectSidebarProps) {
 
 type ProjectWorkspaceProps = {
   project: UserProjectListItem
+  userProfile: SidebarUserProfile
   children: ReactNode
 }
 
-export function ProjectWorkspace({ project, children }: ProjectWorkspaceProps) {
+export function ProjectWorkspace({ project, userProfile, children }: ProjectWorkspaceProps) {
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: SHELL_COLORS.mainBg }}>
-      <ProjectSidebar project={project} />
+      <ProjectSidebar project={project} userProfile={userProfile} />
       <div className="flex min-w-0 flex-1 flex-col">
         <main className="flex-1">
           <div

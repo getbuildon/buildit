@@ -5,8 +5,7 @@ import type {
   TrabajoDiarioUnit,
 } from "@/app/[projectId]/trabajo-diario/actions"
 import {
-  formatUnitSequenceNumber,
-  getUnitSequenceLabel,
+  getUnitDisplayCode,
 } from "@/lib/projects/floorLabels"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
 
@@ -168,8 +167,11 @@ export function getTasksForRubroAndUnits(
     .sort((a, b) => a.sortOrder - b.sortOrder)
 }
 
-export function getUnitDisplayLabel(_floorName: string, unitIndex: number): string {
-  return getUnitSequenceLabel(unitIndex)
+export function getUnitDisplayLabel(
+  unit: { id: string; code?: string | null; name?: string | null },
+  unitIndex?: number,
+): string {
+  return getUnitDisplayCode(unit, unitIndex)
 }
 
 export type CargarAvanceTaskStatus = "pending" | "in_progress" | "completed" | "blocked"
@@ -250,12 +252,13 @@ export function mapTaskStatusToDb(taskStatus: CargarAvanceTaskStatus): {
 
 export function getUnitDisplayTitle(
   unit: TrabajoDiarioUnit,
-  floorName: string,
-  unitIndex: number,
+  floor: { name: string; identifier?: string | null },
+  unitIndex?: number,
 ): string {
-  const sequence = formatUnitSequenceNumber(unitIndex)
-  const details = unit.name?.trim() || unit.code.trim()
-  return details
-    ? `${floorName} — Unidad ${sequence} — ${details}`
-    : `${floorName} — Unidad ${sequence}`
+  const unitCode = getUnitDisplayCode(unit, unitIndex)
+  const typeDetails = unit.name?.trim()
+  if (typeDetails) {
+    return `${floor.name} — ${unitCode} — ${typeDetails}`
+  }
+  return `${floor.name} — ${unitCode}`
 }

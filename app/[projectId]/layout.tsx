@@ -3,6 +3,8 @@ import type { ReactNode } from "react"
 import { ProjectWorkspace } from "@/components/project-shell/ProjectWorkspace"
 import { assertProjectRoute } from "@/lib/project/assertProjectRoute"
 import { getProjectById } from "@/lib/projects/listUserProjects"
+import { getProfileData } from "@/app/[projectId]/perfil/actions"
+import { toSidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
 
 type ProjectLayoutProps = {
   children: ReactNode
@@ -18,5 +20,12 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
     notFound()
   }
 
-  return <ProjectWorkspace project={project}>{children}</ProjectWorkspace>
+  const profileData = await getProfileData(projectId)
+  const userProfile = toSidebarUserProfile(profileData)
+
+  return (
+    <ProjectWorkspace project={project} userProfile={userProfile}>
+      {children}
+    </ProjectWorkspace>
+  )
 }

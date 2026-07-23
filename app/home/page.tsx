@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { AddProjectCard } from "@/components/projects/AddProjectCard"
 import { ProjectCard } from "@/components/projects/ProjectCard"
-import { CompanySelector } from "@/components/company/CompanySelector"
+import { CompanyHomeButton } from "@/components/company/CompanyHomeButton"
 import { UserMenu } from "@/components/user/UserMenu"
 import { useAuth } from "@/context/AuthContextSupabase"
 import withAuth from "@/hoc/withAuth"
@@ -13,6 +13,7 @@ import {
   HOME_GRADIENT,
   HOME_TYPE,
 } from "@/lib/home/designTokens"
+import { getProfileData } from "@/app/[projectId]/perfil/actions"
 import { listUserProjects } from "@/lib/projects/listUserProjects"
 import { getProfileName } from "@/lib/projects/getProfileName"
 import { getUserCompanies } from "@/lib/company/getCompanies"
@@ -26,15 +27,24 @@ function HomePage() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
   const [projects, setProjects] = useState<UserProjectListItem[]>([])
   const [displayName, setDisplayName] = useState("")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadData = async () => {
-      const [profileName, companiesData] = await Promise.all([
+      const [profileName, companiesData, profileData] = await Promise.all([
         getProfileName(),
         getUserCompanies(),
+        getProfileData(),
       ])
       setDisplayName(profileName || displayNameFromEmail(user?.email) || "")
+      if (profileData) {
+        setFirstName(profileData.first_name)
+        setLastName(profileData.last_name)
+        setAvatarUrl(profileData.avatar_url)
+      }
       setCompanies(companiesData)
 
       if (companiesData.length > 0) {
@@ -76,7 +86,13 @@ function HomePage() {
         style={{ backgroundImage: HOME_GRADIENT }}
       >
         <div className="absolute top-6 right-6">
-          <UserMenu displayName={displayName} />
+          <UserMenu
+            displayName={displayName}
+            firstName={firstName}
+            lastName={lastName}
+            email={user?.email}
+            avatarUrl={avatarUrl}
+          />
         </div>
 
         <div className="flex w-full max-w-4xl flex-col items-center text-center">
@@ -113,8 +129,19 @@ function HomePage() {
       style={{ backgroundImage: HOME_GRADIENT }}
     >
       <div className="absolute top-6 right-6 flex items-center gap-3">
-        <CompanySelector currentCompanyId={selectedCompanyId || ""} />
-        <UserMenu displayName={displayName} />
+        {selectedCompanyId ? (
+          <CompanyHomeButton
+            companyId={selectedCompanyId}
+            companyName={companies.find((c) => c.id === selectedCompanyId)?.name ?? "Mi empresa"}
+          />
+        ) : null}
+        <UserMenu
+          displayName={displayName}
+          firstName={firstName}
+          lastName={lastName}
+          email={user?.email}
+          avatarUrl={avatarUrl}
+        />
       </div>
 
       <div className="flex w-full max-w-4xl flex-col items-center">

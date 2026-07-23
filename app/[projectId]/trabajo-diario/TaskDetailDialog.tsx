@@ -29,7 +29,7 @@ import {
   type CargarAvanceTaskStatus,
 } from "@/lib/projects/cargarAvance"
 import { buildAttachmentsForSingleEntry } from "@/lib/progress/linkProgressPhotos.client"
-import { getFloorShortLabel } from "@/lib/projects/floorLabels"
+import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
 import { cn } from "@/lib/utils"
 import {
   getTrabajoDiarioTaskDetail,
@@ -433,7 +433,7 @@ export function TaskDetailDialog({
   }
 
   const subtitle = detail
-    ? `${getFloorShortLabel(detail.floorName)} • Unidad ${detail.unitLabel} • ${detail.formattedLongDate}`
+    ? `${getFloorDisplayLabel({ name: detail.floorName, identifier: detail.floorIdentifier })} • ${detail.unitLabel} • ${detail.formattedLongDate}`
     : ""
 
   const openPhotoGallery = (

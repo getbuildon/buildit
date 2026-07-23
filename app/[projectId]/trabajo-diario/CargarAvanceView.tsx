@@ -15,7 +15,7 @@ import {
   type CargarAvanceTaskDraft,
 } from "@/lib/projects/cargarAvance"
 import { buildAttachmentsForTaskPhotos } from "@/lib/progress/linkProgressPhotos.client"
-import { getFloorShortLabel } from "@/lib/projects/floorLabels"
+import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -167,9 +167,10 @@ export function CargarAvanceView({
     if (!selectedFloor) return []
 
     return selectedUnitIds.map((unitId) => {
+      const unit = selectedFloor.units.find((item) => item.id === unitId)
+      if (!unit) return unitId.slice(0, 8)
       const index = selectedFloor.units.findIndex((item) => item.id === unitId)
-      if (index === -1) return unitId.slice(0, 8)
-      return getUnitDisplayLabel(selectedFloor.name, index + 1)
+      return getUnitDisplayLabel(unit, index >= 0 ? index + 1 : undefined)
     })
   }, [selectedFloor, selectedUnitIds])
 
@@ -435,7 +436,7 @@ export function CargarAvanceView({
               {floors.map((floor) => (
                 <SelectionPill
                   key={floor.id}
-                  label={getFloorShortLabel(floor.name)}
+                  label={getFloorDisplayLabel(floor)}
                   title={floor.name}
                   selected={selectedFloorId === floor.id}
                   onClick={() => onSelectFloor(floor.id)}
@@ -460,8 +461,8 @@ export function CargarAvanceView({
                 {floorUnits.map((unit, index) => (
                   <SelectionPill
                     key={unit.id}
-                    label={getUnitDisplayLabel(selectedFloor.name, index + 1)}
-                    title={getUnitDisplayTitle(unit, selectedFloor.name, index + 1)}
+                    label={getUnitDisplayLabel(unit, index + 1)}
+                    title={getUnitDisplayTitle(unit, selectedFloor, index + 1)}
                     selected={selectedUnitIds.includes(unit.id)}
                     onClick={() => toggleUnit(unit.id)}
                   />

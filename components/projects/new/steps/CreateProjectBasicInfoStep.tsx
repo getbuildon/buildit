@@ -1,26 +1,38 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Building2, Calendar, Check, ChevronDown, MapPin, Plus } from "lucide-react"
+import { Building2, Check, ChevronDown, MapPin, Plus } from "lucide-react"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
+import { CreateProjectImageUpload } from "@/components/projects/new/CreateProjectImageUpload"
 import {
   CreateProjectFormField,
+  createProjectDatePickerClassName,
   createProjectInputClassName,
   createProjectInputStyle,
 } from "@/components/projects/new/CreateProjectFormField"
 import {
-  CREATE_PROJECT_COLORS,
-} from "@/lib/projects/createProjectTokens"
-import type { CreateProjectDraft } from "@/lib/projects/createProjectDraft"
+  formatDraftDateString,
+  parseDraftDateString,
+  type CreateProjectDraft,
+} from "@/lib/projects/createProjectDraft"
+import type { ProjectCoverImageDraft } from "@/lib/projects/projectCoverPhoto.client"
 import { getUserCompanies, type CompanyData } from "@/lib/company/getCompanies"
 import { cn } from "@/lib/utils"
 
 type Props = {
   draft: CreateProjectDraft
   onChange: (patch: Partial<CreateProjectDraft>) => void
+  coverImage: ProjectCoverImageDraft | null
+  onCoverImageChange: (value: ProjectCoverImageDraft | null) => void
 }
 
-export function CreateProjectBasicInfoStep({ draft, onChange }: Props) {
+export function CreateProjectBasicInfoStep({
+  draft,
+  onChange,
+  coverImage,
+  onCoverImageChange,
+}: Props) {
   const [companies, setCompanies] = useState<CompanyData[]>([])
   const [loadingCompanies, setLoadingCompanies] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -39,6 +51,9 @@ export function CreateProjectBasicInfoStep({ draft, onChange }: Props) {
   const selectedCompany = draft.companyId
     ? companies.find((c) => c.id === draft.companyId)
     : null
+
+  const startDate = parseDraftDateString(draft.startDate)
+  const endDate = parseDraftDateString(draft.endDate)
 
   const displayLabel = selectedCompany
     ? selectedCompany.name
@@ -60,7 +75,6 @@ export function CreateProjectBasicInfoStep({ draft, onChange }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Empresa */}
       <CreateProjectFormField label="Empresa" htmlFor="project-company">
         {!showNewCompanyInput ? (
           <div className="relative">
@@ -74,18 +88,18 @@ export function CreateProjectBasicInfoStep({ draft, onChange }: Props) {
               style={createProjectInputStyle}
             >
               <span className="flex items-center gap-2 truncate">
-                <Building2 className="size-4 shrink-0 text-[#90a1b9]" />
-                <span className={selectedCompany ? "text-[#0a0a0a]" : "text-[#777b84]"}>
+                <Building2 className="size-4 shrink-0 text-[#777b84]" />
+                <span className={selectedCompany ? "text-[#18191b]" : "text-[#777b84]"}>
                   {loadingCompanies ? "Cargando..." : displayLabel}
                 </span>
               </span>
               <ChevronDown
-                className={cn("size-4 shrink-0 text-[#90a1b9] transition-transform", dropdownOpen && "rotate-180")}
+                className={cn("size-4 shrink-0 text-[#777b84] transition-transform", dropdownOpen && "rotate-180")}
               />
             </button>
 
             {dropdownOpen && (
-              <div className="absolute top-full left-0 z-50 mt-1 w-full overflow-hidden rounded-[10px] border border-[#e2e8f0] bg-white shadow-lg">
+              <div className="absolute top-full left-0 z-50 mt-1 w-full overflow-hidden rounded-[10px] border border-[#edeef0] bg-white shadow-lg">
                 {companies.map((company) => (
                   <button
                     key={company.id}
@@ -93,8 +107,8 @@ export function CreateProjectBasicInfoStep({ draft, onChange }: Props) {
                     onClick={() => handleSelectCompany(company)}
                     className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-[14px] hover:bg-[#f9f9fb]"
                   >
-                    <Building2 className="size-4 shrink-0 text-[#90a1b9]" />
-                    <span className="flex-1 truncate text-[#0a0a0a]">{company.name}</span>
+                    <Building2 className="size-4 shrink-0 text-[#777b84]" />
+                    <span className="flex-1 truncate text-[#18191b]">{company.name}</span>
                     {draft.companyId === company.id && (
                       <Check className="size-4 shrink-0 text-[#ff7433]" />
                     )}
@@ -117,7 +131,7 @@ export function CreateProjectBasicInfoStep({ draft, onChange }: Props) {
           <div className="flex flex-col gap-2">
             <div className="relative">
               <Building2
-                className="pointer-events-none absolute top-[13px] left-3 size-4 text-[#90a1b9]"
+                className="pointer-events-none absolute top-[13px] left-3 size-4 text-[#777b84]"
                 aria-hidden
               />
               <Input
@@ -146,23 +160,36 @@ export function CreateProjectBasicInfoStep({ draft, onChange }: Props) {
         )}
       </CreateProjectFormField>
 
-      {/* Nombre del Proyecto */}
-      <CreateProjectFormField label="Nombre del Proyecto" htmlFor="project-name">
-        <Input
-          id="project-name"
-          name="project-name"
-          placeholder="Ej: Edificio Las Palmas"
-          value={draft.projectName}
-          onChange={(e) => onChange({ projectName: e.target.value })}
-          className={createProjectInputClassName}
-          style={createProjectInputStyle}
-        />
-      </CreateProjectFormField>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <CreateProjectFormField label="Nombre del proyecto" htmlFor="project-name">
+          <Input
+            id="project-name"
+            name="project-name"
+            placeholder="Ej: Edificio Las Palmas"
+            value={draft.projectName}
+            onChange={(e) => onChange({ projectName: e.target.value })}
+            className={createProjectInputClassName}
+            style={createProjectInputStyle}
+          />
+        </CreateProjectFormField>
+
+        <CreateProjectFormField label="Superficie total" htmlFor="project-total-surface">
+          <Input
+            id="project-total-surface"
+            name="project-total-surface"
+            placeholder="Ej: 2.000 m2"
+            value={draft.totalSurface}
+            onChange={(e) => onChange({ totalSurface: e.target.value })}
+            className={createProjectInputClassName}
+            style={createProjectInputStyle}
+          />
+        </CreateProjectFormField>
+      </div>
 
       <CreateProjectFormField label="Ubicación" htmlFor="project-location">
         <div className="relative">
           <MapPin
-            className="pointer-events-none absolute top-[13px] left-3 size-4 text-[#90a1b9]"
+            className="pointer-events-none absolute top-[13px] left-3 size-4 text-[#777b84]"
             aria-hidden
           />
           <Input
@@ -179,41 +206,47 @@ export function CreateProjectBasicInfoStep({ draft, onChange }: Props) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <CreateProjectFormField label="Fecha de Inicio" htmlFor="project-start">
-          <div className="relative">
-            <Calendar
-              className="pointer-events-none absolute top-[13px] left-3 size-4 text-[#90a1b9]"
-              aria-hidden
-            />
-            <Input
-              id="project-start"
-              name="project-start"
-              type="date"
-              value={draft.startDate}
-              onChange={(e) => onChange({ startDate: e.target.value })}
-              className={cn(createProjectInputClassName, "pl-10")}
-              style={createProjectInputStyle}
-            />
-          </div>
+          <DatePicker
+            id="project-start"
+            value={startDate}
+            onChange={(date) => {
+              const nextStartDate = formatDraftDateString(date)
+              const patch: Partial<CreateProjectDraft> = { startDate: nextStartDate }
+
+              if (date && endDate && date > endDate) {
+                patch.endDate = nextStartDate
+              }
+
+              onChange(patch)
+            }}
+            toDate={endDate}
+            placeholder="Seleccionar fecha"
+            className={createProjectDatePickerClassName}
+          />
         </CreateProjectFormField>
 
-        <CreateProjectFormField label="Fecha de Finalización Estimada" htmlFor="project-end">
-          <div className="relative">
-            <Calendar
-              className="pointer-events-none absolute top-[13px] left-3 size-4 text-[#90a1b9]"
-              aria-hidden
-            />
-            <Input
-              id="project-end"
-              name="project-end"
-              type="date"
-              value={draft.endDate}
-              onChange={(e) => onChange({ endDate: e.target.value })}
-              className={cn(createProjectInputClassName, "pl-10")}
-              style={createProjectInputStyle}
-            />
-          </div>
+        <CreateProjectFormField label="Fecha de finalización estimada" htmlFor="project-end">
+          <DatePicker
+            id="project-end"
+            value={endDate}
+            onChange={(date) => {
+              const nextEndDate = formatDraftDateString(date)
+              const patch: Partial<CreateProjectDraft> = { endDate: nextEndDate }
+
+              if (date && startDate && date < startDate) {
+                patch.startDate = nextEndDate
+              }
+
+              onChange(patch)
+            }}
+            fromDate={startDate}
+            placeholder="Seleccionar fecha"
+            className={createProjectDatePickerClassName}
+          />
         </CreateProjectFormField>
       </div>
+
+      <CreateProjectImageUpload value={coverImage} onChange={onCoverImageChange} />
     </div>
   )
 }

@@ -25,6 +25,7 @@ export type ProjectBasics = {
   location: string
   startDate: string
   endDate: string
+  totalSurface: string
   companyId: string | null
   companyName: string | null
 }
@@ -35,13 +36,19 @@ export type UpdateProjectBasicsInput = {
   location: string
   startDate: string
   endDate: string
+  totalSurface: string
 }
 
 export type UpdateProjectBasicsResult = { ok: true } | { ok: false; error: string }
 
+export type SaveProjectStructureResult =
+  | { ok: true; unitIdByDraftId: Record<string, string> }
+  | { ok: false; error: string }
+
 export type FloorData = {
   id: string
   name: string
+  identifier?: string | null
   level: string | null
   sort_order: number
 }
@@ -54,6 +61,8 @@ export type UnitData = {
   unit_type: string | null
   rooms: number | null
   area_m2: number | null
+  plan_url: string | null
+  render_url: string | null
   sort_order: number
 }
 
@@ -94,6 +103,7 @@ export type DashboardUnit = {
 export type DashboardFloor = {
   id: string
   name: string
+  identifier: string | null
   progress: number
   units: DashboardUnit[]
 }
@@ -122,7 +132,7 @@ export async function getDashboardData(
     await Promise.all([
       supabase
         .from("project_floors")
-        .select("id, name, sort_order")
+        .select("id, name, identifier, sort_order")
         .eq("project_id", id)
         .order("sort_order", { ascending: true }),
       supabase
@@ -206,7 +216,13 @@ export async function getDashboardData(
         ? Math.round(floorUnits.reduce((sum, unit) => sum + unit.progress, 0) / floorUnits.length)
         : 0
 
-    return { id: floor.id, name: floor.name, progress: floorProgress, units: floorUnits }
+    return {
+      id: floor.id,
+      name: floor.name,
+      identifier: floor.identifier ?? null,
+      progress: floorProgress,
+      units: floorUnits,
+    }
   })
 
   const allUnits = dashboardFloors.flatMap((floor) => floor.units)
@@ -300,6 +316,26 @@ function normalizeOptional(value: string): string | null {
   return value.trim() || null
 }
 
+function formatTotalSurfaceM2(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return ""
+  return String(value)
+}
+
+function parseOptionalNumber(value: string): number | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  let cleaned = trimmed.replace(/\s*m2\s*$/i, "").trim()
+  if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
+    cleaned = cleaned.replace(/\./g, "")
+  } else {
+    cleaned = cleaned.replace(",", ".")
+  }
+
+  const parsed = Number(cleaned)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 export async function getProjectBasics(projectId: string): Promise<ProjectBasics | null> {
   const id = projectId.trim()
   if (!id) return null
@@ -310,7 +346,7 @@ export async function getProjectBasics(projectId: string): Promise<ProjectBasics
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("projects")
-    .select("id, name, location, start_date, end_date, company_id, companies(name)")
+    .select("id, name, location, start_date, end_date, total_surface_m2, company_id, companies(name)")
     .eq("id", id)
     .maybeSingle()
 
@@ -329,6 +365,7 @@ export async function getProjectBasics(projectId: string): Promise<ProjectBasics
     location: data.location ?? "",
     startDate: data.start_date ?? "",
     endDate: data.end_date ?? "",
+    totalSurface: formatTotalSurfaceM2(data.total_surface_m2),
     companyId: data.company_id ?? null,
     companyName,
   }
@@ -357,6 +394,7 @@ export async function updateProjectBasics(
       location: normalizeOptional(input.location),
       start_date: normalizeOptional(input.startDate),
       end_date: normalizeOptional(input.endDate),
+      total_surface_m2: parseOptionalNumber(input.totalSurface),
     })
     .eq("id", id)
 
@@ -375,7 +413,7 @@ export async function getProjectStructure(projectId: string): Promise<FloorData[
   const supabase = await createClient()
   const { data: floors, error } = await supabase
     .from("project_floors")
-    .select("id, name, level, sort_order")
+    .select("id, name, identifier, level, sort_order")
     .eq("project_id", id)
     .order("sort_order", { ascending: true })
 
@@ -390,7 +428,7 @@ export async function getProjectUnits(projectId: string): Promise<UnitData[]> {
   const supabase = await createClient()
   const { data: units, error } = await supabase
     .from("project_units")
-    .select("id, floor_id, code, name, unit_type, room_count, square_meters, sort_order")
+    .select("id, floor_id, code, name, unit_type, room_count, square_meters, plan_url, render_url, sort_order")
     .eq("project_id", id)
     .order("sort_order", { ascending: true })
 
@@ -403,6 +441,8 @@ export async function getProjectUnits(projectId: string): Promise<UnitData[]> {
     unit_type: u.unit_type,
     rooms: u.room_count,
     area_m2: u.square_meters,
+    plan_url: u.plan_url ?? null,
+    render_url: u.render_url ?? null,
     sort_order: u.sort_order,
   }))
 }
@@ -456,7 +496,7 @@ export async function getProjectRubroGroups(projectId: string): Promise<RubroGro
 export async function saveProjectStructure(
   projectId: string,
   floors: StructureFloorSaveInput[],
-): Promise<UpdateProjectBasicsResult> {
+): Promise<SaveProjectStructureResult> {
   const id = projectId.trim()
   if (!id) return { ok: false, error: "Proyecto inválido." }
 
@@ -467,7 +507,7 @@ export async function saveProjectStructure(
   if (!result.ok) return result
 
   revalidatePath(`/${id}/configuracion`)
-  return { ok: true }
+  return { ok: true, unitIdByDraftId: result.unitIdByDraftId }
 }
 
 export async function saveProjectRubros(

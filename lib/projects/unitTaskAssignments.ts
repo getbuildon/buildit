@@ -142,16 +142,20 @@ export function remapUnitTaskExclusions(
 type FloorData = {
   id: string
   name: string
+  identifier?: string | null
   level: string | null
 }
 
 type UnitData = {
   id: string
   floor_id: string
+  code?: string | null
   unit_type: string | null
   name: string | null
   area_m2: number | null
   rooms: number | null
+  plan_url?: string | null
+  render_url?: string | null
 }
 
 type RubroGroupData = {
@@ -183,6 +187,7 @@ export function buildConfigDraftFromProjectData(input: {
       ? input.floors.map((floor) => ({
           id: floor.id,
           name: floor.name,
+          identifier: floor.identifier || "",
           level: floor.level || "",
           units: input.units
             .filter((unit) => unit.floor_id === floor.id)
@@ -194,10 +199,17 @@ export function buildConfigDraftFromProjectData(input: {
 
                 return {
                   id: unit.id,
+                  code: unit.code || "",
                   type: normalizedType,
                   squareMeters: unit.area_m2?.toString() || "",
                   roomCount: variants.roomCount,
                   officeSize: variants.officeSize,
+                  planUrl: unit.plan_url ?? null,
+                  planImage: null,
+                  planRemoved: false,
+                  renderUrl: unit.render_url ?? null,
+                  renderImage: null,
+                  renderRemoved: false,
                 }
               },
             ),

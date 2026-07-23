@@ -67,6 +67,11 @@ export const PROJECT_ICON_GRADIENT =
 export const PROJECT_ICON_SHADOW =
   "0px 10px 7.5px rgba(0, 0, 0, 0.1), 0px 4px 3px rgba(0, 0, 0, 0.1)"
 
+/** Figma node 1423:3533 — ancho Fill del formulario/lista de clientes (~1022px). */
+export const CLIENTES_LAYOUT = {
+  contentMaxWidth: "1022px",
+} as const
+
 /** Figma node 1228:12933 — sidebar nav link selected (black pill 229x40, r12) */
 export const SIDEBAR_NAV_ACTIVE_LINK_STYLE = {
   height: "40px",

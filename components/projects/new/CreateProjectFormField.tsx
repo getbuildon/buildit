@@ -50,6 +50,11 @@ export const createProjectInputStyle = {
   height: CREATE_PROJECT_LAYOUT.inputHeight,
 } as const
 
+export const createProjectDatePickerClassName = cn(
+  createProjectInputClassName,
+  "h-[46px] px-3",
+)
+
 export const createProjectCompactInputClassName = cn(
   CREATE_PROJECT_TYPE.fieldInput,
   "h-10 w-full min-w-0 rounded-[10px] border px-3 text-[14px] shadow-none",

@@ -15,6 +15,7 @@ export type ProjectTeamMember = {
   email: string
   roleLabel: string
   userTypeLabel: string | null
+  avatarUrl: string | null
   isYou: boolean
 }
 
@@ -69,8 +70,8 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
 
   const [profilesRes, rolesRes, userTypesRes] = await Promise.all([
     userIds.length > 0
-      ? admin.from("profiles").select("id, first_name, last_name, email").in("id", userIds)
-      : Promise.resolve({ data: [] as { id: string; first_name: string; last_name: string; email: string }[] }),
+      ? admin.from("profiles").select("id, first_name, last_name, email, avatar_url").in("id", userIds)
+      : Promise.resolve({ data: [] as { id: string; first_name: string; last_name: string; email: string; avatar_url: string | null }[] }),
     allRoleIds.length > 0
       ? admin.from("project_roles").select("id, slug, label, badge").in("id", allRoleIds)
       : Promise.resolve({ data: [] as { id: string; slug: string; label: string; badge: string }[] }),
@@ -99,6 +100,7 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
         email: profile?.email ?? "",
         roleLabel: role?.label ?? "",
         userTypeLabel: userType?.label ?? null,
+        avatarUrl: profile?.avatar_url ?? null,
         isYou: m.user_id === user.id,
       }
     })

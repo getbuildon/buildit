@@ -68,6 +68,7 @@ export type TrabajoDiarioTaskDetail = {
   taskName: string
   rubroName: string
   floorName: string
+  floorIdentifier: string | null
   unitLabel: string
   occurredAt: string
   formattedLongDate: string
@@ -104,13 +105,14 @@ export type TrabajoDiarioTask = {
 
 export type TrabajoDiarioUnit = {
   id: string
-  code: string
+  code: string | null
   name: string | null
 }
 
 export type TrabajoDiarioFloor = {
   id: string
   name: string
+  identifier: string | null
   level: string | null
   units: TrabajoDiarioUnit[]
 }
@@ -249,7 +251,7 @@ export async function getTrabajoDiarioData(
     await Promise.all([
     supabase
       .from("project_floors")
-      .select("id, name, level, sort_order")
+      .select("id, name, identifier, level, sort_order")
       .eq("project_id", id)
       .order("sort_order", { ascending: true }),
     supabase
@@ -309,6 +311,7 @@ export async function getTrabajoDiarioData(
   const trabajoFloors: TrabajoDiarioFloor[] = floors.map((floor) => ({
     id: floor.id,
     name: floor.name,
+    identifier: floor.identifier ?? null,
     level: floor.level,
     units: units
       .filter((unit) => unit.floor_id === floor.id)
@@ -633,7 +636,7 @@ export async function getTrabajoDiarioTaskDetail(
       created_by,
       rubros:category_id (name),
       rubro_tasks:task_id (name),
-      project_floors:floor_id (name),
+      project_floors:floor_id (name, identifier),
       project_units:unit_id (id)
     `)
     .eq("project_id", id)
@@ -648,7 +651,7 @@ export async function getTrabajoDiarioTaskDetail(
   if (floorId) {
     const { data: floorUnits } = await supabase
       .from("project_units")
-      .select("id")
+      .select("id, code")
       .eq("project_id", id)
       .eq("floor_id", floorId)
       .order("sort_order", { ascending: true })
@@ -698,11 +701,16 @@ export async function getTrabajoDiarioTaskDetail(
 
   const rubro = entry.rubros as { name: string } | { name: string }[] | null
   const task = entry.rubro_tasks as { name: string } | { name: string }[] | null
-  const floor = entry.project_floors as { name: string } | { name: string }[] | null
+  const floor = entry.project_floors as
+    | { name: string; identifier?: string | null }
+    | Array<{ name: string; identifier?: string | null }>
+    | null
 
   const rubroName = Array.isArray(rubro) ? rubro[0]?.name : rubro?.name
   const taskName = Array.isArray(task) ? task[0]?.name : task?.name
-  const floorName = Array.isArray(floor) ? floor[0]?.name : floor?.name
+  const floorRow = Array.isArray(floor) ? floor[0] : floor
+  const floorName = floorRow?.name
+  const floorIdentifier = floorRow?.identifier ?? null
 
   const occurredAt = entry.submitted_at ?? entry.created_at
 
@@ -725,6 +733,7 @@ export async function getTrabajoDiarioTaskDetail(
     taskName: taskName ?? "Tarea",
     rubroName: rubroName ?? "Rubro",
     floorName: floorName ?? "—",
+    floorIdentifier,
     unitLabel,
     occurredAt,
     formattedLongDate: formatEntryLongDate(occurredAt),

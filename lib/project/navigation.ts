@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react"
 import {
   LayoutDashboard,
   FileCheck2,
+  BadgeCheck,
   Users,
   UserCircle2,
   Settings,
@@ -16,6 +17,7 @@ export type ProjectNavItem = {
 export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
   { label: "Dashboard", segment: "", icon: LayoutDashboard },
   { label: "Trabajo Diario", segment: "trabajo-diario", icon: FileCheck2 },
+  { label: "Certificaciones", segment: "certificaciones", icon: BadgeCheck },
   { label: "Equipo", segment: "equipo", icon: Users },
   { label: "Clientes", segment: "clientes", icon: UserCircle2 },
   { label: "Configuración", segment: "configuracion", icon: Settings },

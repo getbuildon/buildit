@@ -1,16 +1,22 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ChevronDown, Plus, Trash2, UserPlus } from "lucide-react"
+import { Plus, Trash2, UserPlus, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { UserAvatar } from "@/components/user/UserAvatar"
 import { getCompanyProjectMembers } from "@/app/projects/new/actions"
 import {
-  availableMemberInitials,
   createTeamMemberDraft,
   getTeamRoleDisplay,
   teamMemberFullName,
-  teamMemberInitials,
   PROJECT_USER_TYPES,
   USER_TYPE_ROLES,
   type AvailableTeamMember,
@@ -32,49 +38,41 @@ const teamInputClassName =
   "h-[44px] w-full rounded-[10px] border bg-white px-3 text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:ring-0"
 const teamInputStyle = { borderColor: "#edeef0" } as const
 
-const teamSelectClassName =
-  "h-[44px] w-full appearance-none rounded-[10px] border bg-white px-3 pr-8 text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none outline-none focus:border-[#ff7433] focus:outline-none focus-visible:border-[#ff7433] focus-visible:outline-none focus-visible:ring-0"
-const teamSelectStyle = { borderColor: "#e2e8f0" } as const
+const teamSelectTriggerClassName =
+  "h-[44px] rounded-[10px] border-[#e2e8f0] bg-white text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none focus:border-[#ff7433] focus:ring-0 data-[placeholder]:text-[#777b84]"
 
 function TeamSelect({
   id,
   value,
   placeholder,
   options,
+  disabled,
   onChange,
 }: {
   id: string
   value: string
   placeholder: string
   options: readonly string[]
+  disabled?: boolean
   onChange: (value: string) => void
 }) {
   return (
-    <div className="relative">
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={teamSelectClassName}
-        style={{
-          ...teamSelectStyle,
-          color: value ? "#0a0a0a" : "#777b84",
-        }}
-      >
-        <option value="" disabled>
-          {placeholder}
-        </option>
+    <Select
+      value={value || undefined}
+      onValueChange={onChange}
+      disabled={disabled}
+    >
+      <SelectTrigger id={id} aria-label={placeholder} className={teamSelectTriggerClassName}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent position="popper">
         {options.map((option) => (
-          <option key={option} value={option} style={{ color: "#0a0a0a" }}>
+          <SelectItem key={option} value={option}>
             {option}
-          </option>
+          </SelectItem>
         ))}
-      </select>
-      <ChevronDown
-        className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#90a1b9]"
-        aria-hidden
-      />
-    </div>
+      </SelectContent>
+    </Select>
   )
 }
 
@@ -156,6 +154,7 @@ export function CreateProjectTeamStep({
         member.email,
         member.userType,
         member.role,
+        member.avatarUrl,
       ),
     ])
   }
@@ -228,6 +227,7 @@ export function CreateProjectTeamStep({
               value={role}
               placeholder="Rol"
               options={userType ? USER_TYPE_ROLES[userType] : []}
+              disabled={!userType}
               onChange={(value) => {
                 setRole(value as ProjectTeamRole)
                 if (formError) setFormError("")
@@ -296,12 +296,15 @@ export function CreateProjectTeamStep({
                 }}
               >
                 <div className="flex items-center gap-2">
-                  <span
-                    className="flex size-8 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold leading-4"
-                    style={{ backgroundColor: "#ffeae0", color: "#f3671f" }}
-                  >
-                    {availableMemberInitials(member)}
-                  </span>
+                  <UserAvatar
+                    firstName={member.firstName}
+                    lastName={member.lastName}
+                    email={member.email}
+                    avatarUrl={member.avatarUrl}
+                    size="sm"
+                    bgClassName="bg-[#ffeae0]"
+                    textClassName="text-[12px] font-semibold text-[#f3671f]"
+                  />
                   <div className="min-w-0 flex-1">
                     <p
                       className="truncate text-[12px] font-medium leading-4"
@@ -333,18 +336,21 @@ export function CreateProjectTeamStep({
         </section>
       ) : null}
 
-      {/* Equipo asignado */}
+      {/* Equipo asignado — Figma 1127:4524 */}
       <section className="flex flex-col gap-3">
-        <h4 className="text-[14px] font-medium leading-5" style={{ color: "#43484e" }}>
+        <h4 className="text-[14px] font-medium leading-[1.4]" style={{ color: "#43484e" }}>
           Equipo asignado a este proyecto:
         </h4>
 
         {draft.teamMembers.length === 0 ? (
           <div
-            className="rounded-[10px] border px-4 py-6 text-center text-[14px] leading-5"
-            style={{ borderColor: "#ffeae0", backgroundColor: "#fff6f1", color: "#777b84" }}
+            className="flex h-[136px] flex-col items-center justify-center gap-2 rounded-[10px] border border-dashed bg-[#fefcfb]"
+            style={{ borderColor: "#edeef0" }}
           >
-            No hay miembros asignados aún.
+            <Users className="size-10 shrink-0 text-[#777b84]" strokeWidth={1.5} aria-hidden />
+            <p className="text-[14px] font-normal leading-[1.4] text-[#777b84]">
+              No hay miembros asignados aún
+            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -356,12 +362,12 @@ export function CreateProjectTeamStep({
                   className="flex items-center gap-4 rounded-[10px] border px-3 py-3"
                   style={{ borderColor: "#ffeae0", backgroundColor: "#fff6f1" }}
                 >
-                  <span
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full text-[12px] font-normal leading-5 text-white"
-                    style={{ backgroundColor: "#ff7433" }}
-                  >
-                    {teamMemberInitials(member)}
-                  </span>
+                  <UserAvatar
+                    firstName={member.firstName}
+                    lastName={member.lastName}
+                    email={member.email}
+                    avatarUrl={member.avatarUrl}
+                  />
 
                   <div className="min-w-0 flex-1">
                     <p

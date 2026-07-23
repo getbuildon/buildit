@@ -3,25 +3,32 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronDown, LogOut, UserCircle } from "lucide-react"
+import { UserAvatar } from "@/components/user/UserAvatar"
 import { useAuth } from "@/context/AuthContextSupabase"
 
 type UserMenuProps = {
   displayName: string
+  firstName?: string
+  lastName?: string
+  email?: string | null
+  avatarUrl?: string | null
 }
 
-export function UserMenu({ displayName }: UserMenuProps) {
-  const { logOut } = useAuth()
+export function UserMenu({
+  displayName,
+  firstName = "",
+  lastName = "",
+  email,
+  avatarUrl,
+}: UserMenuProps) {
+  const { user, logOut } = useAuth()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  const initials = displayName
-    .split(" ")
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() || "U"
+  const resolvedEmail = email ?? user?.email ?? null
+  const resolvedFirstName = firstName || displayName.split(" ")[0] || ""
+  const resolvedLastName = lastName || displayName.split(" ").slice(1).join(" ")
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -66,24 +73,14 @@ export function UserMenu({ displayName }: UserMenuProps) {
           if (!isOpen) (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.08)"
         }}
       >
-        {/* Avatar */}
-        <div
-          style={{
-            width: "26px",
-            height: "26px",
-            borderRadius: "50%",
-            backgroundColor: "#ff7433",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "11px",
-            fontWeight: 600,
-            color: "#ffffff",
-            flexShrink: 0,
-          }}
-        >
-          {initials}
-        </div>
+        <UserAvatar
+          firstName={resolvedFirstName}
+          lastName={resolvedLastName}
+          email={resolvedEmail}
+          avatarUrl={avatarUrl}
+          size={26}
+          textClassName="text-[11px] font-semibold text-white"
+        />
         <span style={{ fontSize: "13px", fontWeight: 500, maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {displayName}
         </span>
@@ -117,23 +114,15 @@ export function UserMenu({ displayName }: UserMenuProps) {
         >
           {/* Header con nombre */}
           <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid #f1f3f5" }}>
-            <div
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "50%",
-                backgroundColor: "#ff7433",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "14px",
-                fontWeight: 600,
-                color: "#ffffff",
-                marginBottom: "8px",
-              }}
-            >
-              {initials}
-            </div>
+            <UserAvatar
+              firstName={resolvedFirstName}
+              lastName={resolvedLastName}
+              email={resolvedEmail}
+              avatarUrl={avatarUrl}
+              size={36}
+              textClassName="text-[14px] font-semibold text-white"
+              className="mb-2"
+            />
             <p style={{ fontSize: "13px", fontWeight: 600, color: "#1d293d", margin: 0, lineHeight: 1.3 }}>
               {displayName}
             </p>

@@ -21,13 +21,23 @@ type FlatRubro = {
   rubroNumber: number
 }
 
+function getNamedRubroTasks(rubro: RubroItemDraft) {
+  return rubro.tasks.filter((task) => task.name.trim())
+}
+
 function getFlatRubros(draft: CreateProjectDraft): FlatRubro[] {
   return draft.groups.flatMap((group, groupIndex) =>
-    group.rubros.map((rubro, rubroIndex) => ({
-      rubro,
-      groupNumber: groupIndex + 1,
-      rubroNumber: rubroIndex + 1,
-    })),
+    group.rubros.flatMap((rubro, rubroIndex) => {
+      if (getNamedRubroTasks(rubro).length === 0) return []
+
+      return [
+        {
+          rubro,
+          groupNumber: groupIndex + 1,
+          rubroNumber: rubroIndex + 1,
+        },
+      ]
+    }),
   )
 }
 
@@ -44,11 +54,12 @@ function getRubroCheckboxState(
   unitId: string,
   rubro: RubroItemDraft,
 ): CheckboxState {
-  if (rubro.tasks.length === 0) return "unchecked"
-  const includedCount = rubro.tasks.filter((t) =>
+  const tasks = getNamedRubroTasks(rubro)
+  if (tasks.length === 0) return "unchecked"
+  const includedCount = tasks.filter((t) =>
     isTaskIncluded(exclusions, unitId, t.id),
   ).length
-  if (includedCount === rubro.tasks.length) return "checked"
+  if (includedCount === tasks.length) return "checked"
   if (includedCount === 0) return "unchecked"
   return "indeterminate"
 }
@@ -81,7 +92,7 @@ function applyRubroToggle(
   include: boolean,
 ): Record<string, string[]> {
   let result = exclusions
-  for (const task of rubro.tasks) {
+  for (const task of getNamedRubroTasks(rubro)) {
     result = applyTaskToggle(result, unitId, task.id, include)
   }
   return result
@@ -284,41 +295,27 @@ export function CreateProjectUnitTasksStep({ draft, onChange }: Props) {
                                 >
                                   <ChevronDown
                                     className={cn(
-                                      "size-4 shrink-0 transition-transform duration-150",
-                                      rubro.tasks.length === 0 ? "text-[#afb3ba]" : "text-[#272a2d]",
+                                      "size-4 shrink-0 text-[#272a2d] transition-transform duration-150",
                                       !rubroExpanded && "-rotate-90",
                                     )}
                                   />
-                                  <span
-                                    className={cn(
-                                      "whitespace-nowrap text-[14px] font-medium leading-[1.4]",
-                                      rubro.tasks.length === 0
-                                        ? "text-[#afb3ba]"
-                                        : "text-[#272a2d]",
-                                    )}
-                                  >
+                                  <span className="whitespace-nowrap text-[14px] font-medium leading-[1.4] text-[#272a2d]">
                                     {rubroPrefix}. {rubro.name}
                                   </span>
                                 </button>
                                 <UnitCheckbox
                                   state={rubroState}
-                                  disabled={rubro.tasks.length === 0}
                                   onToggle={() =>
                                     handleRubroToggle(unit.id, rubro, rubroState)
                                   }
                                 />
                               </div>
 
-                              {/* Tasks */}
-                              {rubroExpanded && rubro.tasks.length === 0 && (
-                                <div className="border-b-2 border-white pl-16 pr-3 py-1">
-                                  <span className="text-[13px] leading-[1.4] text-[#777b84]">
-                                    Sin tareas — agregá en el paso anterior.
-                                  </span>
-                                </div>
-                              )}
                               {rubroExpanded &&
-                                rubro.tasks.map((task, taskIndex) => {
+                                rubro.tasks
+                                  .map((task, taskIndex) => ({ task, taskIndex }))
+                                  .filter(({ task }) => task.name.trim())
+                                  .map(({ task, taskIndex }) => {
                                   const included = isTaskIncluded(
                                     exclusions,
                                     unit.id,

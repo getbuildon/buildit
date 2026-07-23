@@ -13,9 +13,14 @@ export type StructureUnitSaveInput = {
 export type StructureFloorSaveInput = {
   id?: string
   name: string
+  identifier: string | null
   level: string | null
   units: StructureUnitSaveInput[]
 }
+
+export type SyncProjectStructureResult =
+  | { ok: true; unitIdByDraftId: Record<string, string> }
+  | { ok: false; error: string }
 
 type ExistingStructureState = {
   floorIds: Set<string>
@@ -226,7 +231,7 @@ export async function syncProjectStructure(
   supabase: SupabaseClient,
   projectId: string,
   floors: StructureFloorSaveInput[],
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<SyncProjectStructureResult> {
   try {
     const [{ data: unitTypes, error: unitTypesError }, existing] = await Promise.all([
       supabase.from("unit_types").select("id, label"),
@@ -264,6 +269,7 @@ export async function syncProjectStructure(
     if (floorRemovalError) return { ok: false, error: floorRemovalError }
 
     const newUnitIds: string[] = []
+    const unitIdByDraftId: Record<string, string> = {}
 
     for (let floorIndex = 0; floorIndex < floors.length; floorIndex++) {
       const floor = floors[floorIndex]
@@ -276,6 +282,7 @@ export async function syncProjectStructure(
           .from("project_floors")
           .update({
             name: floor.name,
+            identifier: floor.identifier,
             level: floor.level,
             sort_order: floorIndex,
           })
@@ -288,6 +295,7 @@ export async function syncProjectStructure(
           .insert({
             project_id: projectId,
             name: floor.name,
+            identifier: floor.identifier,
             level: floor.level,
             sort_order: floorIndex,
           })
@@ -319,6 +327,7 @@ export async function syncProjectStructure(
             .eq("id", unit.id)
             .eq("project_id", projectId)
           if (unitUpdateError) throw unitUpdateError
+          if (unit.id) unitIdByDraftId[unit.id] = unit.id
         } else {
           const { data: insertedUnit, error: unitInsertError } = await supabase
             .from("project_units")
@@ -339,6 +348,7 @@ export async function syncProjectStructure(
             throw unitInsertError ?? new Error(`Error al crear unidad "${unit.code}"`)
           }
           newUnitIds.push(insertedUnit.id)
+          if (unit.id) unitIdByDraftId[unit.id] = insertedUnit.id
         }
       }
     }
@@ -363,7 +373,7 @@ export async function syncProjectStructure(
 
     await assignAllTasksToNewUnits(supabase, projectId, newUnitIds)
 
-    return { ok: true }
+    return { ok: true, unitIdByDraftId }
   } catch (err) {
     return { ok: false, error: mapSupabaseError(err, "Error al guardar estructura") }
   }

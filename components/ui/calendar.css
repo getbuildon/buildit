@@ -4,10 +4,80 @@
   --rdp-day_button-border-radius: 10px;
   --rdp-today-color: #ff7433;
   --rdp-selected-border: 2px solid #ff7433;
+  --rdp-nav-height: 36px;
+  --rdp-nav_button-width: 36px;
+  --rdp-nav_button-height: 36px;
+  --rdp-dropdown-gap: 8px;
+  min-width: 304px;
+}
+
+.rdp-root.build-on-calendar .rdp-month {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  column-gap: 8px;
+  row-gap: 12px;
+  align-items: center;
+  width: 100%;
+}
+
+.rdp-root.build-on-calendar .rdp-button_previous {
+  position: static !important;
+  inset: auto !important;
+  grid-column: 1;
+  grid-row: 1;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.rdp-root.build-on-calendar .rdp-month_caption {
+  position: static !important;
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--rdp-nav-height);
+  margin: 0 !important;
+  font-weight: normal;
+  font-size: inherit;
+}
+
+.rdp-root.build-on-calendar .rdp-button_next {
+  position: static !important;
+  inset: auto !important;
+  grid-column: 3;
+  grid-row: 1;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.rdp-root.build-on-calendar .rdp-month_grid {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+}
+
+.rdp-root.build-on-calendar .rdp-dropdowns {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
 }
 
 .rdp-root.build-on-calendar .rdp-chevron {
   fill: #ff7433;
+  width: 16px;
+  height: 16px;
 }
 
 .rdp-root.build-on-calendar .rdp-selected .rdp-day_button {
@@ -21,9 +91,26 @@
   outline-offset: 2px;
 }
 
-.rdp-root.build-on-calendar .rdp-button_next:focus-visible,
-.rdp-root.build-on-calendar .rdp-button_previous:focus-visible {
-  outline: 2px solid #ff7433;
-  outline-offset: 2px;
-  border-radius: 8px;
+.rdp-root.build-on-calendar .rdp-weekday {
+  font-size: 12px;
+  font-weight: 500;
+  color: #777b84;
+  opacity: 1;
+  text-transform: lowercase;
+  padding-block: 8px 10px;
+}
+
+.rdp-root.build-on-calendar .rdp-day_button {
+  font-size: 14px;
+  font-weight: 400;
+  color: #272a2d;
+}
+
+.rdp-root.build-on-calendar .rdp-outside .rdp-day_button {
+  color: #afb3ba;
+}
+
+.rdp-root.build-on-calendar .rdp-today:not(.rdp-selected) .rdp-day_button {
+  color: #ff7433;
+  font-weight: 600;
 }

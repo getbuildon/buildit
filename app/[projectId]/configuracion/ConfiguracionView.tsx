@@ -3,11 +3,15 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { AlertCircle, Building2, CalendarDays, Check, ChevronDown, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
+import { createProjectDatePickerClassName } from "@/components/projects/new/CreateProjectFormField"
 import { CreateProjectStructureStep } from "@/components/projects/new/steps/CreateProjectStructureStep"
 import { CreateProjectTasksStep } from "@/components/projects/new/steps/CreateProjectTasksStep"
 import { CreateProjectUnitTasksStep } from "@/components/projects/new/steps/CreateProjectUnitTasksStep"
 import {
+  formatDraftDateString,
+  parseDraftDateString,
   type CreateProjectDraft,
 } from "@/lib/projects/createProjectDraft"
 import { unitTypeToDbFields } from "@/lib/projects/unitTypes"
@@ -16,6 +20,12 @@ import {
   exclusionsToAssignments,
   remapUnitTaskExclusions,
 } from "@/lib/projects/unitTaskAssignments"
+import { CREATE_PROJECT_LAYOUT } from "@/lib/projects/createProjectTokens"
+import {
+  clearUnitPlanPhoto,
+  clearUnitRenderPhoto,
+  uploadUnitAssetsFromDraft,
+} from "@/lib/projects/unitPlanPhoto.client"
 import {
   updateProjectBasics,
   getProjectStructure,
@@ -131,10 +141,14 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
 
   const [name, setName] = useState(project.name)
   const [location, setLocation] = useState(project.location)
+  const [totalSurface, setTotalSurface] = useState(project.totalSurface)
   const [startDate, setStartDate] = useState(project.startDate)
   const [endDate, setEndDate] = useState(project.endDate)
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState<SaveFeedback>(null)
+
+  const parsedStartDate = parseDraftDateString(startDate)
+  const parsedEndDate = parseDraftDateString(endDate)
 
   const updateDraft = (patch: Partial<CreateProjectDraft>) => {
     setDraft((current) => (current ? { ...current, ...patch } : current))
@@ -156,6 +170,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     const floorsData = (draftSnapshot?.floors || []).map((f) => ({
       id: f.id,
       name: f.name,
+      identifier: f.identifier.trim() || null,
       level: f.level || null,
       units: f.units.map((u) => {
         const { room_count, name } = unitTypeToDbFields({
@@ -166,7 +181,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
 
         return {
           id: u.id,
-          code: `${f.name}-${u.id.slice(0, 8)}`,
+          code: u.code.trim(),
           name,
           unit_type: u.type,
           room_count,
@@ -198,6 +213,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
       location,
       startDate,
       endDate,
+      totalSurface,
     })
 
     if (!basicResult.ok) {
@@ -213,6 +229,40 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
       setSaving(false)
       setFeedback({ type: "error", message: structureResult.error })
       return
+    }
+
+    const unitsWithAssets = (draftSnapshot?.floors ?? []).flatMap((floor) => floor.units)
+    const assetUploadResult = await uploadUnitAssetsFromDraft(
+      project.id,
+      structureResult.unitIdByDraftId,
+      unitsWithAssets,
+    )
+    if (!assetUploadResult.ok) {
+      setSaving(false)
+      setFeedback({ type: "error", message: assetUploadResult.error })
+      return
+    }
+
+    for (const unit of unitsWithAssets) {
+      const dbUnitId = structureResult.unitIdByDraftId[unit.id] ?? unit.id
+
+      if (unit.planRemoved) {
+        const clearResult = await clearUnitPlanPhoto(project.id, dbUnitId)
+        if (!clearResult.ok) {
+          setSaving(false)
+          setFeedback({ type: "error", message: clearResult.error })
+          return
+        }
+      }
+
+      if (unit.renderRemoved) {
+        const clearResult = await clearUnitRenderPhoto(project.id, dbUnitId)
+        if (!clearResult.ok) {
+          setSaving(false)
+          setFeedback({ type: "error", message: clearResult.error })
+          return
+        }
+      }
     }
 
     // Guardar grupos de rubros y tareas
@@ -269,7 +319,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     <div
       className="flex flex-col gap-5 pt-6"
       style={{
-        maxWidth: "747px",
+        maxWidth: CREATE_PROJECT_LAYOUT.contentMaxWidth,
         width: "100%",
         margin: "0 auto",
       }}
@@ -333,7 +383,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="flex flex-col gap-1.5">
               <FieldLabel icon={<MapPin className="size-3" aria-hidden />}>Ubicación *</FieldLabel>
               <Input
@@ -347,23 +397,52 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <FieldLabel icon={<CalendarDays className="size-3" aria-hidden />}>Fecha de Inicio *</FieldLabel>
+              <FieldLabel>Superficie total</FieldLabel>
               <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                placeholder="Ej: 2.000 m2"
+                value={totalSurface}
+                onChange={(e) => {
+                  setTotalSurface(e.target.value)
+                  updateDraft({ totalSurface: e.target.value })
+                }}
                 className={basicInputClassName}
                 style={basicInputStyle}
               />
             </div>
             <div className="flex flex-col gap-1.5">
+              <FieldLabel icon={<CalendarDays className="size-3" aria-hidden />}>Fecha de Inicio *</FieldLabel>
+              <DatePicker
+                id="config-start-date"
+                value={parsedStartDate}
+                onChange={(date) => {
+                  const nextStartDate = formatDraftDateString(date)
+                  setStartDate(nextStartDate)
+                  if (date && parsedEndDate && date > parsedEndDate) {
+                    setEndDate(nextStartDate)
+                  }
+                }}
+                toDate={parsedEndDate}
+                placeholder="Seleccionar fecha"
+                popoverSide="bottom"
+                className={createProjectDatePickerClassName}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
               <FieldLabel icon={<CalendarDays className="size-3" aria-hidden />}>Finalización Estimada *</FieldLabel>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className={basicInputClassName}
-                style={basicInputStyle}
+              <DatePicker
+                id="config-end-date"
+                value={parsedEndDate}
+                onChange={(date) => {
+                  const nextEndDate = formatDraftDateString(date)
+                  setEndDate(nextEndDate)
+                  if (date && parsedStartDate && date < parsedStartDate) {
+                    setStartDate(nextEndDate)
+                  }
+                }}
+                fromDate={parsedStartDate}
+                placeholder="Seleccionar fecha"
+                popoverSide="bottom"
+                className={createProjectDatePickerClassName}
               />
             </div>
           </div>

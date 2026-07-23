@@ -4,7 +4,8 @@ import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { User, LogOut } from "lucide-react"
 import { useAuth } from "@/context/AuthContextSupabase"
-import { userProfileFromEmail } from "@/lib/projects/mockProjects"
+import { UserAvatar } from "@/components/user/UserAvatar"
+import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
 
 // Figma node 1157:3306 — Profile Menu
 // Container: bg=#ffffff radius=14 border=#e2e8f0 w=1 shadows: (blur=6 spread=-4 a=0.1) + (blur=15 spread=-3 a=0.1)
@@ -20,12 +21,12 @@ import { userProfileFromEmail } from "@/lib/projects/mockProjects"
 type UserMenuDropdownProps = {
   onClose: () => void
   projectId: string
+  userProfile: SidebarUserProfile
 }
 
-export function UserMenuDropdown({ onClose, projectId }: UserMenuDropdownProps) {
+export function UserMenuDropdown({ onClose, projectId, userProfile }: UserMenuDropdownProps) {
   const router = useRouter()
   const { user, logOut } = useAuth()
-  const profile = userProfileFromEmail(user?.email)
   const ref = useRef<HTMLDivElement>(null)
 
   // Close on click outside
@@ -73,6 +74,7 @@ export function UserMenuDropdown({ onClose, projectId }: UserMenuDropdownProps) 
         backgroundColor: "#ffffff",
         borderRadius: "14px",
         border: "1px solid #e2e8f0",
+        overflow: "hidden",
         boxShadow: "0 6px 6px -4px rgba(0,0,0,0.10), 0 15px 15px -3px rgba(0,0,0,0.10)",
         padding: "5px 1px 1px",
         zIndex: 50,
@@ -86,27 +88,42 @@ export function UserMenuDropdown({ onClose, projectId }: UserMenuDropdownProps) 
           marginBottom: "0",
         }}
       >
-        <p style={{ fontSize: "14px", fontWeight: 500, lineHeight: "19.6px", color: "#314158" }}>
-          {profile.fullName}
-        </p>
-        <p style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16.8px", color: "#90a1b9", marginTop: "2px" }}>
-          {user?.email ?? "admin@alamogrupo.com"}
-        </p>
-        <div style={{ marginTop: "10px", marginBottom: "4px" }}>
-          <span
-            style={{
-              display: "inline-block",
-              backgroundColor: "#f1f5f9",
-              borderRadius: "9999px",
-              padding: "2px 8px",
-              fontSize: "12px",
-              fontWeight: 400,
-              color: "#45556c",
-              lineHeight: "16.8px",
-            }}
-          >
-            {profile.role}
-          </span>
+        <div className="flex items-start gap-3">
+          <UserAvatar
+            firstName={userProfile.firstName}
+            lastName={userProfile.lastName}
+            email={userProfile.email}
+            avatarUrl={userProfile.avatarUrl}
+            size={31}
+          />
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <p className="truncate" style={{ fontSize: "14px", fontWeight: 500, lineHeight: "19.6px", color: "#314158" }}>
+              {userProfile.fullName}
+            </p>
+            <p
+              className="truncate"
+              style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16.8px", color: "#90a1b9", marginTop: "2px" }}
+              title={userProfile.email || user?.email || undefined}
+            >
+              {userProfile.email || user?.email}
+            </p>
+            <div style={{ marginTop: "10px", marginBottom: "4px" }}>
+              <span
+                style={{
+                  display: "inline-block",
+                  backgroundColor: "#f1f5f9",
+                  borderRadius: "9999px",
+                  padding: "2px 8px",
+                  fontSize: "12px",
+                  fontWeight: 400,
+                  color: "#45556c",
+                  lineHeight: "16.8px",
+                }}
+              >
+                {userProfile.roleLabel}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 

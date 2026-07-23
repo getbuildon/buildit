@@ -12,9 +12,13 @@ import type {
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
 import { PROJECT_ROLE_SLUG, USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
 import { unitTypeToDbFields } from "@/lib/projects/unitTypes"
+import {
+  getTaskInitialStatus,
+  mapInitialWorkStatusToDb,
+} from "@/lib/projects/initialWorkStatus"
 
 export type CreateProjectResult =
-  | { ok: true; projectId: string }
+  | { ok: true; projectId: string; unitIdByDraftId: Record<string, string> }
   | { ok: false; error: string }
 
 export async function getCompanyProjectMembers(
@@ -44,7 +48,7 @@ export async function getCompanyProjectMembers(
   const userIds = [...new Set(members.map((m) => m.user_id))]
 
   const [profilesResult, rolesResult, userTypesResult] = await Promise.all([
-    admin.from("profiles").select("id, first_name, last_name, email").in("id", userIds),
+    admin.from("profiles").select("id, first_name, last_name, email, avatar_url").in("id", userIds),
     admin.from("project_roles").select("id, slug, label"),
     admin.from("user_types").select("id, slug"),
   ])
@@ -88,6 +92,7 @@ export async function getCompanyProjectMembers(
       roleTitle: roleRow?.label ?? role,
       userType,
       role,
+      avatarUrl: profile.avatar_url ?? null,
     })
   }
 
@@ -97,7 +102,15 @@ export async function getCompanyProjectMembers(
 function parseOptionalNumber(value: string): number | null {
   const trimmed = value.trim()
   if (!trimmed) return null
-  const parsed = Number(trimmed.replace(",", "."))
+
+  let cleaned = trimmed.replace(/\s*m2\s*$/i, "").trim()
+  if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
+    cleaned = cleaned.replace(/\./g, "")
+  } else {
+    cleaned = cleaned.replace(",", ".")
+  }
+
+  const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : null
 }
 
@@ -157,10 +170,12 @@ export async function createProjectFromDraft(
       .insert({
         name,
         location: draft.location.trim() || null,
+        total_surface_m2: parseOptionalNumber(draft.totalSurface),
         start_date: parseOptionalDate(draft.startDate),
         end_date: parseOptionalDate(draft.endDate),
         status: "active",
         company_id: companyId,
+        building_type: draft.workStage,
         created_by: user.id,
       })
       .select("id")
@@ -219,14 +234,17 @@ export async function createProjectFromDraft(
       if (coAdminError) throw coAdminError
     }
 
-    // Mapeos draft ID → DB ID para construir las asignaciones al final
+    // Mapeos draft ID → DB ID para construir asignaciones y avances al final
     const draftToDbUnitId = new Map<string, string>()
     const draftToDbTaskId = new Map<string, string>()
+    const draftToDbRubroId = new Map<string, string>()
+    const unitToFloorDbId = new Map<string, string>()
 
     if (draft.floors.length > 0) {
       const floorRows = draft.floors.map((floor, index) => ({
         project_id: projectId,
         name: floor.name.trim() || `Piso ${index + 1}`,
+        identifier: floor.identifier.trim().slice(0, 4) || null,
         level: floor.level.trim() || null,
         sort_order: index,
       }))
@@ -246,6 +264,7 @@ export async function createProjectFromDraft(
         floor_id: string
         unit_type_id: string
         unit_type: string
+        code: string | null
         name: string | null
         square_meters: number | null
         room_count: number | null
@@ -268,6 +287,7 @@ export async function createProjectFromDraft(
             floor_id: floorId,
             unit_type_id: catalog.unitTypeIds[unit.type],
             unit_type: unit.type,
+            code: unit.code.trim().slice(0, 4) || null,
             name,
             square_meters: parseOptionalNumber(unit.squareMeters),
             room_count,
@@ -285,6 +305,14 @@ export async function createProjectFromDraft(
         unitDraftIds.forEach((draftId, i) => {
           const dbId = insertedUnits?.[i]?.id
           if (dbId) draftToDbUnitId.set(draftId, dbId)
+        })
+
+        draft.floors.forEach((floor, floorIndex) => {
+          const floorDbId = floors[floorIndex]?.id
+          if (!floorDbId) return
+          floor.units.forEach((unit) => {
+            unitToFloorDbId.set(unit.id, floorDbId)
+          })
         })
       }
     }
@@ -328,6 +356,8 @@ export async function createProjectFromDraft(
         if (rubroError || !insertedRubro) {
           throw rubroError ?? new Error("No se pudo guardar un rubro.")
         }
+
+        draftToDbRubroId.set(rubro.id, insertedRubro.id)
 
         const validTasks = rubro.tasks
           .map((task, taskIndex) => {
@@ -389,6 +419,64 @@ export async function createProjectFromDraft(
       }
     }
 
+    if (draft.workStage === "in_execution" && draftToDbUnitId.size > 0) {
+      const now = new Date().toISOString()
+      const progressRows: {
+        project_id: string
+        floor_id: string | null
+        unit_id: string
+        category_id: string
+        task_id: string
+        created_by: string
+        status: "submitted" | "rejected" | "draft"
+        progress_state: "pending" | "in_progress" | "completed"
+        submitted_at: string | null
+      }[] = []
+
+      for (const [draftUnitId, dbUnitId] of draftToDbUnitId) {
+        const excludedTaskIds = new Set(draft.unitTaskExclusions[draftUnitId] ?? [])
+        const floorDbId = unitToFloorDbId.get(draftUnitId) ?? null
+
+        for (const group of draft.groups) {
+          for (const rubro of group.rubros) {
+            const dbRubroId = draftToDbRubroId.get(rubro.id)
+            if (!dbRubroId) continue
+
+            for (const task of rubro.tasks) {
+              if (!task.name.trim()) continue
+              if (excludedTaskIds.has(task.id)) continue
+
+              const initialStatus = getTaskInitialStatus(task.id, draft.taskInitialStatuses)
+              if (initialStatus === "pending") continue
+
+              const dbTaskId = draftToDbTaskId.get(task.id)
+              if (!dbTaskId) continue
+
+              const mapped = mapInitialWorkStatusToDb(initialStatus)
+              progressRows.push({
+                project_id: projectId!,
+                floor_id: floorDbId,
+                unit_id: dbUnitId,
+                category_id: dbRubroId,
+                task_id: dbTaskId,
+                created_by: user.id,
+                status: mapped.status,
+                progress_state: mapped.progress_state,
+                submitted_at: mapped.status === "draft" ? null : now,
+              })
+            }
+          }
+        }
+      }
+
+      if (progressRows.length > 0) {
+        const { error: progressError } = await supabase
+          .from("progress_entries")
+          .insert(progressRows)
+        if (progressError) throw progressError
+      }
+    }
+
     if (draft.teamMembers.length > 0) {
       const invitationRows = draft.teamMembers.map((member) => ({
         project_id: projectId,
@@ -408,7 +496,11 @@ export async function createProjectFromDraft(
       if (invitationsError) throw invitationsError
     }
 
-    return { ok: true, projectId: projectId! }
+    return {
+      ok: true,
+      projectId: projectId!,
+      unitIdByDraftId: Object.fromEntries(draftToDbUnitId),
+    }
   } catch (cause) {
     if (projectId) {
       await supabase.from("projects").delete().eq("id", projectId)

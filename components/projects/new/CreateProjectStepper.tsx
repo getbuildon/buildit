@@ -10,7 +10,27 @@ export type CreateProjectStep = CreateProjectStepConfig
 
 type CreateProjectStepperProps = {
   steps: CreateProjectStep[]
-  activeStepId: string
+  activeStepperIndex: number
+  partialConnectorAfterIndex?: number | null
+}
+
+function IntermediateStepConnector() {
+  return (
+    <div className="flex h-[2px] w-full items-center" aria-hidden>
+      <div
+        className="h-full min-w-0 flex-1"
+        style={{ backgroundColor: CREATE_PROJECT_COLORS.primary }}
+      />
+      <span
+        className="mx-[2px] size-[10px] shrink-0 rounded-full bg-[#fefcfb]"
+        style={{ boxShadow: `0 0 0 2px ${CREATE_PROJECT_COLORS.primary}` }}
+      />
+      <div
+        className="h-full min-w-0 flex-1"
+        style={{ backgroundColor: CREATE_PROJECT_COLORS.stepConnector }}
+      />
+    </div>
+  )
 }
 
 // SVG icons extracted from Figma node 1127:2891 — 20x20 viewport
@@ -73,31 +93,102 @@ function StepIconUnitTasks({ active }: { active: boolean }) {
   )
 }
 
+function StepIconWorkStatus({ active }: { active: boolean }) {
+  const s = active ? "white" : "#afb3ba"
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+      <path
+        d="M10 1.66602V4.99935"
+        stroke={s}
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.5 6.50065L15.9167 4.08398"
+        stroke={s}
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15 10H18.3333"
+        stroke={s}
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.5 13.5L15.9167 15.9167"
+        stroke={s}
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 15V18.3333"
+        stroke={s}
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.08301 15.9167L6.49967 13.5"
+        stroke={s}
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M1.66699 10H5.00033"
+        stroke={s}
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.08301 4.08398L6.49967 6.50065"
+        stroke={s}
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 const STEP_ICONS: Record<string, (props: { active: boolean }) => React.ReactElement> = {
   basic: StepIconBasic,
   structure: StepIconStructure,
   tasks: StepIconTasks,
   "unit-tasks": StepIconUnitTasks,
+  "work-status": StepIconWorkStatus,
   team: StepIconTeam,
 }
 
 export function CreateProjectStepper({
   steps,
-  activeStepId,
+  activeStepperIndex,
+  partialConnectorAfterIndex = null,
 }: CreateProjectStepperProps) {
-  const activeIndex = steps.findIndex((s) => s.id === activeStepId)
-
   return (
     <nav
       className="flex w-full items-start"
       aria-label="Pasos para crear obra"
     >
       {steps.map((step, index) => {
-        const isActive = index === activeIndex
-        const isPast = index < activeIndex
-        const isHighlighted = isActive || isPast
+        const inHiddenIntermediateStep = partialConnectorAfterIndex !== null
+        const isPast = inHiddenIntermediateStep
+          ? index <= partialConnectorAfterIndex
+          : index < activeStepperIndex
+        const isActive = !inHiddenIntermediateStep && index === activeStepperIndex
+        const isHighlighted = isPast || isActive
         const StepIcon = STEP_ICONS[step.id] ?? StepIconBasic
         const showConnector = index < steps.length - 1
+        const isPartialConnector = partialConnectorAfterIndex === index
+        const connectorIsPast = inHiddenIntermediateStep
+          ? index < partialConnectorAfterIndex!
+          : index < activeStepperIndex
 
         return (
           <React.Fragment key={step.id}>
@@ -126,7 +217,10 @@ export function CreateProjectStepper({
 
               {/* Label */}
               <p
-                className={cn(CREATE_PROJECT_TYPE.stepLabel, "w-full text-center leading-[16px]")}
+                className={cn(
+                  CREATE_PROJECT_TYPE.stepLabel,
+                  "w-full whitespace-pre-line text-center leading-[16px]",
+                )}
                 style={{
                   color: isHighlighted
                     ? CREATE_PROJECT_COLORS.stepActiveLabel
@@ -144,15 +238,19 @@ export function CreateProjectStepper({
                 style={{ marginTop: "20px" }}
                 aria-hidden
               >
-                <div
-                  style={{
-                    height: "2px",
-                    width: "100%",
-                    backgroundColor: isPast
-                      ? CREATE_PROJECT_COLORS.primary
-                      : CREATE_PROJECT_COLORS.stepConnector,
-                  }}
-                />
+                {isPartialConnector ? (
+                  <IntermediateStepConnector />
+                ) : (
+                  <div
+                    style={{
+                      height: "2px",
+                      width: "100%",
+                      backgroundColor: connectorIsPast
+                        ? CREATE_PROJECT_COLORS.primary
+                        : CREATE_PROJECT_COLORS.stepConnector,
+                    }}
+                  />
+                )}
               </div>
             ) : null}
           </React.Fragment>

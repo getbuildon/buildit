@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import {
   ChevronDown,
   Clock,
@@ -14,6 +14,13 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import {
   addTeamMember,
@@ -30,6 +37,7 @@ import {
   type ProjectTeamRole,
   type ProjectUserType,
 } from "@/lib/projects/createProjectDraft"
+import { UserAvatar } from "@/components/user/UserAvatar"
 import { EQUIPO_EDIT_ROW } from "@/lib/project/designTokens"
 
 const PERMISSION_COLUMNS = ["Owner", "Admin", "Supervisor", "Operador", "Cliente"] as const
@@ -57,9 +65,12 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const formInputClassName =
   "h-[44px] w-full rounded-[10px] border bg-white px-3 text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:ring-0"
 const formInputStyle = { borderColor: "#edeef0" } as const
+const formSelectTriggerClassName =
+  "h-[44px] w-full rounded-[10px] border-[#e2e8f0] bg-white text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none focus:border-[#ff7433] focus:ring-0 data-[placeholder]:text-[#777b84]"
 
+// Figma 1244:1189 — avatar | identidad | email (300px) | acciones
 const TEAM_ROW_GRID =
-  "grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-4 lg:grid-cols-[40px_minmax(0,1fr)_280px_auto]"
+  "grid grid-cols-[40px_minmax(0,1fr)_300px_auto] items-center gap-x-4 p-4"
 
 type Props = {
   projectId: string
@@ -71,39 +82,62 @@ function getInitials(firstName: string, lastName: string): string {
   return initials || "??"
 }
 
+function MemberAvatar({
+  member,
+  size = "md",
+  bgClassName,
+  textClassName,
+}: {
+  member: Pick<ProjectTeamMember, "firstName" | "lastName" | "email" | "avatarUrl">
+  size?: "md"
+  bgClassName?: string
+  textClassName?: string
+}) {
+  return (
+    <UserAvatar
+      firstName={member.firstName}
+      lastName={member.lastName}
+      email={member.email}
+      avatarUrl={member.avatarUrl}
+      size={size}
+      bgClassName={bgClassName}
+      textClassName={textClassName}
+    />
+  )
+}
+
 function FormSelect({
+  id,
   value,
   placeholder,
   options,
+  disabled,
   onChange,
 }: {
+  id: string
   value: string
   placeholder: string
   options: readonly string[]
+  disabled?: boolean
   onChange: (value: string) => void
 }) {
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-[44px] w-full appearance-none rounded-[10px] border bg-white px-3 pr-8 text-[14px] font-normal leading-5 shadow-none outline-none focus:border-[#ff7433] focus-visible:ring-0"
-        style={{ borderColor: "#e2e8f0", color: value ? "#0a0a0a" : "#777b84" }}
-      >
-        <option value="" disabled>
-          {placeholder}
-        </option>
+    <Select
+      value={value || undefined}
+      onValueChange={onChange}
+      disabled={disabled}
+    >
+      <SelectTrigger id={id} aria-label={placeholder} className={formSelectTriggerClassName}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent position="popper">
         {options.map((option) => (
-          <option key={option} value={option} style={{ color: "#0a0a0a" }}>
+          <SelectItem key={option} value={option}>
             {option}
-          </option>
+          </SelectItem>
         ))}
-      </select>
-      <ChevronDown
-        className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#90a1b9]"
-        aria-hidden
-      />
-    </div>
+      </SelectContent>
+    </Select>
   )
 }
 
@@ -147,29 +181,55 @@ function EditSelect({
 
 function MemberEmail({ email }: { email: string }) {
   return (
-    <div className="flex min-w-0 items-center justify-start gap-2 text-left text-[12px] leading-4 text-[#5a6169]">
+    <div className="flex w-full min-w-0 items-center gap-2 text-[12px] leading-4 text-[#5a6169]">
       <Mail className="size-3.5 shrink-0" aria-hidden />
-      <span className="truncate text-left">{email}</span>
+      <span className="min-w-0 truncate">{email}</span>
     </div>
+  )
+}
+
+function RowActionButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string
+  disabled?: boolean
+  onClick?: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex size-4 items-center justify-center text-[#777b84] disabled:cursor-not-allowed disabled:opacity-40 enabled:transition-opacity enabled:hover:opacity-80"
+      aria-label={label}
+    >
+      {children}
+    </button>
   )
 }
 
 function MemberRow({
   member,
+  canEdit,
+  canRemove,
   onEdit,
   onRemove,
 }: {
   member: ProjectTeamMember
-  onEdit?: () => void
-  onRemove?: () => void
+  canEdit: boolean
+  canRemove: boolean
+  onEdit: () => void
+  onRemove: () => void
 }) {
   return (
     <div
       className={`${TEAM_ROW_GRID} border-b border-[#edeef0] transition-colors last:border-b-0 hover:bg-[#fefcfb]`}
     >
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ff7433] text-[12px] font-semibold text-white">
-        {getInitials(member.firstName, member.lastName)}
-      </div>
+      <MemberAvatar member={member} />
 
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex items-center gap-2">
@@ -177,50 +237,42 @@ function MemberRow({
             {member.firstName} {member.lastName}
           </h3>
           {member.isYou ? (
-            <span className="inline-flex items-center rounded-full bg-[#ff7433] px-2 py-0.5 text-[10px] font-medium leading-[10px] text-white">
+            <span className="inline-flex items-center rounded-full bg-[#ff7433] px-2 py-0.5 text-[10px] font-medium leading-none tracking-[-0.5px] text-[#fefcfb]">
               Tú
             </span>
           ) : null}
         </div>
         <div className="flex items-center gap-1.5">
           {member.userTypeLabel ? (
-            <span className="inline-flex items-center rounded-[12px] bg-[#ffeae0] px-2 py-0.5 text-[10px] font-medium leading-[10px] text-[#321a10]">
+            <span className="inline-flex items-center rounded-[12px] bg-[#ffeae0] px-2 py-0.5 text-[10px] font-medium leading-none tracking-[-0.5px] text-[#321a10]">
               {member.userTypeLabel}
             </span>
           ) : null}
           {member.roleLabel ? (
-            <span className="text-[12px] leading-4 text-[#43484e]">{member.roleLabel}</span>
+            <span className="text-[12px] leading-[1.4] tracking-[-0.36px] text-[#321a10]">
+              {member.roleLabel}
+            </span>
           ) : null}
         </div>
       </div>
 
-      <div className="hidden min-w-0 lg:block">
-        <MemberEmail email={member.email} />
-      </div>
+      <MemberEmail email={member.email} />
 
-      <div className="flex shrink-0 items-center justify-end gap-1">
-        {onEdit ? (
-          <button
-            type="button"
-            onClick={onEdit}
-            className="inline-flex size-7 items-center justify-center text-[#777b84] transition-opacity hover:opacity-80"
-            aria-label={`Editar a ${member.firstName} ${member.lastName}`}
-          >
-            <SquarePen className="size-4" aria-hidden />
-          </button>
-        ) : null}
-        {onRemove ? (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="inline-flex size-7 items-center justify-center text-[#777b84] transition-opacity hover:opacity-80"
-            aria-label={`Eliminar a ${member.firstName} ${member.lastName}`}
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </button>
-        ) : (
-          <div className="size-7" />
-        )}
+      <div className="flex shrink-0 items-center justify-end gap-2">
+        <RowActionButton
+          label={`Editar a ${member.firstName} ${member.lastName}`}
+          disabled={!canEdit}
+          onClick={onEdit}
+        >
+          <SquarePen className="size-4" aria-hidden />
+        </RowActionButton>
+        <RowActionButton
+          label={`Eliminar a ${member.firstName} ${member.lastName}`}
+          disabled={!canRemove}
+          onClick={onRemove}
+        >
+          <Trash2 className="size-4" aria-hidden />
+        </RowActionButton>
       </div>
     </div>
   )
@@ -282,15 +334,11 @@ function EditMemberRow({
       }}
     >
       <div className={TEAM_ROW_GRID}>
-        <div
-          className="flex size-10 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold"
-          style={{
-            backgroundColor: EQUIPO_EDIT_ROW.avatarBg,
-            color: EQUIPO_EDIT_ROW.avatarText,
-          }}
-        >
-          {getInitials(member.firstName, member.lastName)}
-        </div>
+        <MemberAvatar
+          member={member}
+          bgClassName="bg-[#ff7433]"
+          textClassName="text-[12px] font-semibold text-white"
+        />
 
         <div className="flex min-w-0 flex-col gap-1">
           <h3
@@ -321,9 +369,7 @@ function EditMemberRow({
           </div>
         </div>
 
-        <div className="hidden min-w-0 lg:block">
-          <MemberEmail email={member.email} />
-        </div>
+        <MemberEmail email={member.email} />
 
         <div className="flex shrink-0 items-center justify-end gap-1">
           <button
@@ -400,24 +446,28 @@ function PendingRow({
             </span>
           ) : null}
           {invitation.roleLabel ? (
-            <span className="text-[12px] leading-4 text-[#43484e]">{invitation.roleLabel}</span>
+            <span className="text-[12px] leading-[1.4] tracking-[-0.36px] text-[#321a10]">
+              {invitation.roleLabel}
+            </span>
           ) : null}
         </div>
       </div>
 
-      <div className="hidden min-w-0 lg:block">
-        <MemberEmail email={invitation.email} />
-      </div>
+      <MemberEmail email={invitation.email} />
 
-      <div className="flex shrink-0 items-center justify-end">
-        <button
-          type="button"
+      <div className="flex shrink-0 items-center justify-end gap-2">
+        <RowActionButton
+          label={`Editar invitación de ${invitation.firstName} ${invitation.lastName}`}
+          disabled
+        >
+          <SquarePen className="size-4" aria-hidden />
+        </RowActionButton>
+        <RowActionButton
+          label={`Revocar invitación de ${invitation.firstName} ${invitation.lastName}`}
           onClick={onRevoke}
-          className="text-[#777b84] transition-opacity hover:opacity-80"
-          aria-label={`Revocar invitación de ${invitation.firstName} ${invitation.lastName}`}
         >
           <Trash2 className="size-4" aria-hidden />
-        </button>
+        </RowActionButton>
       </div>
     </div>
   )
@@ -628,6 +678,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
               style={formInputStyle}
             />
             <FormSelect
+              id="member-user-type"
               value={userType}
               placeholder="Tipo de usuario"
               options={PROJECT_USER_TYPES}
@@ -638,9 +689,11 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
               }}
             />
             <FormSelect
+              id="member-role"
               value={role}
               placeholder="Rol"
               options={userType ? USER_TYPE_ROLES[userType] : []}
+              disabled={!userType}
               onChange={(v) => {
                 setRole(v as ProjectTeamRole)
                 if (formError) setFormError("")
@@ -702,9 +755,10 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
 
         {/* Members list */}
         <div
-          className="overflow-hidden rounded-[16px] border border-[#edeef0] bg-white"
+          className="overflow-x-auto rounded-[16px] border border-[#edeef0] bg-white"
           style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
         >
+          <div className="min-w-[704px]">
           {filteredMembers.length === 0 ? (
             <div className="px-4 py-8 text-center text-[14px] leading-5 text-[#777b84]">
               {searchQuery ? "Sin resultados para esa búsqueda." : "No hay miembros activos."}
@@ -728,18 +782,15 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
                 <MemberRow
                   key={member.memberId}
                   member={member}
-                  onEdit={
-                    member.isYou ? undefined : () => setEditingMemberId(member.memberId)
-                  }
-                  onRemove={
-                    member.isYou
-                      ? undefined
-                      : () => void handleRemoveMember(member.memberId)
-                  }
+                  canEdit={!member.isYou}
+                  canRemove={!member.isYou}
+                  onEdit={() => setEditingMemberId(member.memberId)}
+                  onRemove={() => void handleRemoveMember(member.memberId)}
                 />
               ),
             )
           )}
+          </div>
         </div>
 
         <p className="text-[12px] leading-4 text-[#777b84]">
@@ -753,7 +804,8 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
           <h2 className="text-[18px] font-normal leading-5 text-[#272a2d]">
             Usuarios pendientes de activación
           </h2>
-          <div className="overflow-hidden rounded-[16px] border border-[#edeef0] bg-white">
+          <div className="overflow-x-auto rounded-[16px] border border-[#edeef0] bg-white">
+            <div className="min-w-[704px]">
             {filteredPending.length === 0 ? (
               <div className="px-4 py-6 text-center text-[14px] leading-5 text-[#777b84]">
                 Sin resultados para esa búsqueda.
@@ -767,6 +819,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
                 />
               ))
             )}
+            </div>
           </div>
         </div>
       ) : null}

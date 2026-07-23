@@ -2,20 +2,41 @@ import {
   STRUCTURE_UNIT_TYPES,
   type StructureUnitType,
 } from "@/lib/projects/unitTypes"
+import type { InitialWorkTaskStatus } from "@/lib/projects/initialWorkStatus"
 
 export { STRUCTURE_UNIT_TYPES, type StructureUnitType }
 
+export type UnitRenderImageDraft = {
+  file: File
+  previewUrl: string
+  fileName: string
+  fileSize: number
+  fileType: string
+}
+
 export type StructureUnitDraft = {
   id: string
+  code: string
   type: StructureUnitType
   squareMeters: string
   roomCount: string
   officeSize: string
+  /** URL de la planta ya guardada en storage. */
+  planUrl: string | null
+  /** Planta nueva pendiente de subir al guardar. */
+  planImage: UnitRenderImageDraft | null
+  planRemoved: boolean
+  /** URL del render ya guardado en storage. */
+  renderUrl: string | null
+  /** Render nuevo pendiente de subir al guardar. */
+  renderImage: UnitRenderImageDraft | null
+  renderRemoved: boolean
 }
 
 export type StructureFloorDraft = {
   id: string
   name: string
+  identifier: string
   level: string
   units: StructureUnitDraft[]
 }
@@ -95,18 +116,27 @@ export type TeamMemberDraft = {
   email: string
   userType: ProjectUserType
   role: ProjectTeamRole
+  avatarUrl?: string | null
 }
+
+export const PROJECT_WORK_STAGES = ["not_started", "in_execution"] as const
+
+export type ProjectWorkStage = (typeof PROJECT_WORK_STAGES)[number]
 
 export type CreateProjectDraft = {
   companyId: string | null
   companyName: string
   projectName: string
+  totalSurface: string
   location: string
   startDate: string
   endDate: string
+  workStage: ProjectWorkStage
   floors: StructureFloorDraft[]
   groups: RubroGroupDraft[]
   unitTaskExclusions: Record<string, string[]>
+  /** Estado inicial por tarea (solo obras en ejecución). */
+  taskInitialStatuses: Record<string, InitialWorkTaskStatus>
   teamMembers: TeamMemberDraft[]
 }
 
@@ -117,10 +147,17 @@ function newId(prefix: string): string {
 export function createDefaultUnit(): StructureUnitDraft {
   return {
     id: newId("unit"),
+    code: "",
     type: "Departamento",
     squareMeters: "",
     roomCount: "",
     officeSize: "",
+    planUrl: null,
+    planImage: null,
+    planRemoved: false,
+    renderUrl: null,
+    renderImage: null,
+    renderRemoved: false,
   }
 }
 
@@ -128,6 +165,7 @@ export function createDefaultFloor(floorIndex: number): StructureFloorDraft {
   return {
     id: newId("floor"),
     name: `Piso ${floorIndex}`,
+    identifier: "",
     level: "",
     units: [],
   }
@@ -232,14 +270,51 @@ export function createEmptyProjectDraft(): CreateProjectDraft {
     companyId: null,
     companyName: "",
     projectName: "",
+    totalSurface: "",
     location: "",
     startDate: "",
     endDate: "",
+    workStage: "not_started",
     floors: [],
     groups: createTemplateRubroGroups(),
     unitTaskExclusions: {},
+    taskInitialStatuses: {},
     teamMembers: [],
   }
+}
+
+/** Convierte `YYYY-MM-DD` del draft a `Date` local. */
+export function parseDraftDateString(value: string): Date | undefined {
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed)
+  if (!match) return undefined
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const date = new Date(year, month - 1, day)
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return undefined
+  }
+
+  return date
+}
+
+/** Serializa una fecha del picker al formato guardado en el draft. */
+export function formatDraftDateString(date: Date | undefined): string {
+  if (!date) return ""
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
 
 export function createTeamMemberDraft(
@@ -248,6 +323,7 @@ export function createTeamMemberDraft(
   email: string,
   userType: ProjectUserType,
   role: ProjectTeamRole,
+  avatarUrl?: string | null,
 ): TeamMemberDraft {
   return {
     id: newId("member"),
@@ -256,6 +332,7 @@ export function createTeamMemberDraft(
     email,
     userType,
     role,
+    avatarUrl: avatarUrl ?? null,
   }
 }
 
@@ -269,6 +346,7 @@ export type AvailableTeamMember = {
   roleTitle: string
   userType: ProjectUserType
   role: ProjectTeamRole
+  avatarUrl?: string | null
 }
 
 export const AVAILABLE_TEAM_MEMBERS: AvailableTeamMember[] = [

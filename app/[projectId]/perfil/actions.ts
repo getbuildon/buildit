@@ -9,11 +9,13 @@ export type ProfileData = {
   email: string
   phone: string | null
   avatar_url: string | null
+  role_badge: string | null
+  role_label: string | null
 }
 
 export type UpdateProfileResult = { ok: true } | { ok: false; error: string }
 
-export async function getProfileData(): Promise<ProfileData | null> {
+export async function getProfileData(projectId?: string): Promise<ProfileData | null> {
   const user = await requireAuthenticatedUser()
   const supabase = await createClient()
 
@@ -25,12 +27,38 @@ export async function getProfileData(): Promise<ProfileData | null> {
 
   if (error || !data) return null
 
+  let roleBadge: string | null = null
+  let roleLabel: string | null = null
+
+  if (projectId) {
+    const { data: member } = await supabase
+      .from("project_members")
+      .select("role_id")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle()
+
+    if (member?.role_id) {
+      const { data: role } = await supabase
+        .from("project_roles")
+        .select("label, badge")
+        .eq("id", member.role_id)
+        .maybeSingle()
+
+      roleBadge = role?.badge ?? null
+      roleLabel = role?.label ?? null
+    }
+  }
+
   return {
     first_name: data.first_name ?? "",
     last_name: data.last_name ?? "",
     email: data.email ?? "",
     phone: data.phone,
     avatar_url: data.avatar_url,
+    role_badge: roleBadge,
+    role_label: roleLabel,
   }
 }
 

@@ -220,6 +220,31 @@ function DashedAddButton({
   )
 }
 
+function InExecutionTasksCallout() {
+  return (
+    <div
+      className="flex w-full items-center gap-2.5 overflow-hidden rounded-lg px-4 py-3"
+      style={{ backgroundColor: "#e6f4fe" }}
+      role="note"
+    >
+      <span
+        className="flex size-5 shrink-0 items-center justify-center rounded-[10px] text-[12px] font-bold leading-none text-white"
+        style={{ backgroundColor: "#0090ff" }}
+        aria-hidden
+      >
+        i
+      </span>
+      <p
+        className="min-w-0 flex-1 text-[12px] font-normal leading-[1.4] tracking-[-0.36px]"
+        style={{ color: "#113264" }}
+      >
+        No te preocupes por el estado de avance actual. En un siguiente paso vas a poder
+        indicar qué rubros ya están completados o en proceso.
+      </p>
+    </div>
+  )
+}
+
 export function CreateProjectTasksStep({
   draft,
   onChange,
@@ -472,12 +497,14 @@ export function CreateProjectTasksStep({
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <p className="text-[14px] leading-5" style={{ color: "#18191b" }}>
+    <div className="flex flex-col gap-3">
+      <p className="text-[14px] leading-[1.4]" style={{ color: "#18191b" }}>
         Los rubros están organizados en grupos jerárquicos. Puedes agregar,
         eliminar o editar grupos, rubros y tareas según las necesidades de tu
         obra.
       </p>
+
+      {draft.workStage === "in_execution" ? <InExecutionTasksCallout /> : null}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
         <Input
@@ -506,7 +533,7 @@ export function CreateProjectTasksStep({
         </Button>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {draft.groups.map((group, groupIndex) => {
           const stats = getGroupDisplayStats(group)
           const isGroupExpanded = expandedGroupIds.has(group.id)

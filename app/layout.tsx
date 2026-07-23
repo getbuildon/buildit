@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import localFont from "next/font/local"
 import { Google_Sans_Flex } from "next/font/google"
 import { SupabaseConfigMissing } from "@/components/auth/SupabaseConfigMissing"
+import { ToastProvider } from "@/components/ui/toast"
 import { AuthProvider } from "@/context/AuthContextSupabase"
 import { BRAND_NAME } from "@/lib/brand"
 import { readPublicSupabaseConfigFromEnv } from "@/lib/auth/publicSupabaseConfig"
@@ -70,7 +71,7 @@ export default function RootLayout({
       >
         {supabasePublicConfig ? (
           <AuthProvider supabasePublicConfig={supabasePublicConfig}>
-            {children}
+            <ToastProvider>{children}</ToastProvider>
           </AuthProvider>
         ) : (
           <SupabaseConfigMissing />

@@ -52,7 +52,7 @@ export function getUnitVariantFieldLabel(
 ): string {
   const field = getUnitVariantField(type)
   if (field === "officeSize") return "Tamaño"
-  return "Cant. de ambientes"
+  return "Ambientes"
 }
 
 export function isUnitVariantFieldEnabled(

@@ -6,6 +6,7 @@ import { endOfDay, endOfMonth, format, startOfDay, startOfMonth } from "date-fns
 import { es } from "date-fns/locale"
 import { Calendar, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/components/ui/toast"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Label } from "@/components/ui/label"
 import {
@@ -19,7 +20,7 @@ import {
   getUnitDisplayLabel,
   getUnitDisplayTitle,
 } from "@/lib/projects/cargarAvance"
-import { getFloorShortLabel } from "@/lib/projects/floorLabels"
+import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
 import type { ProjectBasics } from "../configuracion/actions"
 import { CargarAvanceView } from "./CargarAvanceView"
 import { TaskDetailDialog } from "./TaskDetailDialog"
@@ -51,6 +52,7 @@ type Props = {
 
 export function DashboardView({ project, data }: Props) {
   const router = useRouter()
+  const toast = useToast()
   const [viewMode, setViewMode] = useState<ViewMode>("list")
   const [selectedLoadFloorId, setSelectedLoadFloorId] = useState<string | null>(null)
   const [selectedLoadRubroId, setSelectedLoadRubroId] = useState<string | null>(null)
@@ -71,8 +73,8 @@ export function DashboardView({ project, data }: Props) {
 
     return floor.units.map((unit, index) => ({
       unitId: unit.id,
-      label: getUnitDisplayLabel(floor.name, index + 1),
-      title: getUnitDisplayTitle(unit, floor.name, index + 1),
+      label: getUnitDisplayLabel(unit, index + 1),
+      title: getUnitDisplayTitle(unit, floor, index + 1),
     }))
   }, [data.floors, isUnitFilterEnabled, selectedFloorId])
 
@@ -116,6 +118,7 @@ export function DashboardView({ project, data }: Props) {
   const handleSaved = () => {
     exitLoadMode()
     router.refresh()
+    toast.success("Trabajo diario registrado exitosamente")
   }
 
   return (
@@ -183,6 +186,7 @@ export function DashboardView({ project, data }: Props) {
                   if (date > toDate) setToDate(date)
                 }}
                 toDate={toDate}
+                popoverSide="bottom"
               />
             </div>
 
@@ -199,6 +203,7 @@ export function DashboardView({ project, data }: Props) {
                   if (date < fromDate) setFromDate(date)
                 }}
                 fromDate={fromDate}
+                popoverSide="bottom"
               />
             </div>
 
@@ -218,7 +223,7 @@ export function DashboardView({ project, data }: Props) {
                   <SelectItem value={ALL_FLOORS_VALUE}>{ALL_FLOORS_LABEL}</SelectItem>
                   {data.floors.map((floor) => (
                     <SelectItem key={floor.id} value={floor.id} title={floor.name}>
-                      {getFloorShortLabel(floor.name)}
+                      {getFloorDisplayLabel(floor)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -277,7 +282,7 @@ export function DashboardView({ project, data }: Props) {
                     <div className="flex items-center gap-1 text-[12px] text-[#62748e]">
                       <span>{task.floorName}</span>
                       <span>•</span>
-                      <span>Unidad {task.unitLabel}</span>
+                      <span>{task.unitLabel}</span>
                       <span>•</span>
                       <span>{task.date}</span>
                     </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { Calendar as CalendarIcon } from "lucide-react"
@@ -8,6 +8,14 @@ import { Calendar as CalendarIcon } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+
+const currentYear = new Date().getFullYear()
+const DATE_PICKER_START_MONTH = new Date(currentYear - 50, 0, 1)
+const DATE_PICKER_END_MONTH = new Date(currentYear + 30, 11, 31)
+
+function resolveVisibleMonth(value?: Date, fromDate?: Date, toDate?: Date): Date {
+  return value ?? fromDate ?? toDate ?? new Date()
+}
 
 type DatePickerProps = {
   id?: string
@@ -18,6 +26,7 @@ type DatePickerProps = {
   className?: string
   fromDate?: Date
   toDate?: Date
+  popoverSide?: "top" | "bottom"
 }
 
 export function DatePicker({
@@ -29,8 +38,16 @@ export function DatePicker({
   className,
   fromDate,
   toDate,
+  popoverSide = "top",
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
+  const [month, setMonth] = useState(() => resolveVisibleMonth(value, fromDate, toDate))
+
+  useEffect(() => {
+    if (open) {
+      setMonth(resolveVisibleMonth(value, fromDate, toDate))
+    }
+  }, [open, value, fromDate, toDate])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -52,10 +69,18 @@ export function DatePicker({
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0">
+      <PopoverContent
+        align="start"
+        side={popoverSide}
+        sideOffset={8}
+        avoidCollisions={false}
+        className="w-auto p-0"
+      >
         <Calendar
           mode="single"
           selected={value}
+          month={month}
+          onMonthChange={setMonth}
           onSelect={(date) => {
             onChange(date)
             if (date) setOpen(false)
@@ -64,7 +89,12 @@ export function DatePicker({
             fromDate ? { before: fromDate } : false,
             toDate ? { after: toDate } : false,
           ].filter(Boolean)}
-          defaultMonth={value ?? fromDate ?? toDate}
+          captionLayout="dropdown"
+          navLayout="around"
+          fixedWeeks
+          reverseYears
+          startMonth={DATE_PICKER_START_MONTH}
+          endMonth={DATE_PICKER_END_MONTH}
         />
       </PopoverContent>
     </Popover>
