@@ -190,7 +190,7 @@ function UnitCard({
       href={`/${projectId}/unidades/${unit.id}`}
       className="flex w-[200px] shrink-0 flex-col gap-2 rounded-[8px] border border-[#edeef0] bg-[#fbfdff] px-[9px] py-[13px] transition-colors hover:border-[#ff7433]/40 hover:bg-white"
     >
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-[2px]">
         <div className="flex items-center justify-between">
           <span className={DASHBOARD_TYPE.unitCode}>
             {getUnitDisplayCode(unit, unitIndex)}
@@ -336,7 +336,7 @@ export function DashboardMainView({
             icon={ClipboardCheck}
             iconColor="text-[#ab6400]"
             value={stats.completedTasksThisWeek == null ? "—" : String(stats.completedTasksThisWeek)}
-            label="Tareas completadas"
+            label="Tareas certificadas"
             sublabel="esta semana"
           />
           <StatCard

@@ -10,7 +10,9 @@ export const DASHBOARD_TYPE = {
   floorName: "w-[100px] shrink-0 text-[14px] font-semibold leading-[1.4] tracking-[-0.15px] text-[#43484e]",
   floorProgress: "shrink-0 text-[12px] font-medium leading-[1.4] text-[#62748e]",
   floorMeta: "text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#5a6169]",
+  /** Card-Unit (Figma 1157:2914) — Caption-S */
   unitCode: "text-[10px] font-normal leading-[1.4] tracking-[-0.5px] text-[#43484e]",
   unitProgress: "text-[10px] font-normal leading-[1.4] tracking-[-0.5px] text-[#777b84]",
-  unitType: "truncate text-[10px] font-normal leading-[1.4] tracking-[-0.5px] text-[#272a2d]",
+  /** Card-Unit (Figma 1157:2914) — Caption-L */
+  unitType: "truncate text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#272a2d]",
 } as const

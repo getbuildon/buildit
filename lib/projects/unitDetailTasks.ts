@@ -93,7 +93,7 @@ export function countCompletedTasks(
   for (const taskId of assignedTaskIds) {
     const entry = latestByTaskId.get(taskId)
     if (!entry) continue
-    if (entry.progress_state === "completed" || entry.status === "approved") {
+    if (entry.status === "approved") {
       count += 1
     }
   }

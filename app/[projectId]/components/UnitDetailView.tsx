@@ -257,7 +257,7 @@ export function UnitDetailView({ projectId, data }: UnitDetailViewProps) {
                 <span className={UNIT_DETAIL_TYPE.statValue}>
                   {data.completedTasks}/{data.totalTasks}
                 </span>
-                <span className={UNIT_DETAIL_TYPE.statLabel}>tareas completadas</span>
+                <span className={UNIT_DETAIL_TYPE.statLabel}>tareas certificadas</span>
               </div>
             </div>
           </div>

@@ -23,6 +23,60 @@ export function filterProgressEntriesBefore(
   })
 }
 
+/** El avance de obra solo impacta cuando la tarea fue certificada. */
+export function isProgressEntryCertified(entry: ProgressEntryRow): boolean {
+  return entry.status === "approved"
+}
+
+function buildLatestEntriesByTaskForUnit(
+  entries: ProgressEntryRow[],
+  unitId: string,
+  assignedTaskIds: string[],
+): Map<string, ProgressEntryRow> {
+  const assigned = new Set(assignedTaskIds)
+  const latestByTask = new Map<string, ProgressEntryRow>()
+
+  for (const entry of entries) {
+    if (entry.unit_id !== unitId || !entry.task_id) continue
+    if (!assigned.has(entry.task_id)) continue
+
+    const previous = latestByTask.get(entry.task_id)
+    if (!previous || getEntryTimestamp(entry) > getEntryTimestamp(previous)) {
+      latestByTask.set(entry.task_id, entry)
+    }
+  }
+
+  return latestByTask
+}
+
+function buildLatestEntriesByUnitTask(
+  entries: ProgressEntryRow[],
+  unitIds: string[],
+  byUnit: Record<string, string[]>,
+  allTaskIds: string[],
+): Map<string, ProgressEntryRow> {
+  const unitIdSet = new Set(unitIds)
+  const latestByUnitTask = new Map<string, ProgressEntryRow>()
+
+  for (const entry of entries) {
+    if (!entry.unit_id || !entry.task_id) continue
+    if (!unitIdSet.has(entry.unit_id)) continue
+    if (
+      !getAssignedTaskIdsForUnit(byUnit, entry.unit_id, allTaskIds).includes(entry.task_id)
+    ) {
+      continue
+    }
+
+    const key = `${entry.unit_id}:${entry.task_id}`
+    const previous = latestByUnitTask.get(key)
+    if (!previous || getEntryTimestamp(entry) > getEntryTimestamp(previous)) {
+      latestByUnitTask.set(key, entry)
+    }
+  }
+
+  return latestByUnitTask
+}
+
 export function getAssignedTaskIdsForUnit(
   byUnit: Record<string, string[]>,
   unitId: string,
@@ -41,12 +95,11 @@ export function calculateUnitProgressPercent(
 ): number {
   if (assignedTaskIds.length === 0) return 0
 
-  const completedTasks = new Set<string>()
-  for (const entry of entries) {
-    if (entry.unit_id !== unitId || !entry.task_id) continue
-    if (!assignedTaskIds.includes(entry.task_id)) continue
-    if (entry.progress_state === "completed" || entry.status === "approved") {
-      completedTasks.add(entry.task_id)
+  const latestByTask = buildLatestEntriesByTaskForUnit(entries, unitId, assignedTaskIds)
+  const certifiedTasks = new Set<string>()
+  for (const [taskId, entry] of latestByTask) {
+    if (isProgressEntryCertified(entry)) {
+      certifiedTasks.add(taskId)
     }
   }
 
@@ -57,20 +110,20 @@ export function calculateUnitProgressPercent(
 
   if (useWeights) {
     let totalWeight = 0
-    let completedWeight = 0
+    let certifiedWeight = 0
     for (const taskId of assignedTaskIds) {
       const weight = taskWeights.get(taskId) ?? 0
       if (weight <= 0) continue
       totalWeight += weight
-      if (completedTasks.has(taskId)) completedWeight += weight
+      if (certifiedTasks.has(taskId)) certifiedWeight += weight
     }
     if (totalWeight <= 0) {
-      return Math.round((completedTasks.size / assignedTaskIds.length) * 100)
+      return Math.round((certifiedTasks.size / assignedTaskIds.length) * 100)
     }
-    return Math.round((completedWeight / totalWeight) * 100)
+    return Math.round((certifiedWeight / totalWeight) * 100)
   }
 
-  return Math.round((completedTasks.size / assignedTaskIds.length) * 100)
+  return Math.round((certifiedTasks.size / assignedTaskIds.length) * 100)
 }
 
 export function countAssignedCompletedTasks(
@@ -79,19 +132,16 @@ export function countAssignedCompletedTasks(
   unitIds: string[],
   entries: ProgressEntryRow[],
 ): number {
-  const completed = new Set<string>()
+  const latestByUnitTask = buildLatestEntriesByUnitTask(entries, unitIds, byUnit, allTaskIds)
+  let certifiedCount = 0
 
-  for (const entry of entries) {
-    if (!entry.unit_id || !entry.task_id) continue
-    if (entry.progress_state !== "completed" && entry.status !== "approved") continue
-    if (!unitIds.includes(entry.unit_id)) continue
-    if (!getAssignedTaskIdsForUnit(byUnit, entry.unit_id, allTaskIds).includes(entry.task_id)) {
-      continue
+  for (const entry of latestByUnitTask.values()) {
+    if (isProgressEntryCertified(entry)) {
+      certifiedCount += 1
     }
-    completed.add(`${entry.unit_id}:${entry.task_id}`)
   }
 
-  return completed.size
+  return certifiedCount
 }
 
 export function countAssignedBlockedTasks(
