@@ -13,6 +13,7 @@ import {
 import { getUnitDisplayCode } from "@/lib/projects/floorLabels"
 import {
   getDashboardProgressBarColor,
+  getUnitBlockProgressBarColor,
   DASHBOARD_PROGRESS_TRACK_COLOR,
 } from "@/lib/projects/dashboardProgressBarColors"
 import { getUnitTypeIcon } from "@/lib/projects/unitTypeIcons"
@@ -112,10 +113,17 @@ const mockFloors: DashboardFloor[] = [
 function DashboardProgressBar({
   progress,
   className,
+  variant = "default",
 }: {
   progress: number
   className?: string
+  variant?: "default" | "unit"
 }) {
+  const fillColor =
+    variant === "unit"
+      ? getUnitBlockProgressBarColor(progress)
+      : getDashboardProgressBarColor(progress)
+
   return (
     <div
       className={cn("overflow-hidden rounded-full", className)}
@@ -125,7 +133,7 @@ function DashboardProgressBar({
         className="h-full rounded-full transition-all"
         style={{
           width: `${progress}%`,
-          backgroundColor: getDashboardProgressBarColor(progress),
+          backgroundColor: fillColor,
         }}
       />
     </div>
@@ -197,7 +205,7 @@ function UnitCard({
           </span>
           <span className={DASHBOARD_TYPE.unitProgress}>{unit.progress}%</span>
         </div>
-        <DashboardProgressBar progress={unit.progress} className="h-[6px] w-full" />
+        <DashboardProgressBar progress={unit.progress} className="h-[6px] w-full" variant="unit" />
       </div>
       <div className="flex items-center justify-between gap-1.5">
         <div className="flex min-w-0 items-center gap-1">
