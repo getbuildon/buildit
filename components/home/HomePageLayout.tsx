@@ -24,7 +24,11 @@ export function HomePageLayout({
       className={cn(HOME_LAYOUT.shell, className)}
       style={{ backgroundImage: HOME_GRADIENT }}
     >
-      {topBar ? <div className={HOME_LAYOUT.topBar}>{topBar}</div> : null}
+      {topBar ? (
+        <div className={HOME_LAYOUT.topBarWrap}>
+          <div className={HOME_LAYOUT.topBar}>{topBar}</div>
+        </div>
+      ) : null}
       <div className={HOME_LAYOUT.content}>{children}</div>
     </div>
   )
