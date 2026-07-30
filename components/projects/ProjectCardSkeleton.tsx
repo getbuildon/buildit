@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton"
-import { PROJECT_CARD } from "@/lib/home/designTokens"
+import { HOME_LAYOUT } from "@/lib/home/designTokens"
 import { cn } from "@/lib/utils"
 
 type ProjectCardSkeletonProps = {
@@ -12,12 +12,9 @@ export function ProjectCardSkeleton({ className }: ProjectCardSkeletonProps) {
       aria-hidden
       className={cn(
         "block shrink-0 rounded-[16px] border border-white/15 bg-white/10 backdrop-blur-[2px]",
+        HOME_LAYOUT.projectCardSize,
         className,
       )}
-      style={{
-        width: PROJECT_CARD.width,
-        minHeight: PROJECT_CARD.minHeight,
-      }}
     >
       <div className="flex flex-col gap-6 p-6">
         <div className="flex flex-col gap-4">

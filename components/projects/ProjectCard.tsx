@@ -4,14 +4,15 @@ import type { UserProjectListItem } from "@/lib/projects/types"
 import { projectDashboardHref } from "@/lib/project/routes"
 import {
   HOME_COLORS,
+  HOME_LAYOUT,
   HOME_TYPE,
   HOME_WEEKLY_PROGRESS_TOOLTIP,
-  PROJECT_CARD,
   PROJECT_CARD_SHADOW,
   PROJECT_ICON_GRADIENT,
   PROJECT_ICON_SHADOW,
   PROJECT_PROGRESS_GRADIENT,
 } from "@/lib/home/designTokens"
+import { cn } from "@/lib/utils"
 
 type ProjectCardProps = {
   project: UserProjectListItem
@@ -33,10 +34,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
   return (
     <Link
       href={href}
-      className="block shrink-0 rounded-[16px] bg-white text-left transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
+      className={cn(
+        "block shrink-0 rounded-[16px] bg-white text-left transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60",
+        HOME_LAYOUT.projectCardSize,
+      )}
       style={{
-        width: PROJECT_CARD.width,
-        minHeight: PROJECT_CARD.minHeight,
         boxShadow: PROJECT_CARD_SHADOW,
       }}
     >
@@ -81,13 +83,13 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
           <div className="flex flex-col">
             <h3
-              className={HOME_TYPE.projectName}
+              className={cn(HOME_TYPE.projectName, "line-clamp-2")}
               style={{ color: HOME_COLORS.cardTitle }}
             >
               {project.name}
             </h3>
             <p
-              className={`${HOME_TYPE.projectAddress} mt-0`}
+              className={cn(HOME_TYPE.projectAddress, "mt-0 line-clamp-2")}
               style={{ color: HOME_COLORS.cardAddress }}
             >
               {project.address}

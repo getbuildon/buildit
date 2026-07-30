@@ -31,6 +31,24 @@ export const HOME_TYPE = {
   addSubtitle: "text-[12px] font-medium leading-4",
 } as const
 
+/** Layout responsive compartido entre home y skeleton. */
+export const HOME_LAYOUT = {
+  shell:
+    "relative flex min-h-[100dvh] flex-col items-center px-4 pb-10 pt-[4.75rem] text-white sm:px-6 sm:pt-8 md:justify-center md:px-10 md:py-10",
+  topBar:
+    "absolute top-4 right-4 z-10 flex max-w-[calc(100%-2rem)] items-center justify-end gap-2 sm:right-6 sm:top-6 sm:max-w-none sm:gap-3",
+  content: "flex w-full max-w-4xl flex-col items-center",
+  header:
+    "flex w-full flex-col items-center gap-2 px-1 text-center sm:gap-3",
+  greeting:
+    "font-recoleta text-[26px] font-normal leading-[1.15] text-balance sm:text-[32px] sm:leading-[1.2] md:text-[36px] md:leading-[43.2px]",
+  question:
+    "text-base font-normal leading-[1.4] text-balance sm:text-[18px] md:text-[20px] md:leading-7",
+  projectGrid:
+    "mt-8 grid w-full max-w-[840px] grid-cols-1 place-items-center gap-4 sm:mt-10 sm:grid-cols-2 sm:gap-6 md:mt-12 lg:grid-cols-3",
+  projectCardSize: "w-full max-w-[280px] min-h-[245px] sm:max-w-[240px]",
+} as const
+
 export const PROJECT_CARD = {
   width: "240px",
   minHeight: "245px",
