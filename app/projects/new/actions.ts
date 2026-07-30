@@ -374,6 +374,7 @@ export async function createProjectFromDraft(
             name: rubroName,
             tracking_type_id: catalog.trackingTypeIds[rubro.trackingType],
             sort_order: rubroSort++,
+            weight_percent: parseOptionalNumber(rubro.weightPercent),
           })
           .select("id")
           .single()

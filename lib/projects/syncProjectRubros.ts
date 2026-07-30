@@ -9,6 +9,7 @@ export type RubroTaskSaveInput = {
 export type RubroSaveInput = {
   id?: string
   name: string
+  weight_percent: number | null
   tasks: RubroTaskSaveInput[]
 }
 
@@ -261,6 +262,7 @@ export async function syncProjectRubros(
               name: rubro.name,
               sort_order: rubroIndex,
               group_id: groupId,
+              weight_percent: rubro.weight_percent ?? null,
             })
             .eq("id", rubroId)
             .eq("project_id", projectId)
@@ -275,6 +277,7 @@ export async function syncProjectRubros(
               tracking_scope: "unit",
               sort_order: rubroIndex,
               tracking_type_id: defaultTrackingTypeId,
+              weight_percent: rubro.weight_percent ?? null,
             })
             .select("id")
             .single()

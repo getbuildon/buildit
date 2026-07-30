@@ -7,6 +7,7 @@ import {
   calculateUnitProgressPercent,
   type ProgressEntryRow,
 } from "@/lib/projects/dashboardProgress"
+import { buildRubroProgressContext } from "@/lib/projects/buildRubroProgressContext"
 import { getUnitDisplayCode } from "@/lib/projects/floorLabels"
 import { getUnitDashboardLabel } from "@/lib/projects/unitTypes"
 import {
@@ -90,7 +91,7 @@ export async function getUnitDetailData(
         `
         id, name, sort_order,
         rubros (
-          id, name, sort_order,
+          id, name, sort_order, weight_percent,
           rubro_tasks (id, name, sort_order, weight_percent)
         )
       `,
@@ -161,7 +162,8 @@ export async function getUnitDetailData(
 
   const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]))
 
-  const taskWeights = new Map<string, number | null>()
+  const rubroRows: Array<{ id: string; weight_percent: number | null }> = []
+  const taskRows: Array<{ id: string; rubro_id: string }> = []
   const groups: UnitDetailTaskGroup[] = []
 
   groupsRaw.forEach((group, groupIndex) => {
@@ -169,6 +171,7 @@ export async function getUnitDetailData(
       id: string
       name: string
       sort_order: number
+      weight_percent: number | null
       rubro_tasks: Array<{
         id: string
         name: string
@@ -180,12 +183,14 @@ export async function getUnitDetailData(
     const tasks: UnitDetailTaskItem[] = []
 
     rubros.forEach((rubro, rubroIndex) => {
+      rubroRows.push({ id: rubro.id, weight_percent: rubro.weight_percent ?? null })
+
       const rubroTasks = (rubro.rubro_tasks ?? []).sort(
         (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
       )
 
       rubroTasks.forEach((task, taskIndex) => {
-        taskWeights.set(task.id, task.weight_percent ?? null)
+        taskRows.push({ id: task.id, rubro_id: rubro.id })
         if (!assignedSet.has(task.id)) return
 
         const latest = latestByTask.get(task.id) as
@@ -221,11 +226,13 @@ export async function getUnitDetailData(
     }
   })
 
+  const rubroProgress = buildRubroProgressContext(rubroRows, taskRows)
+
   const progressPercent = calculateUnitProgressPercent(
     selectedUnitId,
     assignedTaskIds,
     entries,
-    taskWeights,
+    rubroProgress,
   )
 
   const unitCode = getUnitDisplayCode({

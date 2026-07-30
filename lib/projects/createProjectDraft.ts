@@ -59,6 +59,8 @@ export type RubroItemDraft = {
   id: string
   name: string
   trackingType: TaskTrackingType
+  /** Vacío = peso automático. Máximo 100%. */
+  weightPercent: string
   tasks: RubroTaskDraft[]
 }
 
@@ -172,7 +174,13 @@ export function createDefaultFloor(floorIndex: number): StructureFloorDraft {
 }
 
 function makeRubro(name: string): RubroItemDraft {
-  return { id: newId("rubro"), name, trackingType: "Porcentaje", tasks: [] }
+  return {
+    id: newId("rubro"),
+    name,
+    trackingType: "Porcentaje",
+    weightPercent: "",
+    tasks: [],
+  }
 }
 
 export function createTemplateRubroGroups(): RubroGroupDraft[] {
@@ -421,6 +429,7 @@ export function createDefaultRubroItem(): RubroItemDraft {
     id: newId("rubro"),
     name: "",
     trackingType: "Porcentaje",
+    weightPercent: "",
     tasks: [],
   }
 }

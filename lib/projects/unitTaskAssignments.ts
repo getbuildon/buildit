@@ -164,6 +164,7 @@ type RubroGroupData = {
   rubros: Array<{
     id: string
     name: string
+    weight_percent?: number | null
     tasks: Array<{
       id: string
       name: string
@@ -230,6 +231,8 @@ export function buildConfigDraftFromProjectData(input: {
               id: rubro.id,
               name: rubro.name,
               trackingType: "Porcentaje",
+              weightPercent:
+                rubro.weight_percent != null ? String(rubro.weight_percent) : "",
               tasks: rubro.tasks.map((task) => ({
                 id: task.id,
                 name: task.name,

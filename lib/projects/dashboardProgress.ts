@@ -87,43 +87,115 @@ export function getAssignedTaskIdsForUnit(
   return byUnit[unitId] ?? []
 }
 
+export type RubroProgressContext = {
+  taskToRubro: Map<string, string>
+  rubroWeights: Map<string, number>
+}
+
+/** Agrupa tareas asignadas por rubro. */
+function groupAssignedTasksByRubro(
+  assignedTaskIds: string[],
+  taskToRubro: Map<string, string>,
+): Map<string, string[]> {
+  const tasksByRubro = new Map<string, string[]>()
+
+  for (const taskId of assignedTaskIds) {
+    const rubroId = taskToRubro.get(taskId)
+    if (!rubroId) continue
+    const list = tasksByRubro.get(rubroId) ?? []
+    list.push(taskId)
+    tasksByRubro.set(rubroId, list)
+  }
+
+  return tasksByRubro
+}
+
+/**
+ * Calcula el progreso de una unidad según la incidencia de cada rubro.
+ * Solo las tareas certificadas (status approved) suman al avance del rubro.
+ */
 export function calculateUnitProgressPercent(
   unitId: string,
   assignedTaskIds: string[],
   entries: ProgressEntryRow[],
-  taskWeights: Map<string, number | null>,
+  rubroProgress: RubroProgressContext,
 ): number {
   if (assignedTaskIds.length === 0) return 0
 
   const latestByTask = buildLatestEntriesByTaskForUnit(entries, unitId, assignedTaskIds)
-  const certifiedTasks = new Set<string>()
-  for (const [taskId, entry] of latestByTask) {
-    if (isProgressEntryCertified(entry)) {
-      certifiedTasks.add(taskId)
+  const tasksByRubro = groupAssignedTasksByRubro(
+    assignedTaskIds,
+    rubroProgress.taskToRubro,
+  )
+
+  let totalProgress = 0
+
+  for (const [rubroId, taskIds] of tasksByRubro) {
+    const rubroWeight = rubroProgress.rubroWeights.get(rubroId) ?? 0
+    if (rubroWeight <= 0 || taskIds.length === 0) continue
+
+    let certifiedCount = 0
+    for (const taskId of taskIds) {
+      const entry = latestByTask.get(taskId)
+      if (entry && isProgressEntryCertified(entry)) {
+        certifiedCount += 1
+      }
     }
+
+    totalProgress += rubroWeight * (certifiedCount / taskIds.length)
   }
 
-  const useWeights = assignedTaskIds.some((taskId) => {
-    const weight = taskWeights.get(taskId)
-    return weight != null && weight > 0
-  })
+  return Math.round(totalProgress)
+}
 
-  if (useWeights) {
-    let totalWeight = 0
-    let certifiedWeight = 0
-    for (const taskId of assignedTaskIds) {
-      const weight = taskWeights.get(taskId) ?? 0
-      if (weight <= 0) continue
-      totalWeight += weight
-      if (certifiedTasks.has(taskId)) certifiedWeight += weight
-    }
-    if (totalWeight <= 0) {
-      return Math.round((certifiedTasks.size / assignedTaskIds.length) * 100)
-    }
-    return Math.round((certifiedWeight / totalWeight) * 100)
-  }
+function calculateAverageProgress(values: number[]): number {
+  if (values.length === 0) return 0
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
+}
 
-  return Math.round((certifiedTasks.size / assignedTaskIds.length) * 100)
+export function calculateUnitProgressValue(
+  unitId: string,
+  allTaskIds: string[],
+  byUnit: Record<string, string[]>,
+  entries: ProgressEntryRow[],
+  rubroProgress: RubroProgressContext,
+): number {
+  const assignedTaskIds = getAssignedTaskIdsForUnit(byUnit, unitId, allTaskIds)
+  return calculateUnitProgressPercent(unitId, assignedTaskIds, entries, rubroProgress)
+}
+
+/** Progreso del piso: promedio igualitario de sus unidades (rubros certificados por unidad). */
+export function calculateFloorProgressPercent(
+  unitIds: string[],
+  allTaskIds: string[],
+  byUnit: Record<string, string[]>,
+  entries: ProgressEntryRow[],
+  rubroProgress: RubroProgressContext,
+): number {
+  if (unitIds.length === 0) return 0
+
+  const unitProgressValues = unitIds.map((unitId) =>
+    calculateUnitProgressValue(unitId, allTaskIds, byUnit, entries, rubroProgress),
+  )
+
+  return calculateAverageProgress(unitProgressValues)
+}
+
+/** Progreso de obra: promedio igualitario de los pisos. */
+export function calculateProjectProgressPercent(
+  floorUnitIds: string[][],
+  allTaskIds: string[],
+  byUnit: Record<string, string[]>,
+  entries: ProgressEntryRow[],
+  rubroProgress: RubroProgressContext,
+): number {
+  if (floorUnitIds.length === 0) return 0
+
+  const floorProgressValues = floorUnitIds.map((unitIds) =>
+    calculateFloorProgressPercent(unitIds, allTaskIds, byUnit, entries, rubroProgress),
+  )
+
+  return calculateAverageProgress(floorProgressValues)
 }
 
 export function countAssignedCompletedTasks(

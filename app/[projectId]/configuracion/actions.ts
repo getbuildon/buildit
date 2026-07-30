@@ -5,12 +5,15 @@ import { createClient } from "@/utils/supabase/server"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
 import { checkProjectPermission } from "@/lib/project/projectAccess"
 import {
-  calculateUnitProgressPercent,
+  calculateFloorProgressPercent,
+  calculateProjectProgressPercent,
+  calculateUnitProgressValue,
   countAssignedBlockedTasks,
   countAssignedCompletedTasks,
   getAssignedTaskIdsForUnit,
   unitHasBlockedTasks,
 } from "@/lib/projects/dashboardProgress"
+import { buildRubroProgressContext } from "@/lib/projects/buildRubroProgressContext"
 import {
   syncProjectRubros,
   type RubroGroupSaveInput,
@@ -73,6 +76,7 @@ export type RubroData = {
   description: string | null
   tracking_scope: string
   sort_order: number
+  weight_percent: number | null
   tasks: TaskData[]
 }
 
@@ -129,7 +133,7 @@ export async function getDashboardData(
 
   const supabase = await createClient()
 
-  const [floorsResult, unitsResult, assignments, tasksResult, entriesResult] =
+  const [floorsResult, unitsResult, assignments, rubrosResult, tasksResult, entriesResult] =
     await Promise.all([
       supabase
         .from("project_floors")
@@ -142,22 +146,30 @@ export async function getDashboardData(
         .eq("project_id", id)
         .order("sort_order", { ascending: true }),
       getUnitTaskAssignments(id),
-      supabase.from("rubro_tasks").select("id, weight_percent").eq("project_id", id),
+      supabase.from("rubros").select("id, weight_percent").eq("project_id", id),
+      supabase.from("rubro_tasks").select("id, rubro_id").eq("project_id", id),
       supabase
         .from("progress_entries")
         .select("unit_id, task_id, progress_state, status, submitted_at, created_at")
         .eq("project_id", id),
     ])
 
-  if (floorsResult.error || unitsResult.error || tasksResult.error || entriesResult.error) {
+  if (
+    floorsResult.error ||
+    unitsResult.error ||
+    rubrosResult.error ||
+    tasksResult.error ||
+    entriesResult.error
+  ) {
     return null
   }
 
   const floors = floorsResult.data ?? []
   const units = unitsResult.data ?? []
   const allTaskIds = (tasksResult.data ?? []).map((task) => task.id)
-  const taskWeights = new Map<string, number | null>(
-    (tasksResult.data ?? []).map((task) => [task.id, task.weight_percent]),
+  const rubroProgress = buildRubroProgressContext(
+    rubrosResult.data ?? [],
+    tasksResult.data ?? [],
   )
   const entries = entriesResult.data ?? []
   const unitIds = units.map((unit) => unit.id)
@@ -184,20 +196,22 @@ export async function getDashboardData(
   )
 
   const dashboardFloors: DashboardFloor[] = floors.map((floor) => {
-    const floorUnits: DashboardUnit[] = units
+    const floorUnitsData = units
       .filter((unit) => unit.floor_id === floor.id)
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-      .map((unit) => {
+
+    const floorUnits: DashboardUnit[] = floorUnitsData.map((unit) => {
         const assignedTaskIds = getAssignedTaskIdsForUnit(
           assignments.byUnit,
           unit.id,
           allTaskIds,
         )
-        const progress = calculateUnitProgressPercent(
+        const progress = calculateUnitProgressValue(
           unit.id,
-          assignedTaskIds,
+          allTaskIds,
+          assignments.byUnit,
           entries,
-          taskWeights,
+          rubroProgress,
         )
         const hasBlockedTasks = unitHasBlockedTasks(unit.id, assignedTaskIds, entries)
 
@@ -212,10 +226,13 @@ export async function getDashboardData(
         }
       })
 
-    const floorProgress =
-      floorUnits.length > 0
-        ? Math.round(floorUnits.reduce((sum, unit) => sum + unit.progress, 0) / floorUnits.length)
-        : 0
+    const floorProgress = calculateFloorProgressPercent(
+      floorUnitsData.map((unit) => unit.id),
+      allTaskIds,
+      assignments.byUnit,
+      entries,
+      rubroProgress,
+    )
 
     return {
       id: floor.id,
@@ -226,11 +243,16 @@ export async function getDashboardData(
     }
   })
 
+  const generalProgress = calculateProjectProgressPercent(
+    floors.map((floor) =>
+      units.filter((unit) => unit.floor_id === floor.id).map((unit) => unit.id),
+    ),
+    allTaskIds,
+    assignments.byUnit,
+    entries,
+    rubroProgress,
+  )
   const allUnits = dashboardFloors.flatMap((floor) => floor.units)
-  const generalProgress =
-    allUnits.length > 0
-      ? Math.round(allUnits.reduce((sum, unit) => sum + unit.progress, 0) / allUnits.length)
-      : 0
   const completedUnits = allUnits.filter((unit) => unit.progress === 100).length
 
   return {
@@ -465,7 +487,7 @@ export async function getProjectRubroGroups(projectId: string): Promise<RubroGro
       `
       id, name, sort_order,
       rubros (
-        id, name, tracking_scope, sort_order,
+        id, name, tracking_scope, sort_order, weight_percent,
         rubro_tasks (id, name, description, sort_order, weight_percent)
       )
     `
@@ -487,6 +509,7 @@ export async function getProjectRubroGroups(projectId: string): Promise<RubroGro
         description: null,
         tracking_scope: r.tracking_scope,
         sort_order: r.sort_order,
+        weight_percent: r.weight_percent ?? null,
         tasks: ((r.rubro_tasks as any[]) || [])
           .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
           .map((t: any) => ({

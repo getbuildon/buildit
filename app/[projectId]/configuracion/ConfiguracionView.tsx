@@ -5,7 +5,6 @@ import { AlertCircle, Building2, CalendarDays, Check, ChevronDown, MapPin } from
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
-import { createProjectDatePickerClassName } from "@/components/projects/new/CreateProjectFormField"
 import { CreateProjectStructureStep } from "@/components/projects/new/steps/CreateProjectStructureStep"
 import { CreateProjectTasksStep } from "@/components/projects/new/steps/CreateProjectTasksStep"
 import { CreateProjectUnitTasksStep } from "@/components/projects/new/steps/CreateProjectUnitTasksStep"
@@ -15,12 +14,14 @@ import {
   type CreateProjectDraft,
 } from "@/lib/projects/createProjectDraft"
 import { unitTypeToDbFields } from "@/lib/projects/unitTypes"
+import { parseRubroWeightInput } from "@/lib/projects/rubroWeights"
 import {
   buildConfigDraftFromProjectData,
   exclusionsToAssignments,
   remapUnitTaskExclusions,
 } from "@/lib/projects/unitTaskAssignments"
 import { CREATE_PROJECT_LAYOUT } from "@/lib/projects/createProjectTokens"
+import { cn } from "@/lib/utils"
 import {
   clearUnitPlanPhoto,
   clearUnitRenderPhoto,
@@ -48,6 +49,7 @@ type SaveFeedback = { type: "success" | "error"; message: string } | null
 const basicInputClassName =
   "h-[42px] w-full rounded-[10px] border bg-white px-3 text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:ring-0"
 const basicInputStyle = { borderColor: "#e2e8f0" } as const
+const basicDatePickerClassName = cn(basicInputClassName, "border-[#e2e8f0] text-left")
 
 function SettingsCard({
   title,
@@ -196,6 +198,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
       rubros: g.rubros.map((r) => ({
         id: r.id,
         name: r.name,
+        weight_percent: parseRubroWeightInput(r.weightPercent),
         tasks: r.tasks.map((t) => ({
           id: t.id,
           name: t.name,
@@ -424,7 +427,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
                 toDate={parsedEndDate}
                 placeholder="Seleccionar fecha"
                 popoverSide="bottom"
-                className={createProjectDatePickerClassName}
+                className={basicDatePickerClassName}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -442,7 +445,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
                 fromDate={parsedStartDate}
                 placeholder="Seleccionar fecha"
                 popoverSide="bottom"
-                className={createProjectDatePickerClassName}
+                className={basicDatePickerClassName}
               />
             </div>
           </div>
