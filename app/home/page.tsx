@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { AddProjectCard } from "@/components/projects/AddProjectCard"
 import { ProjectCard } from "@/components/projects/ProjectCard"
+import { HomePageSkeleton } from "@/components/home/HomePageSkeleton"
 import { CompanyHomeButton } from "@/components/company/CompanyHomeButton"
 import { UserMenu } from "@/components/user/UserMenu"
 import { useAuth } from "@/context/AuthContextSupabase"
@@ -58,14 +59,7 @@ function HomePage() {
   const canCreateProjects = canManageCompanyProjects(companies)
 
   if (loading) {
-    return (
-      <div
-        className="relative flex min-h-screen flex-col items-center justify-center px-6 py-8 text-white sm:px-10"
-        style={{ backgroundImage: HOME_GRADIENT }}
-      >
-        <div>Cargando...</div>
-      </div>
-    )
+    return <HomePageSkeleton />
   }
 
   return (

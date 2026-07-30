@@ -76,6 +76,59 @@ body {
   animation: new-item-pulse 0.85s ease-in-out 3;
 }
 
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-block {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-tone-light {
+  background-color: rgb(163 163 163 / 0.22);
+}
+
+.skeleton-tone-light::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.35) 42%,
+    rgb(255 255 255 / 0.75) 50%,
+    rgb(255 255 255 / 0.35) 58%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-tone-dark {
+  background-color: rgb(255 255 255 / 0.12);
+}
+
+.skeleton-tone-dark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.08) 42%,
+    rgb(255 255 255 / 0.28) 50%,
+    rgb(255 255 255 / 0.08) 58%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
 html:has([data-project-shell]),
 html:has([data-project-shell]) body {
   overflow: hidden;
