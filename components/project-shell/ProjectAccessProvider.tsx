@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, type ReactNode } from "react"
-import type { ProjectAccessContext } from "@/lib/project/projectAccess"
+import type { ProjectAccessContext } from "@/lib/project/projectAccessContext"
 import {
   canViewDetailedProgressForUnit,
   hasProjectPermission,

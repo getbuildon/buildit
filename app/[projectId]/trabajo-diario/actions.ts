@@ -5,11 +5,14 @@ import { format } from "date-fns"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
-import { checkProjectPermission, getProjectAccessContext, canAccessUnitProgress } from "@/lib/project/projectAccess"
+import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
+import { canAccessUnitProgress } from "@/lib/project/projectAccessContext"
 import { hasStrictProjectPermission } from "@/lib/project/projectPermissions"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
 import {
   getUnitTaskKey,
+  isUnitTaskCompletedForLoading,
+  mapDbProgressToCargarAvanceStatus,
   mapTaskStatusToDb,
   type CargarAvanceTaskStatus,
 } from "@/lib/projects/cargarAvance"
@@ -25,6 +28,7 @@ export type SaveCargarAvanceInput = {
   unitIds: string[]
   tasks: Array<{
     taskId: string
+    unitIds: string[]
     taskStatus: CargarAvanceTaskStatus
     comment: string | null
     photoCount?: number
@@ -149,6 +153,7 @@ export type TrabajoDiarioData = {
   rubroGroups: TrabajoDiarioRubroGroup[]
   assignmentsByUnit: Record<string, string[]>
   loadedUnitTaskKeys: string[]
+  unitTaskStatuses: Record<string, CargarAvanceTaskStatus>
 }
 
 function mapProgressStatus(
@@ -366,17 +371,30 @@ export async function getTrabajoDiarioData(
 
   const tasks: TrabajoDiarioTask[] = []
   const latestEntryKeys = new Set<string>()
+  const latestStatusKeys = new Set<string>()
   const loadedUnitTaskKeys = new Set<string>()
+  const unitTaskStatuses: Record<string, CargarAvanceTaskStatus> = {}
   const taskCodeById = buildTaskCodeMap(rubroGroupsRaw)
 
   for (const entry of entries) {
     if (!entry.unit_id || !entry.task_id) continue
 
-    loadedUnitTaskKeys.add(`${entry.unit_id}:${entry.task_id}`)
+    const unitTaskKey = getUnitTaskKey(entry.unit_id, entry.task_id)
+
+    if (!latestStatusKeys.has(unitTaskKey)) {
+      latestStatusKeys.add(unitTaskKey)
+      unitTaskStatuses[unitTaskKey] = mapDbProgressToCargarAvanceStatus(
+        entry.status,
+        entry.progress_state,
+      )
+
+      if (isUnitTaskCompletedForLoading(entry.status, entry.progress_state)) {
+        loadedUnitTaskKeys.add(unitTaskKey)
+      }
+    }
 
     if (!isTaskAssignedToUnit(assignments.byUnit, entry.unit_id, entry.task_id)) continue
 
-    const unitTaskKey = `${entry.unit_id}:${entry.task_id}`
     if (latestEntryKeys.has(unitTaskKey)) continue
     latestEntryKeys.add(unitTaskKey)
 
@@ -414,6 +432,7 @@ export async function getTrabajoDiarioData(
     rubroGroups,
     assignmentsByUnit: assignments.byUnit,
     loadedUnitTaskKeys: [...loadedUnitTaskKeys],
+    unitTaskStatuses,
   }
 }
 
@@ -428,15 +447,10 @@ export async function saveCargarAvance(
     return { ok: false, error: "Seleccioná al menos una unidad." }
   }
 
-  const tasksToSave = input.tasks.filter(
-    (task) =>
-      task.taskStatus !== "pending" ||
-      (task.comment?.trim().length ?? 0) > 0 ||
-      (task.photoCount ?? 0) > 0,
-  )
+  const tasksToSave = input.tasks.filter((task) => task.taskStatus !== "pending")
 
   if (tasksToSave.length === 0) {
-    return { ok: false, error: "Completá al menos una tarea antes de guardar." }
+    return { ok: false, error: "Seleccioná un estado en al menos una tarea." }
   }
 
   const permission = await checkProjectPermission(projectId, "loadProgress")
@@ -478,16 +492,21 @@ export async function saveCargarAvance(
     if (!validTaskIds.has(task.taskId)) {
       return { ok: false, error: "Hay tareas inválidas para el rubro seleccionado." }
     }
+    if (task.unitIds.length === 0) {
+      return { ok: false, error: "Seleccioná al menos una unidad por tarea." }
+    }
   }
+
+  const allTargetUnitIds = [...new Set(tasksToSave.flatMap((task) => task.unitIds))]
 
   const { data: units, error: unitsError } = await supabase
     .from("project_units")
     .select("id, floor_id")
     .eq("project_id", projectId)
-    .in("id", input.unitIds)
+    .in("id", allTargetUnitIds)
 
   if (unitsError) return { ok: false, error: unitsError.message }
-  if (!units || units.length !== input.unitIds.length) {
+  if (!units || units.length !== allTargetUnitIds.length) {
     return { ok: false, error: "Una o más unidades no son válidas." }
   }
 
@@ -495,9 +514,11 @@ export async function saveCargarAvance(
     if (unit.floor_id !== input.floorId) {
       return { ok: false, error: "Las unidades deben pertenecer al piso seleccionado." }
     }
+  }
 
-    for (const task of tasksToSave) {
-      if (!isTaskAssignedToUnit(assignments.byUnit, unit.id, task.taskId)) {
+  for (const task of tasksToSave) {
+    for (const unitId of task.unitIds) {
+      if (!isTaskAssignedToUnit(assignments.byUnit, unitId, task.taskId)) {
         return { ok: false, error: "Hay tareas no asignadas a alguna unidad seleccionada." }
       }
     }
@@ -505,26 +526,38 @@ export async function saveCargarAvance(
 
   const { data: existingEntries, error: existingEntriesError } = await supabase
     .from("progress_entries")
-    .select("unit_id, task_id")
+    .select("unit_id, task_id, status, progress_state, created_at")
     .eq("project_id", projectId)
-    .in("unit_id", input.unitIds)
+    .in("unit_id", allTargetUnitIds)
     .in(
       "task_id",
       tasksToSave.map((task) => task.taskId),
     )
+    .order("created_at", { ascending: false })
 
   if (existingEntriesError) {
     return { ok: false, error: existingEntriesError.message }
   }
 
-  const loadedKeys = new Set(
-    (existingEntries ?? []).map((entry) => getUnitTaskKey(entry.unit_id, entry.task_id)),
-  )
+  const closedKeys = new Set<string>()
+  const seenUnitTaskKeys = new Set<string>()
+
+  for (const entry of existingEntries ?? []) {
+    if (!entry.unit_id || !entry.task_id) continue
+
+    const unitTaskKey = getUnitTaskKey(entry.unit_id, entry.task_id)
+    if (seenUnitTaskKeys.has(unitTaskKey)) continue
+    seenUnitTaskKeys.add(unitTaskKey)
+
+    if (isUnitTaskCompletedForLoading(entry.status, entry.progress_state)) {
+      closedKeys.add(unitTaskKey)
+    }
+  }
 
   const now = new Date().toISOString()
-  const rows = input.unitIds.flatMap((unitId) =>
-    tasksToSave.flatMap((task) => {
-      if (loadedKeys.has(getUnitTaskKey(unitId, task.taskId))) return []
+  const rows = tasksToSave.flatMap((task) =>
+    task.unitIds.flatMap((unitId) => {
+      if (closedKeys.has(getUnitTaskKey(unitId, task.taskId))) return []
 
       const mapped = mapTaskStatusToDb(task.taskStatus)
       return [
@@ -547,7 +580,8 @@ export async function saveCargarAvance(
   if (rows.length === 0) {
     return {
       ok: false,
-      error: "Las tareas seleccionadas ya tienen avance cargado para estas unidades.",
+      error:
+        "Las tareas seleccionadas ya están completadas para estas unidades.",
     }
   }
 

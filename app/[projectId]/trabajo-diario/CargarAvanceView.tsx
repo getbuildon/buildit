@@ -5,14 +5,19 @@ import { House, Info, MapPin, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   buildLoadedUnitTaskKeySet,
+  analyzeMultiUnitTaskMismatch,
   getRubrosForUnits,
   getTasksForRubroAndUnits,
+  getDefaultTargetUnitIdsForTask,
   getUnitDisplayLabel,
   getUnitDisplayTitle,
   createEmptyTaskDraft,
   hasTaskDraftContent,
   revokeAllTaskDrafts,
+  sortUnitIdsByDisplayOrder,
+  type CargarAvanceMultiUnitMismatch,
   type CargarAvanceTaskDraft,
+  type CargarAvanceTaskStatus,
 } from "@/lib/projects/cargarAvance"
 import { buildAttachmentsForTaskPhotos } from "@/lib/progress/linkProgressPhotos.client"
 import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
@@ -47,8 +52,6 @@ type SelectionPillProps = {
 }
 
 function SelectionPill({ label, title, selected, onClick }: SelectionPillProps) {
-  const isLongLabel = label.length > 12
-
   return (
     <button
       type="button"
@@ -57,15 +60,19 @@ function SelectionPill({ label, title, selected, onClick }: SelectionPillProps) 
       aria-label={title}
       title={title}
       className={cn(
-        "inline-flex h-11 min-w-[85px] max-w-full shrink-0 items-center justify-center rounded-[10px] px-3 py-3 text-[14px] leading-[1.4] transition-colors",
+        "flex min-w-0 flex-1 basis-0 items-center justify-center rounded-[10px] px-3 py-3 text-center text-[14px] leading-[1.4] transition-colors",
         selected
           ? "bg-[#ff7433] font-medium text-white"
           : "bg-[#edeef0] font-normal text-[#272a2d] hover:bg-[#d8d9db]",
       )}
     >
-      <span className={cn(isLongLabel && "max-w-36 truncate")}>{label}</span>
+      <span className="truncate">{label}</span>
     </button>
   )
+}
+
+function SelectionPillRow({ children }: { children: ReactNode }) {
+  return <div className="flex w-full gap-2">{children}</div>
 }
 
 function SelectionCard({
@@ -101,6 +108,7 @@ type CargarAvanceViewProps = {
   rubroGroups: TrabajoDiarioRubroGroup[]
   assignmentsByUnit: Record<string, string[]>
   loadedUnitTaskKeys: string[]
+  unitTaskStatuses: Record<string, CargarAvanceTaskStatus>
   selectedFloorId: string | null
   selectedRubroId: string | null
   onSelectFloor: (floorId: string) => void
@@ -115,6 +123,7 @@ export function CargarAvanceView({
   rubroGroups,
   assignmentsByUnit,
   loadedUnitTaskKeys,
+  unitTaskStatuses,
   selectedFloorId,
   selectedRubroId,
   onSelectFloor,
@@ -131,6 +140,7 @@ export function CargarAvanceView({
   const [showConfirmSave, setShowConfirmSave] = useState(false)
   const [pendingRubroId, setPendingRubroId] = useState<string | null>(null)
   const [showRubroChangeConfirm, setShowRubroChangeConfirm] = useState(false)
+  const [showUnitMismatchDetail, setShowUnitMismatchDetail] = useState(false)
 
   const selectedFloor = floors.find((floor) => floor.id === selectedFloorId) ?? null
   const floorUnits = selectedFloor?.units ?? []
@@ -163,28 +173,71 @@ export function CargarAvanceView({
   const selectedRubroName =
     availableRubros.find((rubro) => rubro.id === selectedRubroId)?.name ?? "—"
 
-  const unitLabels = useMemo(() => {
-    if (!selectedFloor) return []
-
-    return selectedUnitIds.map((unitId) => {
-      const unit = selectedFloor.units.find((item) => item.id === unitId)
-      if (!unit) return unitId.slice(0, 8)
-      const index = selectedFloor.units.findIndex((item) => item.id === unitId)
-      return getUnitDisplayLabel(unit, index >= 0 ? index + 1 : undefined)
+  const unitLabelById = useMemo(() => {
+    if (!selectedFloor) return {}
+    const labels: Record<string, string> = {}
+    selectedFloor.units.forEach((unit, index) => {
+      labels[unit.id] = getUnitDisplayLabel(unit, index + 1)
     })
-  }, [selectedFloor, selectedUnitIds])
+    return labels
+  }, [selectedFloor])
+
+  const orderedUnitIds = useMemo(
+    () => floorUnits.map((unit) => unit.id),
+    [floorUnits],
+  )
+
+  const multiUnitMismatch = useMemo((): CargarAvanceMultiUnitMismatch => {
+    if (!selectedRubroId || selectedUnitIds.length <= 1) {
+      return {
+        shouldShowDisclaimer: false,
+        partiallyLoadedTasks: [],
+        unitSpecificTasks: [],
+      }
+    }
+
+    return analyzeMultiUnitTaskMismatch(
+      selectedRubroId,
+      rubroGroups,
+      selectedUnitIds,
+      unitLabelById,
+      assignmentsByUnit,
+      loadedKeys,
+    )
+  }, [
+    assignmentsByUnit,
+    loadedKeys,
+    rubroGroups,
+    selectedRubroId,
+    selectedUnitIds,
+    unitLabelById,
+  ])
+
+  const selectedUnitLabelsForMismatch = useMemo(
+    () =>
+      selectedUnitIds.map(
+        (unitId) => unitLabelById[unitId] ?? unitId.slice(0, 8),
+      ),
+    [selectedUnitIds, unitLabelById],
+  )
 
   const reviewTasks = useMemo(() => {
     return availableTasks
       .filter((task) =>
         hasTaskDraftContent(taskDrafts[task.id] ?? createEmptyTaskDraft()),
       )
-      .map((task) => ({
-        id: task.id,
-        name: task.name,
-        status: taskDrafts[task.id]?.taskStatus ?? ("pending" as const),
-      }))
-  }, [availableTasks, taskDrafts])
+      .map((task) => {
+        const draft = taskDrafts[task.id] ?? createEmptyTaskDraft()
+        return {
+          id: task.id,
+          name: task.name,
+          status: draft.taskStatus,
+          unitLabels: sortUnitIdsByDisplayOrder(draft.targetUnitIds, orderedUnitIds).map(
+            (unitId) => unitLabelById[unitId] ?? unitId.slice(0, 8),
+          ),
+        }
+      })
+  }, [availableTasks, orderedUnitIds, taskDrafts, unitLabelById])
 
   const showWorkSections = selectedUnitIds.length > 0
 
@@ -231,11 +284,31 @@ export function CargarAvanceView({
     setTaskDrafts((current) => {
       const next: Record<string, CargarAvanceTaskDraft> = {}
       for (const task of availableTasks) {
-        next[task.id] = current[task.id] ?? createEmptyTaskDraft()
+        const existing = current[task.id]
+        const defaultTargetUnitIds = getDefaultTargetUnitIdsForTask(
+          task.id,
+          selectedUnitIds,
+          assignmentsByUnit,
+          loadedKeys,
+        )
+        next[task.id] = existing
+          ? {
+              ...existing,
+              targetUnitIds: existing.targetUnitIds.filter((unitId) =>
+                defaultTargetUnitIds.includes(unitId),
+              ),
+            }
+          : createEmptyTaskDraft(defaultTargetUnitIds)
+        if (next[task.id].targetUnitIds.length === 0 && defaultTargetUnitIds.length > 0) {
+          next[task.id] = {
+            ...next[task.id],
+            targetUnitIds: defaultTargetUnitIds,
+          }
+        }
       }
       return next
     })
-  }, [availableTasks])
+  }, [assignmentsByUnit, availableTasks, loadedKeys, selectedUnitIds])
 
   const toggleUnit = (unitId: string) => {
     setSelectedUnitIds((current) =>
@@ -326,6 +399,7 @@ export function CargarAvanceView({
         const draft = taskDrafts[task.id] ?? createEmptyTaskDraft()
         return {
           taskId: task.id,
+          unitIds: draft.targetUnitIds,
           taskStatus: draft.taskStatus,
           comment: draft.comment || null,
           photoCount: draft.photos.length,
@@ -355,7 +429,9 @@ export function CargarAvanceView({
     }
 
     const draftsWithPhotos = Object.fromEntries(
-      Object.entries(taskDrafts).filter(([, draft]) => draft.photos.length > 0),
+      Object.entries(taskDrafts).filter(
+        ([, draft]) => draft.photos.length > 0 && hasTaskDraftContent(draft),
+      ),
     )
 
     if (Object.keys(draftsWithPhotos).length > 0) {
@@ -432,7 +508,7 @@ export function CargarAvanceView({
               No hay pisos configurados en este proyecto.
             </p>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <SelectionPillRow>
               {floors.map((floor) => (
                 <SelectionPill
                   key={floor.id}
@@ -442,7 +518,7 @@ export function CargarAvanceView({
                   onClick={() => onSelectFloor(floor.id)}
                 />
               ))}
-            </div>
+            </SelectionPillRow>
           )}
         </SelectionCard>
 
@@ -457,7 +533,7 @@ export function CargarAvanceView({
                 No hay unidades configuradas en este piso.
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
+              <SelectionPillRow>
                 {floorUnits.map((unit, index) => (
                   <SelectionPill
                     key={unit.id}
@@ -467,7 +543,7 @@ export function CargarAvanceView({
                     onClick={() => toggleUnit(unit.id)}
                   />
                 ))}
-              </div>
+              </SelectionPillRow>
             )}
           </SelectionCard>
         ) : null}
@@ -486,12 +562,26 @@ export function CargarAvanceView({
             saving={saving}
             saveError={saveError}
             onReview={handleReview}
+            selectedUnitIds={selectedUnitIds}
+            orderedUnitIds={orderedUnitIds}
+            unitLabelById={unitLabelById}
+            assignmentsByUnit={assignmentsByUnit}
+            loadedKeys={loadedKeys}
+            unitTaskStatuses={unitTaskStatuses}
+            selectedUnitCount={selectedUnitIds.length}
+            multiUnitMismatch={multiUnitMismatch}
+            onViewUnitMismatchDetail={() => setShowUnitMismatchDetail(true)}
+            floorLabel={selectedFloor ? getFloorDisplayLabel(selectedFloor) : "—"}
+            selectedUnitLabels={selectedUnitLabelsForMismatch}
+            rubroName={selectedRubroName}
+            showUnitMismatchDetail={showUnitMismatchDetail}
+            onShowUnitMismatchDetailChange={setShowUnitMismatchDetail}
           />
         ) : null}
 
         {showWorkSections && availableRubros.length === 0 ? (
           <div className="rounded-[14px] border border-dashed border-[#edeef0] px-4 py-6 text-center text-[14px] text-[#777b84]">
-            Todas las tareas de las unidades seleccionadas ya tienen avance cargado.
+            Todas las tareas de las unidades seleccionadas ya están completadas.
           </div>
         ) : null}
 
@@ -514,7 +604,6 @@ export function CargarAvanceView({
         open={showConfirmSave}
         onOpenChange={setShowConfirmSave}
         floorLabel={selectedFloor?.name ?? "—"}
-        unitLabels={unitLabels}
         rubroName={selectedRubroName}
         tasks={reviewTasks}
         saving={saving}

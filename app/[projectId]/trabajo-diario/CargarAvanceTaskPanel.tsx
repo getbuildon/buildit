@@ -22,15 +22,22 @@ import { cn } from "@/lib/utils"
 import { ProgressPhotoUpload } from "@/components/progress/ProgressPhotoUpload"
 import {
   createEmptyTaskDraft,
-  hasTaskDraftContent,
+  getAssignedSelectedUnitIdsForTask,
+  getUnitTaskKey,
+  isUnitTaskLoaded,
+  sortUnitIdsByDisplayOrder,
   CARGAR_AVANCE_BADGE_CLASSNAME,
   CARGAR_AVANCE_BADGE_STYLES,
   CARGAR_AVANCE_STATUS_LABELS,
   type CargarAvanceRubroOption,
   type CargarAvanceTaskDraft,
   type CargarAvanceTaskStatus,
+  type CargarAvanceMultiUnitMismatch,
 } from "@/lib/projects/cargarAvance"
 import type { TrabajoDiarioRubroTask } from "./actions"
+import { CargarAvanceUnitMismatchCallout } from "./CargarAvanceUnitMismatchCallout"
+import { CargarAvanceUnitMismatchDialog } from "./CargarAvanceUnitMismatchDialog"
+import { TaskTargetUnitChip } from "./TaskTargetUnitChip"
 
 const LEGEND_ITEMS: Array<{ status: CargarAvanceTaskStatus; label: string }> = [
   { status: "pending", label: "Sin Iniciar" },
@@ -128,6 +135,78 @@ function StatusOptionIcon({
   }
 }
 
+function TaskTargetUnitsSection({
+  taskId,
+  draft,
+  selectedUnitIds,
+  orderedUnitIds,
+  unitLabelById,
+  assignmentsByUnit,
+  loadedKeys,
+  unitTaskStatuses,
+  onUpdateTaskDraft,
+}: {
+  taskId: string
+  draft: CargarAvanceTaskDraft
+  selectedUnitIds: string[]
+  orderedUnitIds: string[]
+  unitLabelById: Record<string, string>
+  assignmentsByUnit: Record<string, string[]>
+  loadedKeys: Set<string>
+  unitTaskStatuses: Record<string, CargarAvanceTaskStatus>
+  onUpdateTaskDraft: (taskId: string, patch: Partial<CargarAvanceTaskDraft>) => void
+}) {
+  const isSingleUnit = selectedUnitIds.length === 1
+  const assignedUnitIds = sortUnitIdsByDisplayOrder(
+    getAssignedSelectedUnitIdsForTask(taskId, selectedUnitIds, assignmentsByUnit),
+    orderedUnitIds,
+  )
+
+  if (assignedUnitIds.length === 0) return null
+
+  const toggleTargetUnit = (unitId: string, checked: boolean) => {
+    if (isSingleUnit) return
+
+    const nextTargetUnitIds = checked
+      ? [...draft.targetUnitIds, unitId]
+      : draft.targetUnitIds.filter((id) => id !== unitId)
+
+    onUpdateTaskDraft(taskId, {
+      targetUnitIds: nextTargetUnitIds,
+      ...(nextTargetUnitIds.length === 0 ? { taskStatus: "pending" as const } : {}),
+    })
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[12px] font-normal text-[#777b84]">Unidades a aplicar los cambios</p>
+      <div className="flex flex-wrap items-center gap-2">
+        {assignedUnitIds.map((unitId) => {
+          const isCompleted = isUnitTaskLoaded(loadedKeys, unitId, taskId)
+          const isChecked = isSingleUnit
+            ? true
+            : draft.targetUnitIds.includes(unitId)
+          const isDisabled = isSingleUnit || isCompleted
+          const currentStatus =
+            unitTaskStatuses[getUnitTaskKey(unitId, taskId)] ?? ("pending" as const)
+          const unitLabel = unitLabelById[unitId] ?? unitId.slice(0, 8)
+
+          return (
+            <TaskTargetUnitChip
+              key={unitId}
+              unitLabel={unitLabel}
+              status={currentStatus}
+              selected={isChecked}
+              disabled={isDisabled}
+              onToggle={() => toggleTargetUnit(unitId, !isChecked)}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 type CargarAvanceTaskPanelProps = {
   availableRubros: CargarAvanceRubroOption[]
   selectedRubroId: string
@@ -141,6 +220,20 @@ type CargarAvanceTaskPanelProps = {
   saving: boolean
   saveError: string | null
   onReview: () => void
+  selectedUnitIds: string[]
+  orderedUnitIds: string[]
+  unitLabelById: Record<string, string>
+  assignmentsByUnit: Record<string, string[]>
+  loadedKeys: Set<string>
+  unitTaskStatuses: Record<string, CargarAvanceTaskStatus>
+  selectedUnitCount: number
+  multiUnitMismatch: CargarAvanceMultiUnitMismatch
+  onViewUnitMismatchDetail: () => void
+  floorLabel: string
+  selectedUnitLabels: string[]
+  rubroName: string
+  showUnitMismatchDetail: boolean
+  onShowUnitMismatchDetailChange: (open: boolean) => void
 }
 
 export function CargarAvanceTaskPanel({
@@ -156,6 +249,20 @@ export function CargarAvanceTaskPanel({
   saving,
   saveError,
   onReview,
+  selectedUnitIds,
+  orderedUnitIds,
+  unitLabelById,
+  assignmentsByUnit,
+  loadedKeys,
+  unitTaskStatuses,
+  selectedUnitCount,
+  multiUnitMismatch,
+  onViewUnitMismatchDetail,
+  floorLabel,
+  selectedUnitLabels,
+  rubroName,
+  showUnitMismatchDetail,
+  onShowUnitMismatchDetailChange,
 }: CargarAvanceTaskPanelProps) {
   return (
     <div className="flex flex-col gap-6">
@@ -197,9 +304,15 @@ export function CargarAvanceTaskPanel({
           ))}
         </div>
 
+        <CargarAvanceUnitMismatchCallout
+          selectedUnitCount={selectedUnitCount}
+          mismatch={multiUnitMismatch}
+          onViewDetail={onViewUnitMismatchDetail}
+        />
+
         {tasks.length === 0 ? (
           <p className="text-[14px] text-[#777b84]">
-            No hay tareas pendientes de carga para las unidades seleccionadas.
+            No hay tareas disponibles para cargar avance en las unidades seleccionadas.
           </p>
         ) : (
           <div className="flex flex-col gap-2">
@@ -207,6 +320,7 @@ export function CargarAvanceTaskPanel({
               const expanded = expandedTaskIds.has(task.id)
               const draft = taskDrafts[task.id] ?? createEmptyTaskDraft()
               const showBadge = draft.taskStatus !== "pending"
+              const hasSelectedTargetUnits = draft.targetUnitIds.length > 0
 
               return (
                 <div
@@ -250,64 +364,80 @@ export function CargarAvanceTaskPanel({
                   {expanded ? (
                     <div className="border-t border-[#edeef0] bg-white p-4">
                       <div className="flex flex-col gap-4">
-                        <div className="flex flex-col gap-2">
-                          <p className="text-[12px] font-normal text-[#777b84]">
-                            Estado de la Tarea
-                          </p>
-                          <div className="grid grid-cols-3 gap-2">
-                            {STATUS_BUTTON_STYLES.map((option) => {
-                              const isActive = draft.taskStatus === option.status
-
-                              return (
-                                <button
-                                  key={option.status}
-                                  type="button"
-                                  onClick={() =>
-                                    onUpdateTaskDraft(task.id, { taskStatus: option.status })
-                                  }
-                                  aria-pressed={isActive}
-                                  className={cn(
-                                    "inline-flex items-center justify-center gap-2 rounded-[10px] border-2 px-3 py-[10px] text-[14px] font-medium transition-colors",
-                                    isActive
-                                      ? option.activeClassName
-                                      : "border-[#edeef0] bg-white text-[#777b84] hover:bg-[#fafafa]",
-                                  )}
-                                >
-                                  <StatusOptionIcon
-                                    status={option.status}
-                                    active={isActive}
-                                    activeIconClassName={option.activeIconClassName}
-                                  />
-                                  {option.label}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          <label
-                            htmlFor={`comment-${task.id}`}
-                            className="text-[12px] font-normal text-[#777b84]"
-                          >
-                            Comentarios y Observaciones
-                          </label>
-                          <textarea
-                            id={`comment-${task.id}`}
-                            value={draft.comment}
-                            onChange={(event) =>
-                              onUpdateTaskDraft(task.id, { comment: event.target.value })
-                            }
-                            rows={3}
-                            placeholder="Agrega notas sobre esta tarea..."
-                            className="w-full resize-none rounded-[10px] border border-[#afb3ba] bg-white px-3 py-2.5 text-[14px] text-[#272a2d] outline-none focus:border-[#ff7433]"
-                          />
-                        </div>
-
-                        <ProgressPhotoUpload
-                          photos={draft.photos}
-                          onChange={(photos) => onUpdateTaskDraft(task.id, { photos })}
+                        <TaskTargetUnitsSection
+                          taskId={task.id}
+                          draft={draft}
+                          selectedUnitIds={selectedUnitIds}
+                          orderedUnitIds={orderedUnitIds}
+                          unitLabelById={unitLabelById}
+                          assignmentsByUnit={assignmentsByUnit}
+                          loadedKeys={loadedKeys}
+                          unitTaskStatuses={unitTaskStatuses}
+                          onUpdateTaskDraft={onUpdateTaskDraft}
                         />
+
+                        {hasSelectedTargetUnits ? (
+                          <>
+                            <div className="flex flex-col gap-2">
+                              <p className="text-[12px] font-normal text-[#777b84]">
+                                Estado de la Tarea
+                              </p>
+                              <div className="grid grid-cols-3 gap-2">
+                                {STATUS_BUTTON_STYLES.map((option) => {
+                                  const isActive = draft.taskStatus === option.status
+
+                                  return (
+                                    <button
+                                      key={option.status}
+                                      type="button"
+                                      onClick={() =>
+                                        onUpdateTaskDraft(task.id, { taskStatus: option.status })
+                                      }
+                                      aria-pressed={isActive}
+                                      className={cn(
+                                        "inline-flex items-center justify-center gap-2 rounded-[10px] border-2 px-3 py-[10px] text-[14px] font-medium transition-colors",
+                                        isActive
+                                          ? option.activeClassName
+                                          : "border-[#edeef0] bg-white text-[#777b84] hover:bg-[#fafafa]",
+                                      )}
+                                    >
+                                      <StatusOptionIcon
+                                        status={option.status}
+                                        active={isActive}
+                                        activeIconClassName={option.activeIconClassName}
+                                      />
+                                      {option.label}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                              <label
+                                htmlFor={`comment-${task.id}`}
+                                className="text-[12px] font-normal text-[#777b84]"
+                              >
+                                Comentarios y Observaciones
+                              </label>
+                              <textarea
+                                id={`comment-${task.id}`}
+                                value={draft.comment}
+                                onChange={(event) =>
+                                  onUpdateTaskDraft(task.id, { comment: event.target.value })
+                                }
+                                rows={3}
+                                placeholder="Agrega notas sobre esta tarea..."
+                                className="w-full resize-none rounded-[10px] border border-[#afb3ba] bg-white px-3 py-2.5 text-[14px] text-[#272a2d] outline-none focus:border-[#ff7433]"
+                              />
+                            </div>
+
+                            <ProgressPhotoUpload
+                              photos={draft.photos}
+                              onChange={(photos) => onUpdateTaskDraft(task.id, { photos })}
+                            />
+                          </>
+                        ) : null}
                       </div>
                     </div>
                   ) : null}
@@ -333,6 +463,15 @@ export function CargarAvanceTaskPanel({
           </Button>
         </div>
       </div>
+
+      <CargarAvanceUnitMismatchDialog
+        open={showUnitMismatchDetail}
+        onOpenChange={onShowUnitMismatchDetailChange}
+        floorLabel={floorLabel}
+        unitLabels={selectedUnitLabels}
+        rubroName={rubroName}
+        mismatch={multiUnitMismatch}
+      />
     </div>
   )
 }

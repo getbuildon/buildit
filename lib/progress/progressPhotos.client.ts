@@ -18,7 +18,16 @@ export type UploadedProgressPhoto = {
 }
 
 export async function compressProgressPhoto(file: File): Promise<File> {
-  const compressed = await imageCompression(file, PROGRESS_PHOTO_COMPRESSION)
+  let compressed: File
+
+  try {
+    compressed = await imageCompression(file, PROGRESS_PHOTO_COMPRESSION)
+  } catch {
+    compressed = await imageCompression(file, {
+      ...PROGRESS_PHOTO_COMPRESSION,
+      fileType: undefined,
+    })
+  }
 
   if (compressed.size > MAX_PROGRESS_PHOTO_BYTES) {
     throw new Error(

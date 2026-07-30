@@ -23,6 +23,14 @@ export function buildLoadedUnitTaskKeySet(keys: string[]): Set<string> {
   return new Set(keys)
 }
 
+/** Unidad+tarea completada: no admite nueva carga en esa unidad. */
+export function isUnitTaskCompletedForLoading(
+  status: string,
+  progressState: string,
+): boolean {
+  return progressState === "completed" || status === "approved"
+}
+
 export function isUnitTaskLoaded(
   loadedKeys: Set<string>,
   unitId: string,
@@ -31,7 +39,7 @@ export function isUnitTaskLoaded(
   return loadedKeys.has(getUnitTaskKey(unitId, taskId))
 }
 
-/** Tarea cargable si al menos una unidad seleccionada aún no tiene avance. */
+/** Tarea cargable si al menos una unidad seleccionada no está completada. */
 export function isTaskLoadableForUnits(
   taskId: string,
   unitIds: string[],
@@ -208,10 +216,12 @@ export type CargarAvanceTaskDraft = {
   taskStatus: CargarAvanceTaskStatus
   comment: string
   photos: CargarAvancePhotoDraft[]
+  /** Unidades donde se aplicará el avance al guardar. */
+  targetUnitIds: string[]
 }
 
-export function createEmptyTaskDraft(): CargarAvanceTaskDraft {
-  return { taskStatus: "pending", comment: "", photos: [] }
+export function createEmptyTaskDraft(targetUnitIds: string[] = []): CargarAvanceTaskDraft {
+  return { taskStatus: "pending", comment: "", photos: [], targetUnitIds }
 }
 
 export function revokeTaskDraftPhotos(draft: CargarAvanceTaskDraft): void {
@@ -227,10 +237,66 @@ export function revokeAllTaskDrafts(drafts: Record<string, CargarAvanceTaskDraft
 }
 
 export function hasTaskDraftContent(draft: CargarAvanceTaskDraft): boolean {
-  return (
-    draft.taskStatus !== "pending" ||
-    draft.comment.trim().length > 0 ||
-    draft.photos.length > 0
+  if (draft.targetUnitIds.length === 0) return false
+  return draft.taskStatus !== "pending"
+}
+
+export function mapDbProgressToCargarAvanceStatus(
+  status: string,
+  progressState: string,
+): CargarAvanceTaskStatus {
+  if (status === "rejected") return "blocked"
+  if (progressState === "completed" || status === "approved") return "completed"
+  if (progressState === "in_progress") return "in_progress"
+  return "pending"
+}
+
+export function getAssignedSelectedUnitIdsForTask(
+  taskId: string,
+  selectedUnitIds: string[],
+  assignmentsByUnit: Record<string, string[]>,
+): string[] {
+  return selectedUnitIds.filter((unitId) =>
+    isTaskAssignedToUnit(assignmentsByUnit, unitId, taskId),
+  )
+}
+
+/** Orden estable por configuración del piso (no por orden de selección). */
+export function sortUnitIdsByDisplayOrder(
+  unitIds: string[],
+  orderedUnitIds: string[],
+): string[] {
+  const order = new Map(orderedUnitIds.map((unitId, index) => [unitId, index]))
+
+  return [...unitIds].sort((left, right) => {
+    const leftIndex = order.get(left) ?? Number.MAX_SAFE_INTEGER
+    const rightIndex = order.get(right) ?? Number.MAX_SAFE_INTEGER
+    return leftIndex - rightIndex
+  })
+}
+
+export function getLoadableUnitIdsForTask(
+  taskId: string,
+  selectedUnitIds: string[],
+  assignmentsByUnit: Record<string, string[]>,
+  loadedKeys: Set<string>,
+): string[] {
+  return getAssignedSelectedUnitIdsForTask(taskId, selectedUnitIds, assignmentsByUnit).filter(
+    (unitId) => !isUnitTaskLoaded(loadedKeys, unitId, taskId),
+  )
+}
+
+export function getDefaultTargetUnitIdsForTask(
+  taskId: string,
+  selectedUnitIds: string[],
+  assignmentsByUnit: Record<string, string[]>,
+  loadedKeys: Set<string>,
+): string[] {
+  return getLoadableUnitIdsForTask(
+    taskId,
+    selectedUnitIds,
+    assignmentsByUnit,
+    loadedKeys,
   )
 }
 
@@ -261,4 +327,139 @@ export function getUnitDisplayTitle(
     return `${floor.name} — ${unitCode} — ${typeDetails}`
   }
   return `${floor.name} — ${unitCode}`
+}
+
+export function buildTaskCodeMapFromRubroGroups(
+  rubroGroups: TrabajoDiarioRubroGroup[],
+): Map<string, string> {
+  const map = new Map<string, string>()
+
+  rubroGroups.forEach((group, groupIndex) => {
+    group.rubros.forEach((rubro, rubroIndex) => {
+      const tasks = [...rubro.tasks].sort((a, b) => a.sortOrder - b.sortOrder)
+      tasks.forEach((task, taskIndex) => {
+        map.set(task.id, `${groupIndex + 1}.${rubroIndex + 1}.${taskIndex + 1}.`)
+      })
+    })
+  })
+
+  return map
+}
+
+function getAssignedUnitIdsForTask(
+  taskId: string,
+  unitIds: string[],
+  assignmentsByUnit: Record<string, string[]>,
+): string[] {
+  return unitIds.filter((unitId) =>
+    isTaskAssignedToUnit(assignmentsByUnit, unitId, taskId),
+  )
+}
+
+export type CargarAvancePartiallyLoadedTask = {
+  taskId: string
+  taskCode: string
+  taskName: string
+  loadedUnitLabels: string[]
+  pendingUnitLabels: string[]
+}
+
+export type CargarAvanceUnitSpecificTask = {
+  taskId: string
+  taskCode: string
+  taskName: string
+  assignedUnitLabels: string[]
+  missingUnitLabels: string[]
+}
+
+export type CargarAvanceMultiUnitMismatch = {
+  shouldShowDisclaimer: boolean
+  partiallyLoadedTasks: CargarAvancePartiallyLoadedTask[]
+  unitSpecificTasks: CargarAvanceUnitSpecificTask[]
+}
+
+export function analyzeMultiUnitTaskMismatch(
+  rubroId: string,
+  rubroGroups: TrabajoDiarioRubroGroup[],
+  unitIds: string[],
+  unitLabelById: Record<string, string>,
+  assignmentsByUnit: Record<string, string[]>,
+  loadedUnitTaskKeys: Set<string>,
+): CargarAvanceMultiUnitMismatch {
+  const empty: CargarAvanceMultiUnitMismatch = {
+    shouldShowDisclaimer: false,
+    partiallyLoadedTasks: [],
+    unitSpecificTasks: [],
+  }
+
+  if (unitIds.length <= 1) return empty
+
+  const rubroMatch = findRubroById(rubroId, rubroGroups)
+  if (!rubroMatch) return empty
+
+  const taskCodeById = buildTaskCodeMapFromRubroGroups(rubroGroups)
+  const partiallyLoadedTasks: CargarAvancePartiallyLoadedTask[] = []
+  const unitSpecificTasks: CargarAvanceUnitSpecificTask[] = []
+
+  for (const task of rubroMatch.rubro.tasks) {
+    const assignedUnitIds = getAssignedUnitIdsForTask(
+      task.id,
+      unitIds,
+      assignmentsByUnit,
+    )
+    if (assignedUnitIds.length === 0) continue
+
+    const loadedUnitIds = assignedUnitIds.filter((unitId) =>
+      isUnitTaskLoaded(loadedUnitTaskKeys, unitId, task.id),
+    )
+    const pendingUnitIds = assignedUnitIds.filter(
+      (unitId) => !isUnitTaskLoaded(loadedUnitTaskKeys, unitId, task.id),
+    )
+
+    const missingUnitIds = unitIds.filter((unitId) => !assignedUnitIds.includes(unitId))
+
+    if (missingUnitIds.length > 0) {
+      unitSpecificTasks.push({
+        taskId: task.id,
+        taskCode: taskCodeById.get(task.id) ?? "—",
+        taskName: task.name,
+        assignedUnitLabels: assignedUnitIds.map(
+          (unitId) => unitLabelById[unitId] ?? unitId,
+        ),
+        missingUnitLabels: missingUnitIds.map(
+          (unitId) => unitLabelById[unitId] ?? unitId,
+        ),
+      })
+    }
+
+    if (
+      loadedUnitIds.length > 0 &&
+      pendingUnitIds.length > 0 &&
+      isTaskLoadableForUnits(
+        task.id,
+        unitIds,
+        assignmentsByUnit,
+        loadedUnitTaskKeys,
+      )
+    ) {
+      partiallyLoadedTasks.push({
+        taskId: task.id,
+        taskCode: taskCodeById.get(task.id) ?? "—",
+        taskName: task.name,
+        loadedUnitLabels: loadedUnitIds.map(
+          (unitId) => unitLabelById[unitId] ?? unitId,
+        ),
+        pendingUnitLabels: pendingUnitIds.map(
+          (unitId) => unitLabelById[unitId] ?? unitId,
+        ),
+      })
+    }
+  }
+
+  return {
+    shouldShowDisclaimer:
+      partiallyLoadedTasks.length > 0 || unitSpecificTasks.length > 0,
+    partiallyLoadedTasks,
+    unitSpecificTasks,
+  }
 }

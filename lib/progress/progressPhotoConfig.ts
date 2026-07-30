@@ -8,7 +8,7 @@ export const MAX_PROGRESS_PHOTO_BYTES = 1_048_576
 export const PROGRESS_PHOTO_COMPRESSION = {
   maxSizeMB: 0.5,
   maxWidthOrHeight: 1600,
-  useWebWorker: true,
+  useWebWorker: false,
   fileType: "image/webp" as const,
   initialQuality: 0.8,
 }

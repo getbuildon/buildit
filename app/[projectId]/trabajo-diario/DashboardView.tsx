@@ -159,6 +159,7 @@ export function DashboardView({ project, data }: Props) {
           rubroGroups={data.rubroGroups}
           assignmentsByUnit={data.assignmentsByUnit}
           loadedUnitTaskKeys={data.loadedUnitTaskKeys}
+          unitTaskStatuses={data.unitTaskStatuses}
           selectedFloorId={selectedLoadFloorId}
           selectedRubroId={selectedLoadRubroId}
           onSelectFloor={handleSelectFloor}

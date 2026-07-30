@@ -19,7 +19,7 @@ export default async function DashboardPage({ params }: PageProps) {
   return (
     <DashboardView
       project={project}
-      data={data ?? { floors: [], tasks: [], rubroGroups: [], assignmentsByUnit: {}, loadedUnitTaskKeys: [] }}
+      data={data ?? { floors: [], tasks: [], rubroGroups: [], assignmentsByUnit: {}, loadedUnitTaskKeys: [], unitTaskStatuses: {} }}
     />
   )
 }

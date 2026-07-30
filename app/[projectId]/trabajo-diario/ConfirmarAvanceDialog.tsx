@@ -21,13 +21,13 @@ export type ConfirmarAvanceTaskItem = {
   id: string
   name: string
   status: CargarAvanceTaskStatus
+  unitLabels: string[]
 }
 
 type ConfirmarAvanceDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   floorLabel: string
-  unitLabels: string[]
   rubroName: string
   tasks: ConfirmarAvanceTaskItem[]
   saving: boolean
@@ -40,7 +40,6 @@ export function ConfirmarAvanceDialog({
   open,
   onOpenChange,
   floorLabel,
-  unitLabels,
   rubroName,
   tasks,
   saving,
@@ -68,10 +67,6 @@ export function ConfirmarAvanceDialog({
                 <span className="font-medium text-[#272a2d]">{floorLabel}</span>
               </p>
               <p>
-                <span className="text-[#777b84]">Unidades: </span>
-                <span className="font-medium text-[#272a2d]">{unitLabels.join(", ")}</span>
-              </p>
-              <p>
                 <span className="text-[#777b84]">Rubro: </span>
                 <span className="font-medium text-[#272a2d]">{rubroName}</span>
               </p>
@@ -82,15 +77,31 @@ export function ConfirmarAvanceDialog({
             {tasks.map((task) => (
               <div
                 key={task.id}
-                className="flex h-[52px] items-center justify-between gap-3 rounded-[10px] border border-[#edeef0] bg-white px-4"
+                className="flex min-h-[52px] items-center justify-between gap-3 rounded-[10px] border border-[#edeef0] bg-white px-4 py-3"
               >
-                <span className="min-w-0 truncate text-[14px] text-[#272a2d]">{task.name}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] text-[#272a2d]">{task.name}</p>
+                  {task.unitLabels.length > 0 ? (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <span className="text-[12px] leading-[1.4] text-[#777b84]">Unidades:</span>
+                      {task.unitLabels.map((label) => (
+                        <span
+                          key={label}
+                          className="rounded-[8px] bg-[#edeef0] px-1.5 text-[12px] leading-[1.4] tracking-[-0.36px] text-[#43484e]"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
                 {task.status === "pending" ? (
-                  <span className="text-[12px] font-medium text-[#777b84]">Sin Iniciar</span>
+                  <span className="shrink-0 text-[12px] font-medium text-[#777b84]">Sin Iniciar</span>
                 ) : (
                   <span
                     className={cn(
                       CARGAR_AVANCE_BADGE_CLASSNAME,
+                      "shrink-0",
                       CARGAR_AVANCE_BADGE_STYLES[task.status],
                     )}
                   >

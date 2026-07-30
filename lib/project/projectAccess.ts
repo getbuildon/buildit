@@ -6,22 +6,19 @@ import { requireAuthenticatedUser } from "@/lib/authHelpers"
 import type { ProjectUserType } from "@/lib/projects/createProjectDraft"
 import { USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
 import {
-  canViewDetailedProgressForUnit,
+  canAccessUnitProgress,
+  type ProjectAccessContext,
+} from "@/lib/project/projectAccessContext"
+import {
   getProjectPermissions,
   hasProjectPermission,
   isNavSegmentAllowed,
   resolveAssignedUnitIds,
   type ProjectPermissionKey,
-  type ProjectPermissions,
 } from "@/lib/project/projectPermissions"
 import { projectHref } from "@/lib/project/routes"
 
-export type ProjectAccessContext = {
-  userType: ProjectUserType
-  permissions: ProjectPermissions
-  /** null = todas las unidades; array = unidades permitidas (cliente). */
-  assignedUnitIds: string[] | null
-}
+export type { ProjectAccessContext } from "@/lib/project/projectAccessContext"
 
 const SLUG_TO_USER_TYPE: Record<string, ProjectUserType> = {
   [USER_TYPE_SLUG.Owner]: "Owner",
@@ -60,17 +57,6 @@ async function loadClientAssignedUnitIds(
 
   if (assignmentsError) return []
   return (assignments ?? []).map((row) => row.unit_id)
-}
-
-export function canAccessUnitProgress(
-  context: ProjectAccessContext,
-  unitId: string,
-): boolean {
-  return canViewDetailedProgressForUnit(
-    context.permissions,
-    unitId,
-    context.assignedUnitIds,
-  )
 }
 
 export async function getProjectAccessContext(

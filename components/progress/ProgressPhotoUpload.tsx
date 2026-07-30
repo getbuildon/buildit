@@ -12,14 +12,14 @@ import { compressProgressPhoto } from "@/lib/progress/progressPhotos.client"
 import { cn } from "@/lib/utils"
 
 type ProgressPhotoUploadProps = {
-  photos: CargarAvancePhotoDraft[]
+  photos?: CargarAvancePhotoDraft[]
   onChange: (photos: CargarAvancePhotoDraft[]) => void
   disabled?: boolean
   className?: string
 }
 
 export function ProgressPhotoUpload({
-  photos,
+  photos = [],
   onChange,
   disabled = false,
   className,
@@ -29,8 +29,14 @@ export function ProgressPhotoUpload({
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const remainingSlots = MAX_PHOTOS_PER_TASK - photos.length
-  const canAddMore = remainingSlots > 0 && !disabled && !processing
+  const safePhotos = photos ?? []
+  const remainingSlots = MAX_PHOTOS_PER_TASK - safePhotos.length
+  const canAddMore = remainingSlots > 0 && !disabled
+
+  const openFilePicker = () => {
+    if (!canAddMore || processing) return
+    inputRef.current?.click()
+  }
 
   const handleSelectFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files ?? [])
@@ -48,7 +54,7 @@ export function ProgressPhotoUpload({
     setProcessing(true)
 
     try {
-      const nextPhotos = [...photos]
+      const nextPhotos = [...safePhotos]
 
       for (const file of selectedFiles) {
         if (!file.type.startsWith("image/")) {
@@ -68,7 +74,8 @@ export function ProgressPhotoUpload({
 
       onChange(nextPhotos)
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "No se pudieron procesar las fotos."
+      const message =
+        caught instanceof Error ? caught.message : "No se pudieron procesar las fotos."
       setError(message)
     } finally {
       setProcessing(false)
@@ -76,13 +83,13 @@ export function ProgressPhotoUpload({
   }
 
   const handleRemovePhoto = (photoId: string) => {
-    const target = photos.find((photo) => photo.id === photoId)
+    const target = safePhotos.find((photo) => photo.id === photoId)
     if (target) URL.revokeObjectURL(target.previewUrl)
-    onChange(photos.filter((photo) => photo.id !== photoId))
+    onChange(safePhotos.filter((photo) => photo.id !== photoId))
   }
 
   const handleClearAll = () => {
-    revokeTaskDraftPhotos({ ...createEmptyTaskDraft(), photos })
+    revokeTaskDraftPhotos({ ...createEmptyTaskDraft(), photos: safePhotos })
     onChange([])
   }
 
@@ -91,16 +98,16 @@ export function ProgressPhotoUpload({
       <div className="flex items-center gap-2">
         <Camera className="size-4 text-[#777b84]" aria-hidden />
         <p className="text-[12px] font-normal text-[#777b84]">Fotografías</p>
-        {photos.length > 0 ? (
+        {safePhotos.length > 0 ? (
           <span className="text-[12px] text-[#777b84]">
-            ({photos.length}/{MAX_PHOTOS_PER_TASK})
+            ({safePhotos.length}/{MAX_PHOTOS_PER_TASK})
           </span>
         ) : null}
       </div>
 
-      {photos.length > 0 ? (
+      {safePhotos.length > 0 ? (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {photos.map((photo) => (
+          {safePhotos.map((photo) => (
             <div
               key={photo.id}
               className="group relative aspect-square overflow-hidden rounded-[10px] border border-[#edeef0] bg-[#f5f6f7]"
@@ -133,16 +140,18 @@ export function ProgressPhotoUpload({
         accept="image/jpeg,image/png,image/webp,image/heic,image/*"
         multiple
         className="sr-only"
-        disabled={!canAddMore}
+        disabled={!canAddMore || processing}
         onChange={handleSelectFiles}
       />
 
       {canAddMore ? (
-        <label
-          htmlFor={inputId}
+        <button
+          type="button"
+          disabled={processing}
+          onClick={openFilePicker}
           className={cn(
-            "flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-dashed border-[#afb3ba] bg-white px-4 py-8 text-[14px] text-[#777b84] transition-colors hover:border-[#ff7433] hover:text-[#272a2d]",
-            processing && "pointer-events-none opacity-70",
+            "flex w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-[#afb3ba] bg-white px-4 py-8 text-[14px] text-[#777b84] transition-colors hover:border-[#c8cad0] hover:bg-[#fafafa] hover:text-[#272a2d]",
+            processing && "cursor-wait opacity-80",
           )}
         >
           {processing ? (
@@ -156,21 +165,21 @@ export function ProgressPhotoUpload({
               Subir Fotos
             </>
           )}
-        </label>
+        </button>
       ) : null}
 
-      {photos.length > 0 && !disabled && canAddMore ? (
+      {safePhotos.length > 0 && canAddMore ? (
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
+          onClick={openFilePicker}
           disabled={processing}
-          className="self-start text-[12px] font-medium text-[#ff7433] hover:text-[#e5662d]"
+          className="self-start text-[12px] font-medium text-[#43484e] hover:text-[#272a2d] disabled:cursor-wait disabled:opacity-60"
         >
           Agregar más fotos
         </button>
       ) : null}
 
-      {photos.length > 0 && !disabled ? (
+      {safePhotos.length > 0 && !disabled ? (
         <button
           type="button"
           onClick={handleClearAll}
