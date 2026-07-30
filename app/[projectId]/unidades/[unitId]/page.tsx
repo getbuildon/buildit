@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import { assertUnitDetailAccess } from "@/lib/project/projectAccess"
 import { UnitDetailView } from "../../components/UnitDetailView"
 import { getUnitDetailData } from "../actions"
 
@@ -8,6 +9,7 @@ type PageProps = {
 
 export default async function UnitDetailPage({ params }: PageProps) {
   const { projectId, unitId } = await params
+  await assertUnitDetailAccess(projectId, unitId)
   const data = await getUnitDetailData(projectId, unitId)
   if (!data) notFound()
 

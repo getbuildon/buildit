@@ -3,7 +3,9 @@
 import { createContext, useContext, type ReactNode } from "react"
 import type { ProjectAccessContext } from "@/lib/project/projectAccess"
 import {
+  canViewDetailedProgressForUnit,
   hasProjectPermission,
+  hasStrictProjectPermission,
   type ProjectPermissionKey,
 } from "@/lib/project/projectPermissions"
 
@@ -33,4 +35,15 @@ export function useProjectAccess(): ProjectAccessContext {
 export function useProjectPermission(permission: ProjectPermissionKey): boolean {
   const { permissions } = useProjectAccess()
   return hasProjectPermission(permissions, permission)
+}
+
+/** Permiso booleano estricto (p. ej. editTasks, certifyTasks). */
+export function useStrictProjectPermission(permission: ProjectPermissionKey): boolean {
+  const { permissions } = useProjectAccess()
+  return hasStrictProjectPermission(permissions, permission)
+}
+
+export function useCanViewUnit(unitId: string): boolean {
+  const { permissions, assignedUnitIds } = useProjectAccess()
+  return canViewDetailedProgressForUnit(permissions, unitId, assignedUnitIds)
 }

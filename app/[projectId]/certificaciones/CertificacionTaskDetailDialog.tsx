@@ -36,6 +36,7 @@ import { buildAttachmentsForSingleEntry } from "@/lib/progress/linkProgressPhoto
 import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
 import { CERTIFICACION_MODAL } from "@/lib/project/certificacionesDesignTokens"
 import { cn } from "@/lib/utils"
+import { useStrictProjectPermission } from "@/components/project-shell/ProjectAccessProvider"
 import { CertificarTareaDialog, type CertificarTareaSummary } from "./CertificarTareaDialog"
 import {
   getTrabajoDiarioTaskDetail,
@@ -272,6 +273,8 @@ export function CertificacionTaskDetailDialog({
   const [galleryPhotos, setGalleryPhotos] = useState<TrabajoDiarioTaskAttachment[]>([])
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [certifyError, setCertifyError] = useState<string | null>(null)
+  const canEditTasks = useStrictProjectPermission("editTasks")
+  const canViewAuditLog = useStrictProjectPermission("viewAuditLog")
 
   useEffect(() => {
     if (!open || !entryId) {
@@ -495,7 +498,7 @@ export function CertificacionTaskDetailDialog({
                 ) : null}
               </div>
 
-              {mode === "view" && detail ? (
+              {mode === "view" && detail && canEditTasks ? (
                 <button type="button" onClick={handleStartEdit} className={CERTIFICACION_MODAL.editBtn}>
                   <Pencil className="size-4 shrink-0" aria-hidden />
                   Editar Estado
@@ -586,36 +589,40 @@ export function CertificacionTaskDetailDialog({
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setHistoryOpen((value) => !value)}
-                  className={CERTIFICACION_MODAL.historyBtn}
-                >
-                  <Clock className="size-4 shrink-0" aria-hidden />
-                  Ver Historial de Cambios
-                  {historyOpen ? (
-                    <ChevronUp className="size-4 shrink-0" aria-hidden />
-                  ) : (
-                    <ChevronDown className="size-4 shrink-0" aria-hidden />
-                  )}
-                </button>
+                {canViewAuditLog ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryOpen((value) => !value)}
+                      className={CERTIFICACION_MODAL.historyBtn}
+                    >
+                      <Clock className="size-4 shrink-0" aria-hidden />
+                      Ver Historial de Cambios
+                      {historyOpen ? (
+                        <ChevronUp className="size-4 shrink-0" aria-hidden />
+                      ) : (
+                        <ChevronDown className="size-4 shrink-0" aria-hidden />
+                      )}
+                    </button>
 
-                {historyOpen ? (
-                  <div className="flex flex-col gap-2">
-                    {detail.history.map((item) => (
-                      <HistoryItem
-                        key={item.id}
-                        item={item}
-                        onViewPhotos={(historyItem) =>
-                          openPhotoGallery(
-                            historyItem.attachments,
-                            "Fotografías del cambio",
-                            `${historyItem.formattedDate} • ${historyItem.status}`,
-                          )
-                        }
-                      />
-                    ))}
-                  </div>
+                    {historyOpen ? (
+                      <div className="flex flex-col gap-2">
+                        {detail.history.map((item) => (
+                          <HistoryItem
+                            key={item.id}
+                            item={item}
+                            onViewPhotos={(historyItem) =>
+                              openPhotoGallery(
+                                historyItem.attachments,
+                                "Fotografías del cambio",
+                                `${historyItem.formattedDate} • ${historyItem.status}`,
+                              )
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                  </>
                 ) : null}
               </div>
             ) : (

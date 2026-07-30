@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull } from "@/lib/authHelpers"
+import { checkUnitDetailAccess } from "@/lib/project/projectAccess"
 import {
   calculateUnitProgressPercent,
   type ProgressEntryRow,
@@ -61,6 +62,9 @@ export async function getUnitDetailData(
 
   const user = await getAuthenticatedUserOrNull()
   if (!user) return null
+
+  const access = await checkUnitDetailAccess(id, selectedUnitId)
+  if (!access.ok) return null
 
   const supabase = await createClient()
   const admin = createAdminClient()

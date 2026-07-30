@@ -5,7 +5,8 @@ import { format } from "date-fns"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
-import { checkProjectPermission } from "@/lib/project/projectAccess"
+import { checkProjectPermission, getProjectAccessContext, canAccessUnitProgress } from "@/lib/project/projectAccess"
+import { hasStrictProjectPermission } from "@/lib/project/projectPermissions"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
 import {
   getUnitTaskKey,
@@ -250,6 +251,9 @@ export async function getTrabajoDiarioData(
 
   const user = await getAuthenticatedUserOrNull()
   if (!user) return null
+
+  const permission = await checkProjectPermission(id, "loadProgress")
+  if (!permission.ok) return null
 
   const supabase = await createClient()
 
@@ -659,6 +663,21 @@ export async function getTrabajoDiarioTaskDetail(
 
   if (entryError || !entry || !entry.unit_id || !entry.task_id) return null
 
+  const accessContext = await getProjectAccessContext(id)
+  if (
+    !accessContext ||
+    !(
+      hasStrictProjectPermission(accessContext.permissions, "loadProgress") ||
+      hasStrictProjectPermission(accessContext.permissions, "editTasks") ||
+      hasStrictProjectPermission(accessContext.permissions, "certifyTasks") ||
+      canAccessUnitProgress(accessContext, entry.unit_id)
+    )
+  ) {
+    return null
+  }
+
+  const canViewHistory = hasStrictProjectPermission(accessContext.permissions, "viewAuditLog")
+
   const floorId = entry.floor_id
   let unitLabel = "—"
 
@@ -674,9 +693,10 @@ export async function getTrabajoDiarioTaskDetail(
     unitLabel = unitCode === "—" ? "—" : `Unidad ${unitCode}`
   }
 
-  const { data: historyRows, error: historyError } = await supabase
-    .from("progress_entries")
-    .select(`
+  const { data: historyRows, error: historyError } = canViewHistory
+    ? await supabase
+        .from("progress_entries")
+        .select(`
       id,
       status,
       progress_state,
@@ -685,10 +705,11 @@ export async function getTrabajoDiarioTaskDetail(
       submitted_at,
       created_by
     `)
-    .eq("project_id", id)
-    .eq("unit_id", entry.unit_id)
-    .eq("task_id", entry.task_id)
-    .order("created_at", { ascending: false })
+        .eq("project_id", id)
+        .eq("unit_id", entry.unit_id)
+        .eq("task_id", entry.task_id)
+        .order("created_at", { ascending: false })
+    : { data: [], error: null }
 
   if (historyError || !historyRows) return null
 
@@ -768,9 +789,11 @@ export async function getTrabajoDiarioTaskDetail(
     },
   )
 
-  const history = [...progressHistory, ...certificationHistory].sort(
-    (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
-  )
+  const history = canViewHistory
+    ? [...progressHistory, ...certificationHistory].sort(
+        (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+      )
+    : []
 
   const latestEvent = history[0]
   const displayOccurredAt = latestEvent?.occurredAt ?? occurredAt
@@ -805,7 +828,7 @@ export async function updateTrabajoDiarioTask(
     return { ok: false, error: "Seleccioná un estado válido." }
   }
 
-  const permission = await checkProjectPermission(projectId, "loadProgress")
+  const permission = await checkProjectPermission(projectId, "editTasks")
   if (!permission.ok) return permission
 
   const user = await requireAuthenticatedUser()
@@ -821,6 +844,10 @@ export async function updateTrabajoDiarioTask(
   if (entryError) return { ok: false, error: entryError.message }
   if (!entry || !entry.unit_id || !entry.task_id || !entry.floor_id) {
     return { ok: false, error: "Avance no encontrado." }
+  }
+
+  if (!canAccessUnitProgress(permission.context, entry.unit_id)) {
+    return { ok: false, error: "No tenés permiso para editar tareas de esta unidad." }
   }
 
   const assignments = await getUnitTaskAssignments(projectId)

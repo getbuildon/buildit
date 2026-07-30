@@ -156,6 +156,40 @@ export function hasProjectPermission(
   return value === true || value === "unitOnly"
 }
 
+/** Permiso booleano estricto (ignora `unitOnly`). */
+export function hasStrictProjectPermission(
+  permissions: ProjectPermissions,
+  key: ProjectPermissionKey,
+): boolean {
+  return permissions[key] === true
+}
+
+/**
+ * `null` = acceso a todas las unidades.
+ * `string[]` = solo esas unidades (portal cliente / unitOnly).
+ */
+export function canViewDetailedProgressForUnit(
+  permissions: ProjectPermissions,
+  unitId: string,
+  assignedUnitIds: string[] | null,
+): boolean {
+  const access = permissions.viewDetailedProgress
+  if (access === true) return true
+  if (access === "unitOnly") {
+    return assignedUnitIds?.includes(unitId) ?? false
+  }
+  return false
+}
+
+export function resolveAssignedUnitIds(
+  permissions: ProjectPermissions,
+  clientUnitIds: string[],
+): string[] | null {
+  if (permissions.viewDetailedProgress === true) return null
+  if (permissions.viewDetailedProgress === "unitOnly") return clientUnitIds
+  return []
+}
+
 export function isNavSegmentAllowed(
   permissions: ProjectPermissions,
   segment: string,

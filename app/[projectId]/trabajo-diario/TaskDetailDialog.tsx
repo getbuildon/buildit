@@ -33,6 +33,9 @@ import { buildAttachmentsForSingleEntry } from "@/lib/progress/linkProgressPhoto
 import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
 import { cn } from "@/lib/utils"
 import {
+  useStrictProjectPermission,
+} from "@/components/project-shell/ProjectAccessProvider"
+import {
   getTrabajoDiarioTaskDetail,
   registerProgressAttachments,
   updateTrabajoDiarioTask,
@@ -307,6 +310,8 @@ export function TaskDetailDialog({
   const [galleryTitle, setGalleryTitle] = useState("")
   const [galleryDescription, setGalleryDescription] = useState<string | undefined>()
   const [galleryPhotos, setGalleryPhotos] = useState<TrabajoDiarioTaskAttachment[]>([])
+  const canEditTasks = useStrictProjectPermission("editTasks")
+  const canViewAuditLog = useStrictProjectPermission("viewAuditLog")
 
   useEffect(() => {
     if (!open || !entryId) {
@@ -482,7 +487,7 @@ export function TaskDetailDialog({
               ) : null}
             </div>
 
-            {mode === "view" && detail ? (
+            {mode === "view" && detail && canEditTasks ? (
               <button
                 type="button"
                 onClick={handleStartEdit}
@@ -556,35 +561,37 @@ export function TaskDetailDialog({
                 )}
               </DetailField>
 
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => setHistoryOpen((value) => !value)}
-                  className="flex items-center justify-between py-1 text-left"
-                >
-                  <span className="inline-flex items-center gap-2 text-[14px] font-medium leading-normal text-[#272a2d]">
-                    <Clock className="size-4 text-[#777b84]" aria-hidden />
-                    Ver Historial de Cambios
-                  </span>
-                  {historyOpen ? (
-                    <ChevronUp className="size-4 text-[#777b84]" aria-hidden />
-                  ) : (
-                    <ChevronDown className="size-4 text-[#777b84]" aria-hidden />
-                  )}
-                </button>
+              {canViewAuditLog ? (
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryOpen((value) => !value)}
+                    className="flex items-center justify-between py-1 text-left"
+                  >
+                    <span className="inline-flex items-center gap-2 text-[14px] font-medium leading-normal text-[#272a2d]">
+                      <Clock className="size-4 text-[#777b84]" aria-hidden />
+                      Ver Historial de Cambios
+                    </span>
+                    {historyOpen ? (
+                      <ChevronUp className="size-4 text-[#777b84]" aria-hidden />
+                    ) : (
+                      <ChevronDown className="size-4 text-[#777b84]" aria-hidden />
+                    )}
+                  </button>
 
-                {historyOpen ? (
-                  <div className="flex flex-col gap-2">
-                    {detail.history.map((item) => (
-                      <HistoryItem
-                        key={item.id}
-                        item={item}
-                        onViewPhotos={openHistoryPhotoGallery}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+                  {historyOpen ? (
+                    <div className="flex flex-col gap-2">
+                      {detail.history.map((item) => (
+                        <HistoryItem
+                          key={item.id}
+                          item={item}
+                          onViewPhotos={openHistoryPhotoGallery}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="flex flex-col gap-6">

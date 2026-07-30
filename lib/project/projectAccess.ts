@@ -6,9 +6,11 @@ import { requireAuthenticatedUser } from "@/lib/authHelpers"
 import type { ProjectUserType } from "@/lib/projects/createProjectDraft"
 import { USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
 import {
+  canViewDetailedProgressForUnit,
   getProjectPermissions,
   hasProjectPermission,
   isNavSegmentAllowed,
+  resolveAssignedUnitIds,
   type ProjectPermissionKey,
   type ProjectPermissions,
 } from "@/lib/project/projectPermissions"
@@ -17,6 +19,8 @@ import { projectHref } from "@/lib/project/routes"
 export type ProjectAccessContext = {
   userType: ProjectUserType
   permissions: ProjectPermissions
+  /** null = todas las unidades; array = unidades permitidas (cliente). */
+  assignedUnitIds: string[] | null
 }
 
 const SLUG_TO_USER_TYPE: Record<string, ProjectUserType> = {
@@ -30,6 +34,43 @@ const SLUG_TO_USER_TYPE: Record<string, ProjectUserType> = {
 function userTypeFromSlug(slug: string | null | undefined): ProjectUserType | null {
   if (!slug) return null
   return SLUG_TO_USER_TYPE[slug] ?? null
+}
+
+async function loadClientAssignedUnitIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  projectId: string,
+  userId: string,
+): Promise<string[]> {
+  const { data: projectUnits, error: unitsError } = await supabase
+    .from("project_units")
+    .select("id")
+    .eq("project_id", projectId)
+
+  if (unitsError) return []
+
+  const unitIds = (projectUnits ?? []).map((unit) => unit.id)
+  if (unitIds.length === 0) return []
+
+  const { data: assignments, error: assignmentsError } = await supabase
+    .from("unit_clients")
+    .select("unit_id")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .in("unit_id", unitIds)
+
+  if (assignmentsError) return []
+  return (assignments ?? []).map((row) => row.unit_id)
+}
+
+export function canAccessUnitProgress(
+  context: ProjectAccessContext,
+  unitId: string,
+): boolean {
+  return canViewDetailedProgressForUnit(
+    context.permissions,
+    unitId,
+    context.assignedUnitIds,
+  )
 }
 
 export async function getProjectAccessContext(
@@ -81,9 +122,16 @@ export async function getProjectAccessContext(
 
   if (!userType) return null
 
+  const permissions = getProjectPermissions(userType)
+  const clientUnitIds =
+    permissions.viewDetailedProgress === "unitOnly"
+      ? await loadClientAssignedUnitIds(supabase, id, user.id)
+      : []
+
   return {
     userType,
-    permissions: getProjectPermissions(userType),
+    permissions,
+    assignedUnitIds: resolveAssignedUnitIds(permissions, clientUnitIds),
   }
 }
 
@@ -127,4 +175,31 @@ export async function assertProjectSectionAccess(
     redirect(projectHref(projectId))
   }
   return context
+}
+
+export async function assertUnitDetailAccess(
+  projectId: string,
+  unitId: string,
+): Promise<ProjectAccessContext> {
+  const context = await getProjectAccessContext(projectId)
+  if (!context || !canAccessUnitProgress(context, unitId)) {
+    redirect(projectHref(projectId))
+  }
+  return context
+}
+
+export async function checkUnitDetailAccess(
+  projectId: string,
+  unitId: string,
+): Promise<
+  { ok: true; context: ProjectAccessContext } | { ok: false; error: string }
+> {
+  const context = await getProjectAccessContext(projectId)
+  if (!context) {
+    return { ok: false, error: "No tenés acceso a este proyecto." }
+  }
+  if (!canAccessUnitProgress(context, unitId)) {
+    return { ok: false, error: "No tenés permiso para ver esta unidad." }
+  }
+  return { ok: true, context }
 }

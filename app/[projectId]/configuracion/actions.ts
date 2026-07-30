@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
-import { checkProjectPermission } from "@/lib/project/projectAccess"
+import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
 import {
   calculateFloorProgressPercent,
   calculateProjectProgressPercent,
@@ -131,6 +131,9 @@ export async function getDashboardData(
   const user = await getAuthenticatedUserOrNull()
   if (!user) return null
 
+  const accessContext = await getProjectAccessContext(id)
+  if (!accessContext) return null
+
   const supabase = await createClient()
 
   const [floorsResult, unitsResult, assignments, rubrosResult, tasksResult, entriesResult] =
@@ -172,7 +175,18 @@ export async function getDashboardData(
     tasksResult.data ?? [],
   )
   const entries = entriesResult.data ?? []
-  const unitIds = units.map((unit) => unit.id)
+
+  const allowedUnitIdSet =
+    accessContext.assignedUnitIds == null
+      ? null
+      : new Set(accessContext.assignedUnitIds)
+
+  const visibleUnits =
+    allowedUnitIdSet == null
+      ? units
+      : units.filter((unit) => allowedUnitIdSet.has(unit.id))
+
+  const unitIds = visibleUnits.map((unit) => unit.id)
 
   const weekAgo = new Date()
   weekAgo.setDate(weekAgo.getDate() - 7)
@@ -195,10 +209,13 @@ export async function getDashboardData(
     entries,
   )
 
-  const dashboardFloors: DashboardFloor[] = floors.map((floor) => {
-    const floorUnitsData = units
+  const dashboardFloors: DashboardFloor[] = floors
+    .map((floor) => {
+    const floorUnitsData = visibleUnits
       .filter((unit) => unit.floor_id === floor.id)
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+
+    if (floorUnitsData.length === 0) return null
 
     const floorUnits: DashboardUnit[] = floorUnitsData.map((unit) => {
         const assignedTaskIds = getAssignedTaskIdsForUnit(
@@ -242,11 +259,10 @@ export async function getDashboardData(
       units: floorUnits,
     }
   })
+    .filter((floor): floor is DashboardFloor => floor != null)
 
   const generalProgress = calculateProjectProgressPercent(
-    floors.map((floor) =>
-      units.filter((unit) => unit.floor_id === floor.id).map((unit) => unit.id),
-    ),
+    dashboardFloors.map((floor) => floor.units.map((unit) => unit.id)),
     allTaskIds,
     assignments.byUnit,
     entries,
