@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { AlertCircle, Building2, CalendarDays, Check, ChevronDown, MapPin } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { CreateProjectStructureStep } from "@/components/projects/new/steps/CreateProjectStructureStep"
@@ -21,6 +20,12 @@ import {
   remapUnitTaskExclusions,
 } from "@/lib/projects/unitTaskAssignments"
 import { CREATE_PROJECT_LAYOUT } from "@/lib/projects/createProjectTokens"
+import {
+  buildConfigSnapshot,
+  isConfigDirty,
+  type ConfigBasicsState,
+  type ConfigSavedSnapshot,
+} from "@/lib/projects/configDirtyState"
 import { cn } from "@/lib/utils"
 import {
   clearUnitPlanPhoto,
@@ -109,37 +114,69 @@ function FieldLabel({ icon, children }: { icon?: ReactNode; children: ReactNode 
   )
 }
 
+function ConfigSaveFooter({
+  saving,
+  feedback,
+  onCancel,
+  onSave,
+}: {
+  saving: boolean
+  feedback: SaveFeedback
+  onCancel: () => void
+  onSave: () => void
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#edeef0] bg-white/95 backdrop-blur-sm">
+      <div
+        className="mx-auto flex w-full flex-wrap items-center justify-end gap-4 px-6 py-4"
+        style={{ maxWidth: CREATE_PROJECT_LAYOUT.contentMaxWidth }}
+      >
+        {feedback ? (
+          <span
+            className={cn(
+              "mr-auto flex items-center gap-1.5 text-[13px] leading-4",
+              feedback.type === "success" ? "text-[#15803d]" : "text-[#b91c1c]",
+            )}
+          >
+            {feedback.type === "success" ? (
+              <Check className="size-3.5" aria-hidden />
+            ) : (
+              <AlertCircle className="size-3.5" aria-hidden />
+            )}
+            {feedback.message}
+          </span>
+        ) : null}
+
+        <div className="flex items-center justify-end gap-6 rounded-[8px] bg-[rgba(237,238,240,0.4)] px-4 py-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="text-[14px] font-medium leading-[1.4] text-[#777b84] transition-opacity hover:opacity-80 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving}
+            className="inline-flex items-center gap-1 rounded-[10px] px-2 py-3 text-[14px] font-medium leading-[1.4] text-[#111113] shadow-[0_0_10px_rgba(243,103,31,0.3)] transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            <Check className="size-4" aria-hidden />
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ConfiguracionView({ project }: ConfiguracionViewProps) {
   // El draft de estructura/rubros usa IDs aleatorios (crypto.randomUUID), que
   // difieren entre el render del servidor y el del cliente. Lo construimos solo
   // en el cliente, tras montar, para evitar errores de hidratación.
   const [draft, setDraft] = useState<CreateProjectDraft | null>(null)
-
-  useEffect(() => {
-    const loadProjectData = async () => {
-      const [floors, units, groups, assignments] = await Promise.all([
-        getProjectStructure(project.id),
-        getProjectUnits(project.id),
-        getProjectRubroGroups(project.id),
-        getUnitTaskAssignments(project.id),
-      ])
-
-      setDraft(
-        buildConfigDraftFromProjectData({
-          projectName: project.name,
-          location: project.location,
-          floors,
-          units,
-          groups,
-          assignmentsByUnit: assignments.byUnit,
-        }),
-      )
-    }
-
-    loadProjectData()
-    // Solo al montar: el proyecto es estable durante la vida de la página.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const [savedSnapshot, setSavedSnapshot] = useState<ConfigSavedSnapshot | null>(null)
 
   const [name, setName] = useState(project.name)
   const [location, setLocation] = useState(project.location)
@@ -152,8 +189,76 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
   const parsedStartDate = parseDraftDateString(startDate)
   const parsedEndDate = parseDraftDateString(endDate)
 
+  const basicsState = useMemo<ConfigBasicsState>(
+    () => ({ name, location, totalSurface, startDate, endDate }),
+    [name, location, totalSurface, startDate, endDate],
+  )
+
+  const isDirty = useMemo(
+    () => isConfigDirty(basicsState, draft, savedSnapshot),
+    [basicsState, draft, savedSnapshot],
+  )
+
+  const loadProjectData = async (
+    basicsOverride?: ConfigBasicsState,
+    options?: { updateSnapshot?: boolean },
+  ) => {
+    const basics = basicsOverride ?? basicsState
+    const [floors, units, groups, assignments] = await Promise.all([
+      getProjectStructure(project.id),
+      getProjectUnits(project.id),
+      getProjectRubroGroups(project.id),
+      getUnitTaskAssignments(project.id),
+    ])
+
+    const nextDraft = buildConfigDraftFromProjectData({
+      projectName: basics.name,
+      location: basics.location,
+      floors,
+      units,
+      groups,
+      assignmentsByUnit: assignments.byUnit,
+    })
+
+    setDraft(nextDraft)
+    if (options?.updateSnapshot !== false) {
+      setSavedSnapshot(buildConfigSnapshot(basics, nextDraft))
+    }
+
+    return nextDraft
+  }
+
+  useEffect(() => {
+    void loadProjectData({
+      name: project.name,
+      location: project.location,
+      totalSurface: project.totalSurface,
+      startDate: project.startDate,
+      endDate: project.endDate,
+    })
+    // Solo al montar: el proyecto es estable durante la vida de la página.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const updateDraft = (patch: Partial<CreateProjectDraft>) => {
     setDraft((current) => (current ? { ...current, ...patch } : current))
+    setFeedback(null)
+  }
+
+  const applySavedBasics = (basics: ConfigBasicsState) => {
+    setName(basics.name)
+    setLocation(basics.location)
+    setTotalSurface(basics.totalSurface)
+    setStartDate(basics.startDate)
+    setEndDate(basics.endDate)
+  }
+
+  const handleCancel = async () => {
+    if (!savedSnapshot) return
+
+    setFeedback(null)
+    applySavedBasics(savedSnapshot.basics)
+    await loadProjectData(savedSnapshot.basics, { updateSnapshot: false })
   }
 
   const handleSave = async () => {
@@ -308,10 +413,17 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     setSaving(false)
 
     if (assignmentsResult.ok) {
-      setDraft({
+      const savedDraft = {
         ...refreshedDraft,
         unitTaskExclusions: remappedExclusions,
-      })
+      }
+      setDraft(savedDraft)
+      setSavedSnapshot(
+        buildConfigSnapshot(
+          { name, location, totalSurface, startDate, endDate },
+          savedDraft,
+        ),
+      )
       setFeedback({ type: "success", message: "Cambios guardados correctamente." })
     } else {
       setFeedback({ type: "error", message: assignmentsResult.error })
@@ -319,51 +431,26 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
   }
 
   return (
-    <div
-      className="flex flex-col gap-5 pt-6"
-      style={{
-        maxWidth: CREATE_PROJECT_LAYOUT.contentMaxWidth,
-        width: "100%",
-        margin: "0 auto",
-      }}
-    >
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-0.5">
-          <h1 className="font-recoleta text-[28px] font-normal leading-tight text-[#272a2d]">
-            Configuración del Proyecto
-          </h1>
-          <p className="text-[14px] leading-5 text-[#43484e]">
-            Administra la estructura, rubros y equipo del proyecto.
-          </p>
+    <>
+      <div
+        className={cn("flex flex-col gap-5 pt-6", isDirty && "pb-28")}
+        style={{
+          maxWidth: CREATE_PROJECT_LAYOUT.contentMaxWidth,
+          width: "100%",
+          margin: "0 auto",
+        }}
+      >
+        {/* Header */}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-0.5">
+            <h1 className="font-recoleta text-[28px] font-normal leading-tight text-[#272a2d]">
+              Configuración del Proyecto
+            </h1>
+            <p className="text-[14px] leading-5 text-[#43484e]">
+              Administra la estructura, rubros y equipo del proyecto.
+            </p>
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
-          <Button
-            variant="brand"
-            size="brand"
-            onClick={handleSave}
-            disabled={saving}
-            className="gap-1.5 text-[14px] font-normal leading-5"
-          >
-            <Check className="size-4" aria-hidden />
-            {saving ? "Guardando..." : "Guardar Cambios"}
-          </Button>
-          {feedback ? (
-            <span
-              className={`flex items-center gap-1.5 text-[13px] leading-4 ${
-                feedback.type === "success" ? "text-[#15803d]" : "text-[#b91c1c]"
-              }`}
-            >
-              {feedback.type === "success" ? (
-                <Check className="size-3.5" aria-hidden />
-              ) : (
-                <AlertCircle className="size-3.5" aria-hidden />
-              )}
-              {feedback.message}
-            </span>
-          ) : null}
-        </div>
-      </div>
 
       {/* Información Básica */}
       <SettingsCard title="Información Básica">
@@ -379,6 +466,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
                 onChange={(e) => {
                   setName(e.target.value)
                   updateDraft({ projectName: e.target.value })
+                  setFeedback(null)
                 }}
                 className={basicInputClassName}
                 style={basicInputStyle}
@@ -452,38 +540,56 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
         </div>
       </SettingsCard>
 
-      {/* Configuración de Pisos y Unidades */}
+      {/* Estructura del edificio */}
       {draft ? (
         <SettingsCard
-          title="Configuración de Pisos y Unidades"
+          title="Estructura del edificio"
           collapsible
           defaultOpen={false}
         >
-          <CreateProjectStructureStep draft={draft} onChange={updateDraft} />
+          <CreateProjectStructureStep
+            draft={draft}
+            onChange={updateDraft}
+            scrollableList
+          />
         </SettingsCard>
       ) : null}
 
-      {/* Rubros y Checklists */}
+      {/* Rubros y Tareas */}
       {draft ? (
         <SettingsCard
-          title="Rubros y Checklists"
+          title="Rubros y Tareas"
           collapsible
           defaultOpen={false}
         >
-          <CreateProjectTasksStep draft={draft} onChange={updateDraft} />
+          <CreateProjectTasksStep draft={draft} onChange={updateDraft} scrollableList />
         </SettingsCard>
       ) : null}
 
-      {/* Asignación por Unidad */}
+      {/* Aplicación de Rubros y Tareas por Unidad Funcional */}
       {draft ? (
         <SettingsCard
-          title="Asignación por Unidad"
+          title="Aplicación de Rubros y Tareas por Unidad Funcional"
           collapsible
           defaultOpen={false}
         >
-          <CreateProjectUnitTasksStep draft={draft} onChange={updateDraft} />
+          <CreateProjectUnitTasksStep
+            draft={draft}
+            onChange={updateDraft}
+            scrollableList
+          />
         </SettingsCard>
       ) : null}
-    </div>
+      </div>
+
+      {isDirty ? (
+        <ConfigSaveFooter
+          saving={saving}
+          feedback={feedback}
+          onCancel={handleCancel}
+          onSave={handleSave}
+        />
+      ) : null}
+    </>
   )
 }

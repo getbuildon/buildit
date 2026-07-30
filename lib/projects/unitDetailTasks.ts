@@ -1,3 +1,5 @@
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import type { ProgressEntryRow } from "@/lib/projects/dashboardProgress"
 import { getAssignedTaskIdsForUnit } from "@/lib/projects/dashboardProgress"
 
@@ -70,19 +72,48 @@ export function buildTaskCode(
   return `${groupIndex}.${rubroIndex}.${taskIndex}`
 }
 
+export function buildTaskCodeMap(
+  groups: Array<{
+    sort_order: number
+    rubros: Array<{
+      sort_order: number
+      rubro_tasks: Array<{ id: string; sort_order: number }> | null
+    }> | null
+  }>,
+): Map<string, string> {
+  const taskCodeById = new Map<string, string>()
+
+  const sortedGroups = [...groups].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+  )
+
+  sortedGroups.forEach((group, groupIndex) => {
+    const rubros = [...(group.rubros ?? [])].sort(
+      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+    )
+
+    rubros.forEach((rubro, rubroIndex) => {
+      const tasks = [...(rubro.rubro_tasks ?? [])].sort(
+        (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+      )
+
+      tasks.forEach((task, taskIndex) => {
+        taskCodeById.set(
+          task.id,
+          `${buildTaskCode(groupIndex + 1, rubroIndex + 1, taskIndex + 1)}.`,
+        )
+      })
+    })
+  })
+
+  return taskCodeById
+}
+
 export function formatUnitTaskMetaDate(value: string): string {
   const date = new Date(value)
-  const datePart = new Intl.DateTimeFormat("es-AR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(date)
-  const timePart = new Intl.DateTimeFormat("es-AR", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date)
-  return `${datePart} · ${timePart} h`
+  const datePart = format(date, "d MMM yyyy", { locale: es })
+  const timePart = format(date, "H:mm", { locale: es }) + " h"
+  return `${datePart} · ${timePart}`
 }
 
 export function countCompletedTasks(

@@ -165,6 +165,7 @@ export async function getUnitDetailData(
   const rubroRows: Array<{ id: string; weight_percent: number | null }> = []
   const taskRows: Array<{ id: string; rubro_id: string }> = []
   const groups: UnitDetailTaskGroup[] = []
+  const certifiedEntryIds: string[] = []
 
   groupsRaw.forEach((group, groupIndex) => {
     const rubros = ((group.rubros as Array<{
@@ -201,6 +202,11 @@ export async function getUnitDetailData(
         const author = authorId ? profileById.get(authorId) : null
         const occurredAt = latest?.submitted_at ?? latest?.created_at ?? null
 
+        const entryId = latest?.id ?? null
+        if (status === "certified" && entryId) {
+          certifiedEntryIds.push(entryId)
+        }
+
         tasks.push({
           id: task.id,
           code: buildTaskCode(groupIndex + 1, rubroIndex + 1, taskIndex + 1),
@@ -208,7 +214,7 @@ export async function getUnitDetailData(
           rubroName: rubro.name,
           groupIndex: groupIndex + 1,
           status,
-          entryId: latest?.id ?? null,
+          entryId,
           authorName: author ? formatAuthorName(author) : null,
           occurredAt,
           formattedMeta: occurredAt ? formatUnitTaskMetaDate(occurredAt) : null,
@@ -225,6 +231,57 @@ export async function getUnitDetailData(
       })
     }
   })
+
+  if (certifiedEntryIds.length > 0) {
+    const { data: validations } = await supabase
+      .from("progress_validations")
+      .select("progress_entry_id, validated_at, validated_by")
+      .in("progress_entry_id", certifiedEntryIds)
+      .eq("decision", "approved")
+      .order("validated_at", { ascending: false })
+
+    const certifiedAtByEntryId = new Map<string, string>()
+    const certifiedByIdByEntryId = new Map<string, string>()
+
+    for (const validation of validations ?? []) {
+      if (certifiedAtByEntryId.has(validation.progress_entry_id)) continue
+      certifiedAtByEntryId.set(validation.progress_entry_id, validation.validated_at)
+      certifiedByIdByEntryId.set(validation.progress_entry_id, validation.validated_by)
+    }
+
+    const missingCertifierIds = [...new Set([...certifiedByIdByEntryId.values()])].filter(
+      (userId) => !profileById.has(userId),
+    )
+
+    if (missingCertifierIds.length > 0) {
+      const { data: certifierProfiles } = await admin
+        .from("profiles")
+        .select("id, first_name, last_name, email")
+        .in("id", missingCertifierIds)
+
+      for (const profile of certifierProfiles ?? []) {
+        profileById.set(profile.id, profile)
+      }
+    }
+
+    for (const group of groups) {
+      for (const task of group.tasks) {
+        if (task.status !== "certified" || !task.entryId) continue
+
+        const certifiedAt = certifiedAtByEntryId.get(task.entryId) ?? task.occurredAt
+        const certifierId = certifiedByIdByEntryId.get(task.entryId)
+
+        if (certifiedAt) {
+          task.formattedMeta = formatUnitTaskMetaDate(certifiedAt)
+        }
+
+        if (certifierId) {
+          const certifier = profileById.get(certifierId)
+          task.authorName = certifier ? formatAuthorName(certifier) : "Usuario"
+        }
+      }
+    }
+  }
 
   const rubroProgress = buildRubroProgressContext(rubroRows, taskRows)
 

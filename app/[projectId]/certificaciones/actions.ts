@@ -8,6 +8,7 @@ import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
 import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
 import { hasProjectPermission } from "@/lib/project/projectPermissions"
+import { buildTaskCodeMap } from "@/lib/projects/unitDetailTasks"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
 import { getUnitPillLabel } from "@/lib/projects/floorLabels"
 import { getUnitTaskAssignments } from "../configuracion/actions"
@@ -19,13 +20,17 @@ export type CertificacionMember = {
 
 export type CertificacionTask = {
   entryId: string
+  taskCode: string
   taskName: string
   rubroName: string
   floorName: string
   unitLabel: string
   authorId: string
   authorName: string
+  certifiedById: string | null
+  certifiedByName: string | null
   occurredAt: string
+  certifiedAt: string | null
   formattedDate: string
   formattedTime: string
   comment: string | null
@@ -53,11 +58,7 @@ function formatProfileName(profile: {
 }
 
 function formatTaskDate(value: string): string {
-  return new Intl.DateTimeFormat("es-AR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value))
+  return format(new Date(value), "d MMM yyyy", { locale: es })
 }
 
 function formatTaskTime(value: string): string {
@@ -76,7 +77,7 @@ export async function getCertificacionesData(
   const supabase = await createClient()
   const admin = createAdminClient()
 
-  const [floorsResult, unitsResult, assignments, entriesResult, accessContext] =
+  const [floorsResult, unitsResult, assignments, groupsResult, entriesResult, accessContext] =
     await Promise.all([
       supabase
         .from("project_floors")
@@ -90,6 +91,19 @@ export async function getCertificacionesData(
         .order("sort_order", { ascending: true }),
       getUnitTaskAssignments(id),
       supabase
+        .from("rubro_groups")
+        .select(
+          `
+          id, sort_order,
+          rubros (
+            id, sort_order,
+            rubro_tasks (id, sort_order)
+          )
+        `,
+        )
+        .eq("project_id", id)
+        .order("sort_order", { ascending: true }),
+      supabase
         .from("progress_entries")
         .select(`
           id,
@@ -97,6 +111,7 @@ export async function getCertificacionesData(
           floor_id,
           task_id,
           status,
+          progress_state,
           comment,
           created_at,
           submitted_at,
@@ -110,13 +125,14 @@ export async function getCertificacionesData(
       getProjectAccessContext(id),
     ])
 
-  if (floorsResult.error || unitsResult.error || entriesResult.error) {
+  if (floorsResult.error || unitsResult.error || groupsResult.error || entriesResult.error) {
     return null
   }
 
   const floors = floorsResult.data ?? []
   const units = unitsResult.data ?? []
   const entries = entriesResult.data ?? []
+  const taskCodeById = buildTaskCodeMap(groupsResult.data ?? [])
   const canCertify =
     accessContext != null &&
     hasProjectPermission(accessContext.permissions, "certifyTasks")
@@ -136,13 +152,14 @@ export async function getCertificacionesData(
       (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
     )
     floorUnits.forEach((unit, index) => {
+      const unitCode = getUnitPillLabel(
+        { name: floor.name, identifier: floor.identifier },
+        { id: unit.id, code: unit.code },
+        index + 1,
+      )
       unitIndexById.set(unit.id, {
         floorName: floor.name,
-        unitLabel: getUnitPillLabel(
-          { name: floor.name, identifier: floor.identifier },
-          { id: unit.id, code: unit.code },
-          index + 1,
-        ),
+        unitLabel: unitCode === "—" ? "—" : `Unidad ${unitCode}`,
       })
     })
   }
@@ -162,6 +179,7 @@ export async function getCertificacionesData(
     latestEntryKeys.add(unitTaskKey)
 
     if (entry.status !== "submitted" && entry.status !== "approved") continue
+    if (entry.status === "submitted" && entry.progress_state !== "completed") continue
 
     const unitMeta = unitIndexById.get(entry.unit_id)
     const floorId = entry.floor_id
@@ -181,13 +199,17 @@ export async function getCertificacionesData(
 
     tasks.push({
       entryId: entry.id,
+      taskCode: taskCodeById.get(entry.task_id) ?? "—",
       taskName: taskName ?? "Tarea",
       rubroName: rubroName ?? "Rubro",
       floorName,
       unitLabel: unitMeta?.unitLabel ?? "—",
       authorId: entry.created_by,
       authorName: "",
+      certifiedById: null,
+      certifiedByName: null,
       occurredAt,
+      certifiedAt: null,
       formattedDate: formatTaskDate(occurredAt),
       formattedTime: formatTaskTime(occurredAt),
       comment: entry.comment,
@@ -217,7 +239,76 @@ export async function getCertificacionesData(
     task.authorName = profile ? formatProfileName(profile) : "Usuario"
   }
 
-  const members: CertificacionMember[] = [...authorIds]
+  const certifiedEntryIds = tasks
+    .filter((task) => task.status === "certified")
+    .map((task) => task.entryId)
+
+  if (certifiedEntryIds.length > 0) {
+    const { data: validations } = await supabase
+      .from("progress_validations")
+      .select("progress_entry_id, validated_at, validated_by, comment")
+      .in("progress_entry_id", certifiedEntryIds)
+      .eq("decision", "approved")
+      .order("validated_at", { ascending: false })
+
+    const certifiedAtByEntryId = new Map<string, string>()
+    const certifiedByIdByEntryId = new Map<string, string>()
+    const certificationCommentByEntryId = new Map<string, string | null>()
+
+    for (const validation of validations ?? []) {
+      if (certifiedAtByEntryId.has(validation.progress_entry_id)) continue
+      certifiedAtByEntryId.set(validation.progress_entry_id, validation.validated_at)
+      certifiedByIdByEntryId.set(validation.progress_entry_id, validation.validated_by)
+      certificationCommentByEntryId.set(
+        validation.progress_entry_id,
+        validation.comment,
+      )
+    }
+
+    const certifierIds = [...new Set([...certifiedByIdByEntryId.values()])]
+    const missingCertifierIds = certifierIds.filter((userId) => !profileById.has(userId))
+
+    if (missingCertifierIds.length > 0) {
+      const { data: certifierProfiles } = await admin
+        .from("profiles")
+        .select("id, first_name, last_name, email")
+        .in("id", missingCertifierIds)
+
+      for (const profile of certifierProfiles ?? []) {
+        profileById.set(profile.id, profile)
+      }
+    }
+
+    for (const task of tasks) {
+      if (task.status !== "certified") continue
+
+      const certifiedAt =
+        certifiedAtByEntryId.get(task.entryId) ?? task.occurredAt
+      task.certifiedAt = certifiedAt
+      task.formattedDate = formatTaskDate(certifiedAt)
+      task.formattedTime = formatTaskTime(certifiedAt)
+
+      const certifierId = certifiedByIdByEntryId.get(task.entryId)
+      task.certifiedById = certifierId ?? null
+      task.certifiedByName = certifierId
+        ? profileById.get(certifierId)
+          ? formatProfileName(profileById.get(certifierId)!)
+          : "Usuario"
+        : null
+
+      const certificationComment = certificationCommentByEntryId.get(task.entryId)
+      if (certificationComment !== undefined) {
+        task.comment = certificationComment
+      }
+    }
+  }
+
+  const memberIds = new Set(authorIds)
+  for (const task of tasks) {
+    if (task.certifiedById) memberIds.add(task.certifiedById)
+  }
+
+  const members: CertificacionMember[] = [...memberIds]
     .map((userId) => {
       const profile = profileById.get(userId)
       if (!profile) return null
@@ -250,7 +341,7 @@ export async function certifyProgressEntries(
 
   const { data: entries, error: entriesError } = await supabase
     .from("progress_entries")
-    .select("id, status")
+    .select("id, status, progress_state")
     .eq("project_id", id)
     .in("id", uniqueEntryIds)
 
@@ -259,8 +350,16 @@ export async function certifyProgressEntries(
     return { ok: false, error: "Una o más tareas no son válidas." }
   }
 
-  const pendingEntries = entries.filter((entry) => entry.status === "submitted")
+  const pendingEntries = entries.filter(
+    (entry) => entry.status === "submitted" && entry.progress_state === "completed",
+  )
   if (pendingEntries.length === 0) {
+    const hasInProgress = entries.some(
+      (entry) => entry.status === "submitted" && entry.progress_state !== "completed",
+    )
+    if (hasInProgress) {
+      return { ok: false, error: "Solo se pueden certificar tareas completadas." }
+    }
     return { ok: false, error: "Las tareas seleccionadas ya están certificadas." }
   }
 
@@ -283,7 +382,7 @@ export async function certifyProgressEntries(
 
     const { error: updateError } = await supabase
       .from("progress_entries")
-      .update({ status: "approved" })
+      .update({ status: "approved", progress_state: "completed" })
       .eq("id", entry.id)
       .eq("project_id", id)
 

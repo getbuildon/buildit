@@ -44,6 +44,7 @@ import {
   type TrabajoDiarioTaskAttachment,
   type TrabajoDiarioTaskDetail,
   type TrabajoDiarioTaskHistoryItem,
+  type TrabajoDiarioTaskHistoryStatus,
   type TrabajoDiarioTaskStatus,
 } from "../trabajo-diario/actions"
 
@@ -104,9 +105,13 @@ function StatusIcon({
   status,
   className,
 }: {
-  status: TrabajoDiarioTaskStatus | EditableTaskStatus
+  status: TrabajoDiarioTaskStatus | TrabajoDiarioTaskHistoryStatus | EditableTaskStatus
   className?: string
 }) {
+  if (status === "Certificada") {
+    return <ShieldCheck className={cn("size-5 shrink-0 text-[#0f5fa0]", className)} aria-hidden />
+  }
+
   const draftStatus =
     status === "Completado" || status === "En Proceso" || status === "Bloqueado"
       ? mapTrabajoDiarioStatusToDraft(status)
@@ -297,10 +302,10 @@ export function CertificacionTaskDetailDialog({
     }
   }, [entryId, open, projectId])
 
-  const authorName = useMemo(() => {
+  const completedByName = useMemo(() => {
     if (!detail) return "Usuario"
     const current = detail.history.find((item) => item.id === detail.entryId)
-    return current?.authorName ?? detail.history[0]?.authorName ?? "Usuario"
+    return current?.authorName ?? detail.registeredByName
   }, [detail])
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -327,7 +332,7 @@ export function CertificacionTaskDetailDialog({
         }),
         unitLabel: detail.unitLabel,
         rubroName: detail.rubroName,
-        authorName,
+        authorName: completedByName,
       }
     : null
 
@@ -453,7 +458,10 @@ export function CertificacionTaskDetailDialog({
       : CARGAR_AVANCE_STATUS_LABELS[mapTrabajoDiarioStatusToDraft(detail?.status ?? "Completado")]
 
   const showCertifyButton =
-    certificationStatus === "pending" && canCertify && mode === "view"
+    certificationStatus === "pending" &&
+    canCertify &&
+    mode === "view" &&
+    detail?.status === "Completado"
 
   return (
     <>
@@ -528,8 +536,8 @@ export function CertificacionTaskDetailDialog({
                   </div>
                 </Field>
 
-                <Field label="Fotografías">
-                  {detail.attachments.length > 0 ? (
+                {detail.attachments.length > 0 ? (
+                  <Field label="Fotografías">
                     <button
                       type="button"
                       onClick={() =>
@@ -547,18 +555,8 @@ export function CertificacionTaskDetailDialog({
                       <Camera className="size-4 shrink-0 text-[#777b84]" aria-hidden />
                       <span>{formatPhotoCount(detail.attachments.length)}</span>
                     </button>
-                  ) : (
-                    <div
-                      className={cn(
-                        CERTIFICACION_MODAL.readonlyBox,
-                        "flex h-11 items-center gap-2 text-[#272a2d]",
-                      )}
-                    >
-                      <Camera className="size-4 shrink-0 text-[#777b84]" aria-hidden />
-                      <span>{formatPhotoCount(0)}</span>
-                    </div>
-                  )}
-                </Field>
+                  </Field>
+                ) : null}
 
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -583,7 +581,7 @@ export function CertificacionTaskDetailDialog({
                     <p className={CERTIFICACION_MODAL.label}>Registrado por</p>
                     <div className="flex items-center gap-2">
                       <User className="size-3.5 shrink-0 text-[#777b84]" aria-hidden />
-                      <span className={CERTIFICACION_MODAL.metaValue}>{authorName}</span>
+                      <span className={CERTIFICACION_MODAL.metaValue}>{detail.registeredByName}</span>
                     </div>
                   </div>
                 </div>

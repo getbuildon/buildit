@@ -46,6 +46,8 @@ import {
 } from "@/lib/projects/createProjectDraft"
 import { RubroIncidenceBadge, RubroIncidenceEditor, validateRubroWeightDraft } from "@/components/projects/new/RubroIncidenceBadge"
 import { getAllRubrosFromGroups, isManualRubroWeightOverLimit, isRubroWeightAuto, parseRubroWeightInput, RUBRO_WEIGHT_OVER_LIMIT_MESSAGE } from "@/lib/projects/rubroWeights"
+import { CONFIG_SECTION_SCROLL } from "@/lib/projects/createProjectTokens"
+import { cn } from "@/lib/utils"
 
 type SortableTaskItemProps = {
   task: RubroTaskDraft
@@ -161,6 +163,7 @@ function SortableTaskItem({
 type CreateProjectTasksStepProps = {
   draft: CreateProjectDraft
   onChange: (patch: Partial<CreateProjectDraft>) => void
+  scrollableList?: boolean
 }
 
 function rubroKey(groupId: string, rubroId: string) {
@@ -251,6 +254,7 @@ function InExecutionTasksCallout() {
 export function CreateProjectTasksStep({
   draft,
   onChange,
+  scrollableList = false,
 }: CreateProjectTasksStepProps) {
   const [newGroupName, setNewGroupName] = useState("")
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(() => {
@@ -584,7 +588,7 @@ export function CreateProjectTasksStep({
         </Button>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className={cn("flex flex-col gap-2", scrollableList && CONFIG_SECTION_SCROLL)}>
         {draft.groups.map((group, groupIndex) => {
           const stats = getGroupDisplayStats(group)
           const isGroupExpanded = expandedGroupIds.has(group.id)

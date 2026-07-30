@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
-import { Building2, Info, MapPin, X } from "lucide-react"
+import { House, Info, MapPin, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   buildLoadedUnitTaskKeySet,
@@ -84,10 +84,10 @@ function SelectionCard({
       <div className="mb-3 flex flex-col gap-1">
         <div className="flex items-center gap-2">
           {icon}
-          <p className="text-[16px] font-normal leading-[1.4] text-[#314158]">{title}</p>
+          <p className="text-[16px] font-normal leading-[1.4] text-[#272a2d]">{title}</p>
         </div>
         {description ? (
-          <p className="text-[14px] leading-[1.4] text-[#777b84]">{description}</p>
+          <p className="text-[14px] font-normal leading-[1.4] text-[#43484e]">{description}</p>
         ) : null}
       </div>
       {children}
@@ -448,8 +448,8 @@ export function CargarAvanceView({
 
         {selectedFloor ? (
           <SelectionCard
-            icon={<Building2 className="size-4 text-[#314158]" aria-hidden />}
-            title="Unidades/Locales"
+            icon={<House className="size-4 shrink-0 text-[#272a2d]" aria-hidden />}
+            title="Unidades Funcionales"
             description="Selecciona una o más unidades donde se realizó el trabajo"
           >
             {floorUnits.length === 0 ? (

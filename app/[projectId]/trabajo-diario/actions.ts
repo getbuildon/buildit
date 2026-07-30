@@ -13,6 +13,7 @@ import {
   type CargarAvanceTaskStatus,
 } from "@/lib/projects/cargarAvance"
 import { getUnitLabelInFloor } from "@/lib/projects/floorLabels"
+import { buildTaskCodeMap } from "@/lib/projects/unitDetailTasks"
 import { PROGRESS_PHOTOS_BUCKET } from "@/lib/progress/progressPhotoConfig"
 import { getUnitTaskAssignments } from "../configuracion/actions"
 
@@ -54,9 +55,11 @@ export type TrabajoDiarioTaskAttachment = {
   signedUrl: string
 }
 
+export type TrabajoDiarioTaskHistoryStatus = TrabajoDiarioTaskStatus | "Certificada"
+
 export type TrabajoDiarioTaskHistoryItem = {
   id: string
-  status: TrabajoDiarioTaskStatus
+  status: TrabajoDiarioTaskHistoryStatus
   comment: string | null
   occurredAt: string
   formattedDate: string
@@ -73,6 +76,7 @@ export type TrabajoDiarioTaskDetail = {
   unitLabel: string
   occurredAt: string
   formattedLongDate: string
+  registeredByName: string
   status: TrabajoDiarioTaskStatus
   comment: string | null
   attachments: TrabajoDiarioTaskAttachment[]
@@ -92,6 +96,7 @@ export type UpdateTrabajoDiarioTaskResult =
 
 export type TrabajoDiarioTask = {
   id: string
+  taskCode: string
   name: string
   category: string
   floorId: string
@@ -358,6 +363,7 @@ export async function getTrabajoDiarioData(
   const tasks: TrabajoDiarioTask[] = []
   const latestEntryKeys = new Set<string>()
   const loadedUnitTaskKeys = new Set<string>()
+  const taskCodeById = buildTaskCodeMap(rubroGroupsRaw)
 
   for (const entry of entries) {
     if (!entry.unit_id || !entry.task_id) continue
@@ -384,6 +390,7 @@ export async function getTrabajoDiarioData(
 
     tasks.push({
       id: entry.id,
+      taskCode: taskCodeById.get(entry.task_id) ?? "—",
       name: taskName ?? "Tarea",
       category: rubroName ?? "Rubro",
       floorId,
@@ -663,7 +670,8 @@ export async function getTrabajoDiarioTaskDetail(
       .eq("floor_id", floorId)
       .order("sort_order", { ascending: true })
 
-    unitLabel = getUnitLabelInFloor(floorUnits ?? [], entry.unit_id)
+    const unitCode = getUnitLabelInFloor(floorUnits ?? [], entry.unit_id)
+    unitLabel = unitCode === "—" ? "—" : `Unidad ${unitCode}`
   }
 
   const { data: historyRows, error: historyError } = await supabase
@@ -690,13 +698,23 @@ export async function getTrabajoDiarioTaskDetail(
     entry.id,
   ])
 
+  const { data: validationRows } = await supabase
+    .from("progress_validations")
+    .select("id, progress_entry_id, validated_by, validated_at, comment, decision")
+    .in("progress_entry_id", historyEntryIds)
+    .eq("decision", "approved")
+    .order("validated_at", { ascending: false })
+
   const authorIds = [...new Set(historyRows.map((row) => row.created_by))]
+  const validatorIds = [...new Set((validationRows ?? []).map((row) => row.validated_by))]
+  const profileIds = [...new Set([...authorIds, ...validatorIds])]
+
   const { data: profiles } =
-    authorIds.length > 0
+    profileIds.length > 0
       ? await admin
           .from("profiles")
           .select("id, first_name, last_name, email")
-          .in("id", authorIds)
+          .in("id", profileIds)
       : { data: [] as Array<{
           id: string
           first_name: string | null
@@ -721,7 +739,7 @@ export async function getTrabajoDiarioTaskDetail(
 
   const occurredAt = entry.submitted_at ?? entry.created_at
 
-  const history: TrabajoDiarioTaskHistoryItem[] = historyRows.map((row) => {
+  const progressHistory: TrabajoDiarioTaskHistoryItem[] = historyRows.map((row) => {
     const rowOccurredAt = row.submitted_at ?? row.created_at
     const profile = profileById.get(row.created_by)
     return {
@@ -735,6 +753,31 @@ export async function getTrabajoDiarioTaskDetail(
     }
   })
 
+  const certificationHistory: TrabajoDiarioTaskHistoryItem[] = (validationRows ?? []).map(
+    (validation) => {
+      const profile = profileById.get(validation.validated_by)
+      return {
+        id: `certification-${validation.id}`,
+        status: "Certificada",
+        comment: validation.comment,
+        occurredAt: validation.validated_at,
+        formattedDate: formatHistoryDate(validation.validated_at),
+        authorName: profile ? formatProfileName(profile) : "Usuario",
+        attachments: [],
+      }
+    },
+  )
+
+  const history = [...progressHistory, ...certificationHistory].sort(
+    (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+  )
+
+  const latestEvent = history[0]
+  const displayOccurredAt = latestEvent?.occurredAt ?? occurredAt
+  const displayComment = latestEvent ? latestEvent.comment : entry.comment
+  const displayAttachments = latestEvent?.attachments ?? []
+  const registeredByName = latestEvent?.authorName ?? "Usuario"
+
   return {
     entryId: entry.id,
     taskName: taskName ?? "Tarea",
@@ -742,11 +785,12 @@ export async function getTrabajoDiarioTaskDetail(
     floorName: floorName ?? "—",
     floorIdentifier,
     unitLabel,
-    occurredAt,
-    formattedLongDate: formatEntryLongDate(occurredAt),
+    occurredAt: displayOccurredAt,
+    formattedLongDate: formatEntryLongDate(displayOccurredAt),
+    registeredByName,
     status: mapProgressStatus(entry.status, entry.progress_state),
-    comment: entry.comment,
-    attachments: attachmentsByEntry.get(entry.id) ?? [],
+    comment: displayComment,
+    attachments: displayAttachments,
     history,
   }
 }

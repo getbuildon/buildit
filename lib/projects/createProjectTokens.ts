@@ -41,6 +41,10 @@ export const CREATE_PROJECT_LAYOUT = {
   inputHeight: "46px",
 } as const
 
+/** Contenedor con scroll para listas en Configuración del proyecto. */
+export const CONFIG_SECTION_SCROLL =
+  "max-h-[384px] overflow-y-auto pr-1" as const
+
 /** Figma node 1879:2153 — Paso 0 etapa de obra */
 export const CREATE_PROJECT_STAGE = {
   page: "flex min-h-screen w-full items-center justify-center bg-[#fefcfb] px-6 py-16",

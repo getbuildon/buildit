@@ -7,10 +7,12 @@ import type {
   RubroItemDraft,
 } from "@/lib/projects/createProjectDraft"
 import { cn } from "@/lib/utils"
+import { CONFIG_SECTION_SCROLL } from "@/lib/projects/createProjectTokens"
 
 type Props = {
   draft: CreateProjectDraft
   onChange: (patch: Partial<CreateProjectDraft>) => void
+  scrollableList?: boolean
 }
 
 type CheckboxState = "checked" | "unchecked" | "indeterminate"
@@ -145,7 +147,11 @@ function UnitCheckbox({
   )
 }
 
-export function CreateProjectUnitTasksStep({ draft, onChange }: Props) {
+export function CreateProjectUnitTasksStep({
+  draft,
+  onChange,
+  scrollableList = false,
+}: Props) {
   const [expandedFloors, setExpandedFloors] = useState<Set<string>>(
     () => new Set(draft.floors.map((f) => f.id)),
   )
@@ -219,7 +225,12 @@ export function CreateProjectUnitTasksStep({ draft, onChange }: Props) {
         rubros o tareas que no le correspondan.
       </p>
 
-      <div className="flex flex-col gap-0.5 overflow-hidden rounded-[8px]">
+      <div
+        className={cn(
+          "flex flex-col gap-0.5 rounded-[8px]",
+          scrollableList ? CONFIG_SECTION_SCROLL : "overflow-hidden",
+        )}
+      >
         {draft.floors.map((floor) => {
           const floorExpanded = expandedFloors.has(floor.id)
 

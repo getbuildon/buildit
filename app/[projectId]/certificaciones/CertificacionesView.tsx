@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useLayoutEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   BadgeCheck,
@@ -11,9 +11,10 @@ import {
   MessageCircle,
   ShieldCheck,
 } from "lucide-react"
-import { endOfDay, startOfDay } from "date-fns"
+import { endOfDay, endOfMonth, format, startOfDay, startOfMonth } from "date-fns"
+import { es } from "date-fns/locale"
 import { DatePicker } from "@/components/ui/date-picker"
-import { Label } from "@/components/ui/label"
+import { CertifierShieldIcon } from "@/components/icons/CertifierShieldIcon"
 import {
   Select,
   SelectContent,
@@ -24,6 +25,8 @@ import {
 import { useToast } from "@/components/ui/toast"
 import {
   CERTIFICADA_BADGE,
+  CERTIFICACIONES_CERTIFIER,
+  CERTIFICACIONES_FILTERS,
   CERTIFICACIONES_SHADOW,
   CERTIFICACIONES_TYPE,
 } from "@/lib/project/certificacionesDesignTokens"
@@ -44,8 +47,28 @@ import {
 const ALL_MEMBERS_VALUE = "__all_members__"
 const PAGE_SIZE = 8
 
-const filterFieldClassName = "flex min-w-0 flex-1 flex-col gap-1.5"
-const filterControlClassName = "h-[40px]"
+function formatCertTaskDate(value: string): string {
+  return format(new Date(value), "d MMM yyyy", { locale: es })
+}
+
+function formatCertTaskTime(value: string): string {
+  return format(new Date(value), "H:mm", { locale: es }) + " h"
+}
+
+function getTaskMemberId(task: CertificacionTask): string {
+  return task.status === "certified"
+    ? (task.certifiedById ?? task.authorId)
+    : task.authorId
+}
+
+function getTaskDisplayTimestamp(task: CertificacionTask): string {
+  return task.status === "certified"
+    ? (task.certifiedAt ?? task.occurredAt)
+    : task.occurredAt
+}
+
+const filterDatePickerClassName = CERTIFICACIONES_FILTERS.datePicker
+const filterSelectClassName = CERTIFICACIONES_FILTERS.select
 
 type StatusFilter = "pending" | "certified"
 
@@ -148,7 +171,7 @@ function StatusToggle({
   onChange: (value: StatusFilter) => void
 }) {
   return (
-    <div className="flex h-[40px] rounded-[10px] border border-[#edeef0] bg-[#edeef0] p-1">
+    <div className={CERTIFICACIONES_FILTERS.toggleTrack}>
       {(
         [
           { value: "pending" as const, label: "Pendientes" },
@@ -160,7 +183,7 @@ function StatusToggle({
           type="button"
           onClick={() => onChange(option.value)}
           className={cn(
-            "flex flex-1 items-center justify-center rounded-[8px] px-3 transition-colors",
+            CERTIFICACIONES_FILTERS.toggleButton,
             CERTIFICACIONES_TYPE.toggle,
             value === option.value
               ? "bg-white text-[#272a2d]"
@@ -171,6 +194,28 @@ function StatusToggle({
           {option.label}
         </button>
       ))}
+    </div>
+  )
+}
+
+function CertifierBlock({
+  name,
+  formattedDate,
+  formattedTime,
+}: {
+  name: string
+  formattedDate: string
+  formattedTime: string
+}) {
+  return (
+    <div className={CERTIFICACIONES_CERTIFIER.block}>
+      <CertifierShieldIcon />
+      <div className={CERTIFICACIONES_CERTIFIER.content}>
+        <p className={cn(CERTIFICACIONES_CERTIFIER.name, "truncate")}>{name}</p>
+        <p className={cn(CERTIFICACIONES_CERTIFIER.date, "truncate")}>
+          {formattedDate} · {formattedTime}
+        </p>
+      </div>
     </div>
   )
 }
@@ -195,6 +240,7 @@ function TaskCard({
   showCheckbox: boolean
 }) {
   const urgency = getUrgencyBadge(task)
+  const isCertified = task.status === "certified"
 
   return (
     <div className="rounded-[12px] border border-[#edeef0] bg-white p-[13px]">
@@ -205,21 +251,54 @@ function TaskCard({
             onCheckedChange={onCheckedChange}
             ariaLabel={`Seleccionar ${task.taskName}`}
           />
-        ) : (
-          <div className="size-4 shrink-0" aria-hidden />
-        )}
+        ) : null}
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className={CERTIFICACIONES_TYPE.taskTitle}>{task.taskName}</h3>
+                <div className="flex min-w-0 items-center">
+                  <span className={CERTIFICACIONES_TYPE.taskCode}>{task.taskCode}</span>
+                  <h3 className={CERTIFICACIONES_TYPE.taskTitle}>{task.taskName}</h3>
+                </div>
                 <span className={CERTIFICACIONES_TYPE.taskRubro}>{task.rubroName}</span>
               </div>
-              <p className={CERTIFICACIONES_TYPE.taskMeta}>
-                {task.floorName} • {task.unitLabel} • {task.authorName} •{" "}
-                {task.formattedDate} · {task.formattedTime}
-              </p>
+              <div className={CERTIFICACIONES_TYPE.taskMetaRow}>
+                <span className={CERTIFICACIONES_TYPE.taskMeta}>{task.floorName}</span>
+                <span className={CERTIFICACIONES_TYPE.taskMetaBullet} aria-hidden>
+                  •
+                </span>
+                <span className={CERTIFICACIONES_TYPE.taskMeta}>{task.unitLabel}</span>
+                {!isCertified ? (
+                  <>
+                    <span className={CERTIFICACIONES_TYPE.taskMetaBullet} aria-hidden>
+                      •
+                    </span>
+                    <span className={CERTIFICACIONES_TYPE.taskMeta}>{task.authorName}</span>
+                    <span className={CERTIFICACIONES_TYPE.taskMetaBullet} aria-hidden>
+                      •
+                    </span>
+                    <span className={CERTIFICACIONES_TYPE.taskMeta}>
+                      {task.formattedDate} · {task.formattedTime}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className={CERTIFICACIONES_TYPE.taskMetaBullet} aria-hidden>
+                      •
+                    </span>
+                    <span className={CERTIFICACIONES_TYPE.taskMeta}>
+                      Completado por {task.authorName}
+                    </span>
+                    <span className={CERTIFICACIONES_TYPE.taskMetaBullet} aria-hidden>
+                      •
+                    </span>
+                    <span className={CERTIFICACIONES_TYPE.taskMeta}>
+                      {formatCertTaskDate(task.occurredAt)} · {formatCertTaskTime(task.occurredAt)}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
 
             {task.comment ? (
@@ -236,46 +315,46 @@ function TaskCard({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-4">
-          {task.status === "certified" ? (
-            <span className={CERTIFICADA_BADGE.pill}>
-              <ShieldCheck className="size-2.5 shrink-0" aria-hidden />
-              Certificada
-            </span>
+        <div className="flex shrink-0 items-center gap-2">
+          {isCertified ? (
+            <CertifierBlock
+              name={task.certifiedByName ?? task.authorName}
+              formattedDate={task.formattedDate}
+              formattedTime={task.formattedTime}
+            />
           ) : (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-[12px] px-2 py-1",
-                CERTIFICACIONES_TYPE.badge,
-                urgency.className,
-              )}
-            >
-              <urgency.icon className="size-3" aria-hidden />
-              {urgency.label}
-            </span>
-          )}
-
-          <div className="flex items-center gap-2">
-            {task.status === "pending" && canCertify ? (
-              <button
-                type="button"
-                onClick={onCertify}
-                disabled={isCertifying}
-                className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#ff7433] px-3 py-1.5 disabled:opacity-50"
+            <>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-[12px] px-2 py-1",
+                  CERTIFICACIONES_TYPE.badge,
+                  urgency.className,
+                )}
               >
-                <BadgeCheck className="size-3 text-white" aria-hidden />
-                <span className={CERTIFICACIONES_TYPE.certificarBtn}>Certificar</span>
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onView}
-              className="inline-flex size-8 items-center justify-center rounded-[10px] bg-[#edeef0] text-[#43484e] transition-colors hover:bg-[#e2e4e8]"
-              aria-label={`Ver detalle de ${task.taskName}`}
-            >
-              <Eye className="size-4" aria-hidden />
-            </button>
-          </div>
+                <urgency.icon className="size-3" aria-hidden />
+                {urgency.label}
+              </span>
+              {canCertify ? (
+                <button
+                  type="button"
+                  onClick={onCertify}
+                  disabled={isCertifying}
+                  className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#ff7433] px-3 py-1.5 disabled:opacity-50"
+                >
+                  <BadgeCheck className="size-3 text-white" aria-hidden />
+                  <span className={CERTIFICACIONES_TYPE.certificarBtn}>Certificar</span>
+                </button>
+              ) : null}
+            </>
+          )}
+          <button
+            type="button"
+            onClick={onView}
+            className="inline-flex size-8 items-center justify-center rounded-[10px] bg-[#edeef0] text-[#43484e] transition-colors hover:bg-[#e2e4e8]"
+            aria-label={`Ver detalle de ${task.taskName}`}
+          >
+            <Eye className="size-4" aria-hidden />
+          </button>
         </div>
       </div>
     </div>
@@ -290,8 +369,8 @@ export function CertificacionesView({ projectId, initialData }: Props) {
   const [canCertify] = useState(initialData.canCertify)
   const [members] = useState(initialData.members)
 
-  const [fromDate, setFromDate] = useState<Date | undefined>(undefined)
-  const [toDate, setToDate] = useState<Date | undefined>(undefined)
+  const [fromDate, setFromDate] = useState<Date | undefined>(() => startOfMonth(new Date()))
+  const [toDate, setToDate] = useState<Date | undefined>(() => endOfMonth(new Date()))
   const [selectedMemberId, setSelectedMemberId] = useState(ALL_MEMBERS_VALUE)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending")
   const [selectedEntryIds, setSelectedEntryIds] = useState<Set<string>>(new Set())
@@ -315,27 +394,40 @@ export function CertificacionesView({ projectId, initialData }: Props) {
   )
 
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      if (task.status !== statusFilter) return false
+    return tasks
+      .filter((task) => {
+        if (task.status !== statusFilter) return false
 
-      if (selectedMemberId !== ALL_MEMBERS_VALUE && task.authorId !== selectedMemberId) {
-        return false
-      }
+        if (selectedMemberId !== ALL_MEMBERS_VALUE && getTaskMemberId(task) !== selectedMemberId) {
+          return false
+        }
 
-      const taskDate = new Date(task.occurredAt)
-      if (fromDate && taskDate < startOfDay(fromDate)) return false
-      if (toDate && taskDate > endOfDay(toDate)) return false
+        const filterDate = new Date(getTaskDisplayTimestamp(task))
+        if (fromDate && filterDate < startOfDay(fromDate)) return false
+        if (toDate && filterDate > endOfDay(toDate)) return false
 
-      return true
-    })
+        return true
+      })
+      .sort(
+        (a, b) =>
+          new Date(getTaskDisplayTimestamp(a)).getTime() -
+          new Date(getTaskDisplayTimestamp(b)).getTime(),
+      )
   }, [tasks, statusFilter, selectedMemberId, fromDate, toDate])
 
   const totalPages = Math.max(1, Math.ceil(filteredTasks.length / PAGE_SIZE))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
+
+  useLayoutEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
 
   const paginatedTasks = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE
+    const start = (safeCurrentPage - 1) * PAGE_SIZE
     return filteredTasks.slice(start, start + PAGE_SIZE)
-  }, [filteredTasks, currentPage])
+  }, [filteredTasks, safeCurrentPage])
 
   const selectableFilteredIds = useMemo(
     () =>
@@ -400,11 +492,22 @@ export function CertificacionesView({ projectId, initialData }: Props) {
     }
 
     setTasks((prev) =>
-      prev.map((task) =>
-        entryIds.includes(task.entryId)
-          ? { ...task, status: "certified" as const, isUrgent: false }
-          : task,
-      ),
+      prev.map((task) => {
+        if (!entryIds.includes(task.entryId)) return task
+
+        const certifiedAt = new Date().toISOString()
+        const certificationComment = notesByEntryId?.[task.entryId]?.trim() || null
+
+        return {
+          ...task,
+          status: "certified" as const,
+          isUrgent: false,
+          certifiedAt,
+          formattedDate: formatCertTaskDate(certifiedAt),
+          formattedTime: formatCertTaskTime(certifiedAt),
+          comment: certificationComment,
+        }
+      }),
     )
     setSelectedEntryIds((prev) => {
       const next = new Set(prev)
@@ -507,12 +610,12 @@ export function CertificacionesView({ projectId, initialData }: Props) {
 
         <div className="flex flex-col gap-3">
           <div
-            className="flex flex-col gap-6 rounded-[14px] border border-[#edeef0] bg-white px-[25px] pb-[25px] pt-[25px]"
+            className={CERTIFICACIONES_FILTERS.mainCard}
             style={{ boxShadow: CERTIFICACIONES_SHADOW.mainCard }}
           >
-            <div className="flex gap-2">
-              <div className={filterFieldClassName}>
-                <Label className={CERTIFICACIONES_TYPE.filterLabel}>Desde</Label>
+            <div className={CERTIFICACIONES_FILTERS.row}>
+              <div className={CERTIFICACIONES_FILTERS.field}>
+                <span className={CERTIFICACIONES_FILTERS.label}>Desde</span>
                 <DatePicker
                   value={fromDate}
                   onChange={(date) => {
@@ -520,13 +623,13 @@ export function CertificacionesView({ projectId, initialData }: Props) {
                     setCurrentPage(1)
                   }}
                   toDate={toDate}
-                  placeholder="01/05/2026"
-                  className={filterControlClassName}
+                  popoverSide="bottom"
+                  className={filterDatePickerClassName}
                 />
               </div>
 
-              <div className={filterFieldClassName}>
-                <Label className={CERTIFICACIONES_TYPE.filterLabel}>Hasta</Label>
+              <div className={CERTIFICACIONES_FILTERS.field}>
+                <span className={CERTIFICACIONES_FILTERS.label}>Hasta</span>
                 <DatePicker
                   value={toDate}
                   onChange={(date) => {
@@ -534,13 +637,13 @@ export function CertificacionesView({ projectId, initialData }: Props) {
                     setCurrentPage(1)
                   }}
                   fromDate={fromDate}
-                  placeholder="07/05/2026"
-                  className={filterControlClassName}
+                  popoverSide="bottom"
+                  className={filterDatePickerClassName}
                 />
               </div>
 
-              <div className={filterFieldClassName}>
-                <Label className={CERTIFICACIONES_TYPE.filterLabel}>Miembro</Label>
+              <div className={CERTIFICACIONES_FILTERS.field}>
+                <span className={CERTIFICACIONES_FILTERS.label}>Miembro</span>
                 <Select
                   value={selectedMemberId}
                   onValueChange={(value) => {
@@ -548,10 +651,7 @@ export function CertificacionesView({ projectId, initialData }: Props) {
                     setCurrentPage(1)
                   }}
                 >
-                  <SelectTrigger
-                    aria-label="Filtrar por miembro"
-                    className={cn(filterControlClassName, "text-[#777b84]")}
-                  >
+                  <SelectTrigger aria-label="Filtrar por miembro" className={filterSelectClassName}>
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
@@ -565,8 +665,8 @@ export function CertificacionesView({ projectId, initialData }: Props) {
                 </Select>
               </div>
 
-              <div className={filterFieldClassName}>
-                <Label className={CERTIFICACIONES_TYPE.filterLabel}>Estado</Label>
+              <div className={CERTIFICACIONES_FILTERS.field}>
+                <span className={CERTIFICACIONES_FILTERS.label}>Estado</span>
                 <StatusToggle value={statusFilter} onChange={handleStatusFilterChange} />
               </div>
             </div>
@@ -647,7 +747,7 @@ export function CertificacionesView({ projectId, initialData }: Props) {
                   <button
                     type="button"
                     onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                    disabled={currentPage === 1}
+                    disabled={safeCurrentPage === 1}
                     className={cn(
                       "rounded-[10px] border border-[#afb3ba] px-[13px] py-1.5 disabled:opacity-40",
                       CERTIFICACIONES_TYPE.paginationBtn,
@@ -665,7 +765,7 @@ export function CertificacionesView({ projectId, initialData }: Props) {
                       className={cn(
                         "inline-flex size-8 items-center justify-center rounded-[10px]",
                         CERTIFICACIONES_TYPE.paginationBtn,
-                        page === currentPage
+                        page === safeCurrentPage
                           ? "bg-[#ff7433] text-white"
                           : "border border-[#afb3ba] text-[#45556c]",
                       )}
@@ -677,7 +777,7 @@ export function CertificacionesView({ projectId, initialData }: Props) {
                   <button
                     type="button"
                     onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                    disabled={currentPage === totalPages}
+                    disabled={safeCurrentPage === totalPages}
                     className={cn(
                       "rounded-[10px] border border-[#afb3ba] px-[13px] py-1.5 disabled:opacity-40",
                       CERTIFICACIONES_TYPE.paginationBtn,

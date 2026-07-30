@@ -276,10 +276,17 @@ export function DashboardView({ project, data }: Props) {
                 >
                   <div className="flex flex-1 flex-col gap-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-[14px] font-normal text-[#272a2d]">{task.name}</h3>
-                      <span className="text-[12px] font-normal text-[#777b84]">{task.category}</span>
+                      <span className="font-mono text-[12px] font-normal leading-[1.4] text-[#696e77]">
+                        {task.taskCode}
+                      </span>
+                      <h3 className="text-[14px] font-normal leading-[1.4] text-[#272a2d]">
+                        {task.name}
+                      </h3>
+                      <span className="text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#777b84]">
+                        {task.category}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1 text-[12px] text-[#62748e]">
+                    <div className="flex items-center gap-2 text-[12px] leading-[1.4] tracking-[-0.36px] text-[#62748e]">
                       <span>{task.floorName}</span>
                       <span>•</span>
                       <span>{task.unitLabel}</span>

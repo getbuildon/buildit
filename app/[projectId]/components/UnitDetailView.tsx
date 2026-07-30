@@ -215,7 +215,7 @@ export function UnitDetailView({ projectId, data }: UnitDetailViewProps) {
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null)
   const [taskDetailOpen, setTaskDetailOpen] = useState(false)
 
-  const planPreviewUrl = data.unit.renderUrl ?? data.unit.planUrl
+  const planPreviewUrl = data.unit.planUrl
 
   const visibleGroups = useMemo(() => {
     return data.groups.filter((group) =>
@@ -299,7 +299,7 @@ export function UnitDetailView({ projectId, data }: UnitDetailViewProps) {
             />
           ) : (
             <div className="flex size-[128px] items-center justify-center rounded-[8px] border border-dashed border-[#edeef0] bg-[#fefcfb] text-center text-[12px] leading-[1.4] text-[#777b84]">
-              Sin render
+              Sin planta
             </div>
           )}
         </div>

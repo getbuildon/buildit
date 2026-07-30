@@ -9,6 +9,7 @@ import {
   ChevronUp,
   Clock,
   Pencil,
+  ShieldCheck,
 } from "lucide-react"
 import { InProcessStatusIcon } from "@/components/icons/InProcessStatusIcon"
 import { Button } from "@/components/ui/button"
@@ -38,6 +39,7 @@ import {
   type TrabajoDiarioTaskDetail,
   type TrabajoDiarioTaskAttachment,
   type TrabajoDiarioTaskHistoryItem,
+  type TrabajoDiarioTaskHistoryStatus,
   type TrabajoDiarioTaskStatus,
 } from "./actions"
 
@@ -57,10 +59,11 @@ const DETAIL_STATUS_PILL_STYLES: Record<EditableTaskStatus, string> = {
   blocked: "bg-[#ffdbdc] text-[#641723]",
 }
 
-const HISTORY_STATUS_TEXT_STYLES: Record<TrabajoDiarioTaskStatus, string> = {
+const HISTORY_STATUS_TEXT_STYLES: Record<TrabajoDiarioTaskHistoryStatus, string> = {
   Completado: "text-[#208368]",
   "En Proceso": "text-[#ff7433]",
   Bloqueado: "text-[#641723]",
+  Certificada: "text-[#0f5fa0]",
 }
 
 const EDIT_STATE_BADGE_CLASSNAME =
@@ -113,9 +116,13 @@ function TaskStatusIcon({
   status,
   tone = "default",
 }: {
-  status: TrabajoDiarioTaskStatus | EditableTaskStatus
+  status: TrabajoDiarioTaskStatus | TrabajoDiarioTaskHistoryStatus | EditableTaskStatus
   tone?: "default" | "history"
 }) {
+  if (status === "Certificada") {
+    return <ShieldCheck className="size-4 shrink-0 text-[#0f5fa0]" aria-hidden />
+  }
+
   const draftStatus =
     status === "Completado" || status === "En Proceso" || status === "Bloqueado"
       ? mapTrabajoDiarioStatusToDraft(status)
@@ -189,7 +196,7 @@ function DetailStatusPill({ status }: { status: TrabajoDiarioTaskStatus }) {
   )
 }
 
-function HistoryStatusLabel({ status }: { status: TrabajoDiarioTaskStatus }) {
+function HistoryStatusLabel({ status }: { status: TrabajoDiarioTaskHistoryStatus }) {
   return (
     <span
       className={cn(

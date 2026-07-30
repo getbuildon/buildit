@@ -48,15 +48,18 @@ import {
   UNIT_ROOM_COUNT_OPTIONS,
 } from "@/lib/projects/unitTypes"
 import { cn } from "@/lib/utils"
+import { CONFIG_SECTION_SCROLL } from "@/lib/projects/createProjectTokens"
 
 type CreateProjectStructureStepProps = {
   draft: CreateProjectDraft
   onChange: (patch: Partial<CreateProjectDraft>) => void
+  scrollableList?: boolean
 }
 
 export function CreateProjectStructureStep({
   draft,
   onChange,
+  scrollableList = false,
 }: CreateProjectStructureStepProps) {
   const floorCount = draft.floors.length
   const unitCount = countStructureUnits(draft.floors)
@@ -165,7 +168,10 @@ export function CreateProjectStructureStep({
           </p>
         ) : (
           <div
-            className="flex w-full flex-col gap-2"
+            className={cn(
+              "flex w-full flex-col gap-2",
+              scrollableList && CONFIG_SECTION_SCROLL,
+            )}
             style={{ maxWidth: STRUCTURE_STEP_LAYOUT.floorCardMaxWidth }}
           >
             {draft.floors.map((floor) => (
