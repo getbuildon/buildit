@@ -1,8 +1,7 @@
 "use client"
 
-import { useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import {
-  Check,
   ChevronDown,
   Clock,
   Mail,
@@ -13,11 +12,19 @@ import {
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Spinner } from "@/components/ui/spinner"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { cn } from "@/lib/utils"
-import { CLIENTES_LAYOUT } from "@/lib/project/designTokens"
+import { CLIENTES_LAYOUT, FORM_MODAL_DIALOG } from "@/lib/project/designTokens"
 import {
   addProjectClientInvitation,
   getProjectClientSeatSummary,
@@ -56,6 +63,327 @@ type EditingTarget =
   | { type: "client"; id: string }
   | { type: "invitation"; id: string }
   | null
+
+type RemovingTarget =
+  | { type: "client"; id: string }
+  | { type: "invitation"; id: string }
+  | null
+
+type EditClientDialogTarget =
+  | { type: "client"; client: ProjectClient }
+  | { type: "invitation"; invitation: ProjectClientInvitation }
+
+function EditClientDialog({
+  target,
+  unitOptions,
+  assignedEmails,
+  open,
+  onOpenChange,
+  onSaveClient,
+  onSaveInvitation,
+}: {
+  target: EditClientDialogTarget | null
+  unitOptions: ProjectUnitOption[]
+  assignedEmails: Set<string>
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSaveClient: (
+    userId: string,
+    data: {
+      firstName: string
+      lastName: string
+      phone: string | null
+      unitIds: string[]
+    },
+  ) => Promise<{ ok: boolean; error?: string }>
+  onSaveInvitation: (
+    invitationId: string,
+    data: {
+      firstName: string
+      lastName: string
+      email: string
+      phone: string | null
+      unitIds: string[]
+    },
+  ) => Promise<{ ok: boolean; error?: string }>
+}) {
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([])
+  const [isSaving, setIsSaving] = useState(false)
+  const [editError, setEditError] = useState("")
+
+  useEffect(() => {
+    if (!target || !open) return
+
+    if (target.type === "client") {
+      setFirstName(target.client.firstName)
+      setLastName(target.client.lastName)
+      setEmail(target.client.email)
+      setPhone(target.client.phone ?? "")
+      setSelectedUnitIds(target.client.units.map((unit) => unit.id))
+    } else {
+      setFirstName(target.invitation.firstName)
+      setLastName(target.invitation.lastName)
+      setEmail(target.invitation.email)
+      setPhone(target.invitation.phone ?? "")
+      setSelectedUnitIds(target.invitation.units.map((unit) => unit.id))
+    }
+
+    setEditError("")
+    setIsSaving(false)
+  }, [target, open])
+
+  const handleSave = async () => {
+    if (!target) return
+
+    const trimmedFirst = firstName.trim()
+    const trimmedLast = lastName.trim()
+    const trimmedEmail = email.trim().toLowerCase()
+    const trimmedPhone = phone.trim()
+
+    if (!trimmedFirst) {
+      setEditError("Ingresá el nombre.")
+      return
+    }
+    if (!trimmedLast) {
+      setEditError("Ingresá el apellido.")
+      return
+    }
+    if (target.type === "invitation") {
+      if (!trimmedEmail || !EMAIL_PATTERN.test(trimmedEmail)) {
+        setEditError("Ingresá un correo electrónico válido.")
+        return
+      }
+      if (assignedEmails.has(trimmedEmail)) {
+        setEditError("Ese correo ya está registrado.")
+        return
+      }
+    }
+
+    setIsSaving(true)
+    setEditError("")
+
+    const result =
+      target.type === "client"
+        ? await onSaveClient(target.client.userId, {
+            firstName: trimmedFirst,
+            lastName: trimmedLast,
+            phone: trimmedPhone || null,
+            unitIds: selectedUnitIds,
+          })
+        : await onSaveInvitation(target.invitation.invitationId, {
+            firstName: trimmedFirst,
+            lastName: trimmedLast,
+            email: trimmedEmail,
+            phone: trimmedPhone || null,
+            unitIds: selectedUnitIds,
+          })
+
+    setIsSaving(false)
+
+    if (result.ok) {
+      onOpenChange(false)
+      return
+    }
+
+    setEditError(result.error ?? "No se pudieron guardar los cambios.")
+  }
+
+  if (!target) return null
+
+  const displayName =
+    target.type === "client"
+      ? `${target.client.firstName} ${target.client.lastName}`
+      : `${target.invitation.firstName} ${target.invitation.lastName}`
+
+  const displayEmail =
+    target.type === "client" ? target.client.email : target.invitation.email
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        overlayClassName={FORM_MODAL_DIALOG.overlay}
+        className={FORM_MODAL_DIALOG.content}
+        showCloseButton={false}
+      >
+        <div className={FORM_MODAL_DIALOG.body}>
+          <div className={FORM_MODAL_DIALOG.header}>
+            <DialogTitle className={FORM_MODAL_DIALOG.title}>
+              Editar cliente
+            </DialogTitle>
+            <DialogDescription className={FORM_MODAL_DIALOG.description}>
+              Actualizá los datos de {displayName}.
+            </DialogDescription>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-3 rounded-[12px] border border-[#edeef0] bg-[#fefcfb] px-4 py-3">
+              <UserAvatar
+                firstName={
+                  target.type === "client"
+                    ? target.client.firstName
+                    : target.invitation.firstName
+                }
+                lastName={
+                  target.type === "client"
+                    ? target.client.lastName
+                    : target.invitation.lastName
+                }
+                email={displayEmail}
+                avatarUrl={
+                  target.type === "client" ? target.client.avatarUrl : null
+                }
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-[14px] font-medium leading-5 text-[#1d293d]">
+                    {displayName}
+                  </p>
+                  {target.type === "invitation" ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#fef9c3] px-2 py-0.5 text-[10px] font-medium leading-[10px] text-[#854d0e]">
+                      <Clock className="size-2.5" aria-hidden />
+                      Pendiente
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-1.5 text-[12px] leading-4 text-[#5a6169]">
+                  <Mail className="size-3 shrink-0" aria-hidden />
+                  <span className="truncate">{displayEmail}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="edit-client-first-name"
+                  className="text-[12px] font-medium leading-4 text-[#43484e]"
+                >
+                  Nombre
+                </label>
+                <Input
+                  id="edit-client-first-name"
+                  value={firstName}
+                  onChange={(e) => {
+                    setFirstName(e.target.value)
+                    if (editError) setEditError("")
+                  }}
+                  placeholder="Nombre"
+                  className={clientInputClassName}
+                  style={clientInputStyle}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="edit-client-last-name"
+                  className="text-[12px] font-medium leading-4 text-[#43484e]"
+                >
+                  Apellido
+                </label>
+                <Input
+                  id="edit-client-last-name"
+                  value={lastName}
+                  onChange={(e) => {
+                    setLastName(e.target.value)
+                    if (editError) setEditError("")
+                  }}
+                  placeholder="Apellido"
+                  className={clientInputClassName}
+                  style={clientInputStyle}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="edit-client-email"
+                  className="text-[12px] font-medium leading-4 text-[#43484e]"
+                >
+                  Correo electrónico
+                </label>
+                <Input
+                  id="edit-client-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (editError) setEditError("")
+                  }}
+                  placeholder="correo@ejemplo.com"
+                  className={clientInputClassName}
+                  style={clientInputStyle}
+                  disabled={target.type === "client"}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="edit-client-phone"
+                  className="text-[12px] font-medium leading-4 text-[#43484e]"
+                >
+                  Teléfono
+                </label>
+                <Input
+                  id="edit-client-phone"
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value)
+                    if (editError) setEditError("")
+                  }}
+                  placeholder="+595 981 123 456"
+                  className={clientInputClassName}
+                  style={clientInputStyle}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <label className="text-[12px] font-medium leading-4 text-[#43484e]">
+                  Unidades
+                </label>
+                <UnitMultiSelect
+                  options={unitOptions}
+                  selectedIds={selectedUnitIds}
+                  onChange={setSelectedUnitIds}
+                  disabled={isSaving}
+                />
+              </div>
+            </div>
+
+            {editError ? (
+              <p className="text-[13px] leading-5 text-[#dc2626]">{editError}</p>
+            ) : null}
+          </div>
+
+          <div className={FORM_MODAL_DIALOG.actions}>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              disabled={isSaving}
+              className={FORM_MODAL_DIALOG.cancelBtn}
+            >
+              Cancelar
+            </button>
+            <Button
+              type="button"
+              variant="brand"
+              onClick={() => void handleSave()}
+              disabled={isSaving}
+              className={FORM_MODAL_DIALOG.confirmBtn}
+            >
+              {isSaving ? (
+                <>
+                  <Spinner className="size-4" />
+                  Guardando...
+                </>
+              ) : (
+                "Confirmar"
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function formatUnitOptionLabel(option: ProjectUnitOption): string {
   const trimmedLabel = option.label.trim()
@@ -371,6 +699,8 @@ export function ClientesView({ projectId, initialData }: Props) {
   const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingTarget, setEditingTarget] = useState<EditingTarget>(null)
+  const [removingTarget, setRemovingTarget] = useState<RemovingTarget>(null)
+  const [isRemoving, setIsRemoving] = useState(false)
   const [formError, setFormError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const canManageClients = useProjectPermission("manageClients")
@@ -395,23 +725,21 @@ export function ClientesView({ projectId, initialData }: Props) {
     return emails
   }, [clients, pendingInvitations, editingTarget])
 
-  const resetForm = () => {
+  const resetAddForm = () => {
     setFirstName("")
     setLastName("")
     setEmail("")
     setPhone("")
     setSelectedUnitIds([])
-    setEditingTarget(null)
     setShowAddForm(false)
     setFormError("")
   }
 
-  const closeForm = () => {
-    resetForm()
+  const closeAddForm = () => {
+    resetAddForm()
   }
 
   const openAddForm = () => {
-    setEditingTarget(null)
     setFirstName("")
     setLastName("")
     setEmail("")
@@ -421,29 +749,63 @@ export function ClientesView({ projectId, initialData }: Props) {
     setShowAddForm(true)
   }
 
-  const startEditClient = (client: ProjectClient) => {
-    setShowAddForm(false)
-    setEditingTarget({ type: "client", id: client.userId })
-    setFirstName(client.firstName)
-    setLastName(client.lastName)
-    setEmail(client.email)
-    setPhone(client.phone ?? "")
-    setSelectedUnitIds(client.units.map((unit) => unit.id))
-    setFormError("")
+  const handleSaveClient = async (
+    userId: string,
+    data: {
+      firstName: string
+      lastName: string
+      phone: string | null
+      unitIds: string[]
+    },
+  ) => {
+    const result = await updateProjectClient(projectId, userId, data)
+
+    if (!result.ok) {
+      return { ok: false as const, error: result.error }
+    }
+
+    setClients((prev) =>
+      prev.map((client) => (client.userId === userId ? result.client : client)),
+    )
+    toast.success(
+      `${result.client.firstName} ${result.client.lastName} fue actualizado.`,
+    )
+    return { ok: true as const }
   }
 
-  const startEditInvitation = (invitation: ProjectClientInvitation) => {
-    setShowAddForm(false)
-    setEditingTarget({ type: "invitation", id: invitation.invitationId })
-    setFirstName(invitation.firstName)
-    setLastName(invitation.lastName)
-    setEmail(invitation.email)
-    setPhone(invitation.phone ?? "")
-    setSelectedUnitIds(invitation.units.map((unit) => unit.id))
-    setFormError("")
+  const handleSaveInvitation = async (
+    invitationId: string,
+    data: {
+      firstName: string
+      lastName: string
+      email: string
+      phone: string | null
+      unitIds: string[]
+    },
+  ) => {
+    const result = await updateProjectClientInvitation(
+      projectId,
+      invitationId,
+      data,
+    )
+
+    if (!result.ok) {
+      return { ok: false as const, error: result.error }
+    }
+
+    setPendingInvitations((prev) =>
+      prev.map((invitation) =>
+        invitation.invitationId === invitationId ? result.invitation : invitation,
+      ),
+    )
+    toast.success(
+      `Invitación de ${result.invitation.firstName} ${result.invitation.lastName} actualizada.`,
+    )
+    void refreshSeatSummary()
+    return { ok: true as const }
   }
 
-  const handleSubmit = async () => {
+  const handleSubmitAdd = async () => {
     const trimmedFirst = firstName.trim()
     const trimmedLast = lastName.trim()
     const trimmedEmail = email.trim().toLowerCase()
@@ -461,76 +823,13 @@ export function ClientesView({ projectId, initialData }: Props) {
       setFormError("Ingresá un correo electrónico válido.")
       return
     }
-    if (!editingTarget && assignedEmails.has(trimmedEmail)) {
-      setFormError("Ese correo ya está registrado.")
-      return
-    }
-    if (
-      editingTarget?.type === "invitation" &&
-      assignedEmails.has(trimmedEmail)
-    ) {
+    if (assignedEmails.has(trimmedEmail)) {
       setFormError("Ese correo ya está registrado.")
       return
     }
 
     setIsSubmitting(true)
     setFormError("")
-
-    if (editingTarget?.type === "client") {
-      const result = await updateProjectClient(projectId, editingTarget.id, {
-        firstName: trimmedFirst,
-        lastName: trimmedLast,
-        phone: trimmedPhone || null,
-        unitIds: selectedUnitIds,
-      })
-
-      setIsSubmitting(false)
-
-      if (!result.ok) {
-        setFormError(result.error)
-        return
-      }
-
-      setClients((prev) =>
-        prev.map((client) =>
-          client.userId === editingTarget.id ? result.client : client,
-        ),
-      )
-      resetForm()
-      return
-    }
-
-    if (editingTarget?.type === "invitation") {
-      const result = await updateProjectClientInvitation(
-        projectId,
-        editingTarget.id,
-        {
-          firstName: trimmedFirst,
-          lastName: trimmedLast,
-          email: trimmedEmail,
-          phone: trimmedPhone || null,
-          unitIds: selectedUnitIds,
-        },
-      )
-
-      setIsSubmitting(false)
-
-      if (!result.ok) {
-        setFormError(result.error)
-        return
-      }
-
-      setPendingInvitations((prev) =>
-        prev.map((invitation) =>
-          invitation.invitationId === editingTarget.id
-            ? result.invitation
-            : invitation,
-        ),
-      )
-      resetForm()
-      void refreshSeatSummary()
-      return
-    }
 
     const result = await addProjectClientInvitation(projectId, {
       firstName: trimmedFirst,
@@ -555,39 +854,108 @@ export function ClientesView({ projectId, initialData }: Props) {
       toast.success(`Invitación enviada a ${result.invitation.email}.`)
     }
 
-    resetForm()
+    resetAddForm()
     void refreshSeatSummary()
   }
 
   const handleRemoveClient = async (userId: string) => {
+    setIsRemoving(true)
+
+    const removedClient = clients.find((client) => client.userId === userId)
     const result = await removeProjectClient(projectId, userId)
+
+    setIsRemoving(false)
+
     if (result.ok) {
       setClients((prev) => prev.filter((client) => client.userId !== userId))
+      setRemovingTarget(null)
       if (editingTarget?.type === "client" && editingTarget.id === userId) {
-        resetForm()
+        setEditingTarget(null)
       }
       void refreshSeatSummary()
+      if (removedClient) {
+        toast.success(
+          `${removedClient.firstName} ${removedClient.lastName} fue eliminado del proyecto.`,
+        )
+      }
+      return
     }
+
+    toast.error(result.error)
   }
 
   const handleRevokeInvitation = async (invitationId: string) => {
+    setIsRemoving(true)
+
+    const revokedInvitation = pendingInvitations.find(
+      (invitation) => invitation.invitationId === invitationId,
+    )
     const result = await revokeClientInvitation(invitationId, projectId)
+
+    setIsRemoving(false)
+
     if (result.ok) {
       setPendingInvitations((prev) =>
         prev.filter((invitation) => invitation.invitationId !== invitationId),
       )
+      setRemovingTarget(null)
       if (
         editingTarget?.type === "invitation" &&
         editingTarget.id === invitationId
       ) {
-        resetForm()
+        setEditingTarget(null)
       }
       void refreshSeatSummary()
+      if (revokedInvitation) {
+        toast.success(
+          `Invitación de ${revokedInvitation.firstName} ${revokedInvitation.lastName} revocada.`,
+        )
+      }
+      return
     }
+
+    toast.error(result.error)
   }
 
-  const isEditing = editingTarget !== null
-  const isFormOpen = showAddForm || isEditing
+  const handleConfirmRemove = () => {
+    if (!removingTarget || isRemoving) return
+
+    if (removingTarget.type === "client") {
+      void handleRemoveClient(removingTarget.id)
+      return
+    }
+
+    void handleRevokeInvitation(removingTarget.id)
+  }
+
+  const editingClientTarget = useMemo((): EditClientDialogTarget | null => {
+    if (editingTarget?.type === "client") {
+      const client = clients.find((item) => item.userId === editingTarget.id)
+      return client ? { type: "client", client } : null
+    }
+
+    if (editingTarget?.type === "invitation") {
+      const invitation = pendingInvitations.find(
+        (item) => item.invitationId === editingTarget.id,
+      )
+      return invitation ? { type: "invitation", invitation } : null
+    }
+
+    return null
+  }, [clients, editingTarget, pendingInvitations])
+
+  const removingClient =
+    removingTarget?.type === "client"
+      ? clients.find((client) => client.userId === removingTarget.id) ?? null
+      : null
+  const removingInvitation =
+    removingTarget?.type === "invitation"
+      ? pendingInvitations.find(
+          (invitation) => invitation.invitationId === removingTarget.id,
+        ) ?? null
+      : null
+  const removingPerson = removingClient ?? removingInvitation
+  const isRevokingInvitation = removingTarget?.type === "invitation"
   const totalCount = clients.length + pendingInvitations.length
 
   return (
@@ -610,8 +978,8 @@ export function ClientesView({ projectId, initialData }: Props) {
           variant="brand"
           size="brand"
           onClick={() => {
-            if (isFormOpen) {
-              closeForm()
+            if (showAddForm) {
+              closeAddForm()
             } else {
               openAddForm()
             }
@@ -619,7 +987,7 @@ export function ClientesView({ projectId, initialData }: Props) {
           disabled={!canManageClients}
           className="text-[14px] font-normal leading-[1.4]"
         >
-          {isFormOpen ? (
+          {showAddForm ? (
             <>
               <X className="size-4" aria-hidden />
               Cancelar
@@ -633,13 +1001,13 @@ export function ClientesView({ projectId, initialData }: Props) {
         </Button>
       </div>
 
-      {isFormOpen && canManageClients ? (
+      {showAddForm && canManageClients ? (
         <div
           className="flex flex-col gap-3 rounded-[16px] border border-[#edeef0] bg-white px-4 pb-8 pt-4"
           style={{ boxShadow: CLIENTES_CARD_SHADOW }}
         >
           <h2 className="text-[20px] font-normal leading-[1.4] text-[#272a2d]">
-            {isEditing ? "Editar cliente" : "Nuevo cliente"}
+            Nuevo cliente
           </h2>
 
           <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
@@ -673,7 +1041,6 @@ export function ClientesView({ projectId, initialData }: Props) {
               placeholder="correo@ejemplo.com"
               className={cn(clientInputClassName, "min-w-0 flex-1")}
               style={clientInputStyle}
-              disabled={editingTarget?.type === "client"}
             />
             <Input
               value={phone}
@@ -694,21 +1061,12 @@ export function ClientesView({ projectId, initialData }: Props) {
             <Button
               variant="brand"
               size="brand"
-              onClick={() => void handleSubmit()}
+              onClick={() => void handleSubmitAdd()}
               disabled={isSubmitting}
               className="h-[44px] shrink-0 px-4 text-[14px] font-normal leading-[1.4]"
             >
-              {isEditing ? (
-                <>
-                  <Check className="size-4" aria-hidden />
-                  {isSubmitting ? "..." : "Guardar"}
-                </>
-              ) : (
-                <>
-                  <Plus className="size-4" aria-hidden />
-                  {isSubmitting ? "..." : "Agregar"}
-                </>
-              )}
+              <Plus className="size-4" aria-hidden />
+              {isSubmitting ? "..." : "Agregar"}
             </Button>
           </div>
 
@@ -730,8 +1088,18 @@ export function ClientesView({ projectId, initialData }: Props) {
                   key={client.userId}
                   client={client}
                   canManage={canManageClients}
-                  onEdit={() => startEditClient(client)}
-                  onRemove={() => void handleRemoveClient(client.userId)}
+                  onEdit={() =>
+                    setEditingTarget({ type: "client", id: client.userId })
+                  }
+                  onRemove={() => {
+                    setRemovingTarget({ type: "client", id: client.userId })
+                    if (
+                      editingTarget?.type === "client" &&
+                      editingTarget.id === client.userId
+                    ) {
+                      setEditingTarget(null)
+                    }
+                  }}
                 />
               ))}
               {pendingInvitations.map((invitation) => (
@@ -739,10 +1107,24 @@ export function ClientesView({ projectId, initialData }: Props) {
                   key={invitation.invitationId}
                   invitation={invitation}
                   canManage={canManageClients}
-                  onEdit={() => startEditInvitation(invitation)}
-                  onRevoke={() =>
-                    void handleRevokeInvitation(invitation.invitationId)
+                  onEdit={() =>
+                    setEditingTarget({
+                      type: "invitation",
+                      id: invitation.invitationId,
+                    })
                   }
+                  onRevoke={() => {
+                    setRemovingTarget({
+                      type: "invitation",
+                      id: invitation.invitationId,
+                    })
+                    if (
+                      editingTarget?.type === "invitation" &&
+                      editingTarget.id === invitation.invitationId
+                    ) {
+                      setEditingTarget(null)
+                    }
+                  }}
                 />
               ))}
             </div>
@@ -785,6 +1167,38 @@ export function ClientesView({ projectId, initialData }: Props) {
           No hay clientes en este proyecto.
         </div>
       )}
+
+      <EditClientDialog
+        target={editingClientTarget}
+        unitOptions={unitOptions}
+        assignedEmails={assignedEmails}
+        open={canManageClients && editingClientTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setEditingTarget(null)
+        }}
+        onSaveClient={handleSaveClient}
+        onSaveInvitation={handleSaveInvitation}
+      />
+
+      <ConfirmActionDialog
+        open={canManageClients && removingPerson != null}
+        onOpenChange={(open) => {
+          if (isRemoving) return
+          if (!open) setRemovingTarget(null)
+        }}
+        title={isRevokingInvitation ? "¿Revocar invitación?" : "¿Eliminar cliente?"}
+        description={
+          removingPerson
+            ? isRevokingInvitation
+              ? `Se revocará la invitación de ${removingPerson.firstName} ${removingPerson.lastName}. ¿Deseás continuar?`
+              : `Se quitará a ${removingPerson.firstName} ${removingPerson.lastName} del proyecto. ¿Deseás continuar?`
+            : ""
+        }
+        confirmLabel={isRevokingInvitation ? "Revocar" : "Eliminar"}
+        loading={isRemoving}
+        loadingLabel={isRevokingInvitation ? "Revocando..." : "Eliminando..."}
+        onConfirm={handleConfirmRemove}
+      />
     </div>
   )
 }

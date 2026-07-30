@@ -1,4 +1,7 @@
-import type { ProjectUserType } from "@/lib/projects/createProjectDraft"
+import {
+  USER_TYPE_ROLES,
+  type ProjectUserType,
+} from "@/lib/projects/createProjectDraft"
 
 export const PROJECT_USER_TYPE_COLUMNS = [
   "Owner",
@@ -7,6 +10,50 @@ export const PROJECT_USER_TYPE_COLUMNS = [
   "Operador",
   "Cliente",
 ] as const satisfies readonly ProjectUserType[]
+
+/** Columnas visibles en la tabla de permisos (Figma 1226:9375). */
+export const PROJECT_PERMISSION_DISPLAY_COLUMNS = [
+  "Admin",
+  "Supervisor",
+  "Operador",
+  "Cliente",
+] as const satisfies readonly ProjectUserType[]
+
+export type ProjectPermissionDisplayColumn =
+  (typeof PROJECT_PERMISSION_DISPLAY_COLUMNS)[number]
+
+function formatRoleExamples(userType: ProjectPermissionDisplayColumn): string {
+  return `${USER_TYPE_ROLES[userType].join(", ")}.`
+}
+
+export const PROJECT_ROLE_PERMISSION_TOOLTIPS: Record<
+  ProjectPermissionDisplayColumn,
+  {
+    description: string
+    roles: string
+  }
+> = {
+  Admin: {
+    description:
+      "Administrador operativo de los proyectos. Configura estructuras, equipos, permisos y mantiene el funcionamiento general de la operación.",
+    roles: formatRoleExamples("Admin"),
+  },
+  Supervisor: {
+    description:
+      "Supervisor técnico de la obra. Supervisa avances, certifica tareas, edita estados y consulta el registro de cambios del proyecto.",
+    roles: formatRoleExamples("Supervisor"),
+  },
+  Operador: {
+    description:
+      "Usuario operativo en campo. Registra avances, edita tareas y consulta el estado del proyecto sin permisos de configuración ni certificación.",
+    roles: formatRoleExamples("Operador"),
+  },
+  Cliente: {
+    description:
+      "Usuario externo del proyecto. Accede al portal del cliente y consulta el avance detallado de su unidad asignada.",
+    roles: formatRoleExamples("Cliente"),
+  },
+}
 
 export type ProjectPermissionKey =
   | "addUsers"
@@ -27,33 +74,47 @@ export type ProjectPermissions = Record<ProjectPermissionKey, ProjectPermissionV
 
 type PermissionRow = {
   action: string
-  key?: ProjectPermissionKey
+  key: ProjectPermissionKey
   values: ProjectPermissionValue[]
 }
 
-/** Matriz alineada a Equipo → Permisos de usuarios (Figma). */
+/** Matriz alineada a Equipo → Permisos de usuarios (Figma 1226:9375). */
 export const PROJECT_PERMISSION_TABLE: PermissionRow[] = [
-  { action: "Facturación/Licencias", values: [true, false, false, false, false] },
-  { action: "Crear proyecto", values: [true, true, false, false, false] },
   { action: "Agregar usuarios", key: "addUsers", values: [true, true, false, false, false] },
-  { action: "Editar permisos", key: "editPermissions", values: [true, true, false, false, false] },
+  {
+    action: "Editar permisos",
+    key: "editPermissions",
+    values: [true, true, false, false, false],
+  },
   {
     action: "Configurar proyecto",
     key: "configureProject",
     values: [true, true, false, false, false],
   },
-  { action: "Ver dashboard general", key: "viewDashboard", values: [true, true, true, true, false] },
   {
-    action: "Ver avance detallado",
+    action: "Ver dashboard general",
+    key: "viewDashboard",
+    values: [true, true, true, true, false],
+  },
+  {
+    action: "Ver avances detallados",
     key: "viewDetailedProgress",
     values: [true, true, true, true, "unitOnly"],
   },
   { action: "Cargar avances", key: "loadProgress", values: [true, true, true, true, false] },
   { action: "Certificar tareas", key: "certifyTasks", values: [true, false, true, false, false] },
   { action: "Editar tareas", key: "editTasks", values: [true, false, true, true, false] },
-  { action: "Ver auditoría (log)", key: "viewAuditLog", values: [true, true, true, false, false] },
+  {
+    action: "Ver registro de cambios",
+    key: "viewAuditLog",
+    values: [true, true, true, true, false],
+  },
   { action: "Portal cliente", key: "clientPortal", values: [false, false, false, false, true] },
-  { action: "Ver/agregar clientes", key: "manageClients", values: [true, true, false, false, false] },
+  {
+    action: "Ver/agregar clientes",
+    key: "manageClients",
+    values: [true, true, false, false, false],
+  },
 ]
 
 const USER_TYPE_INDEX: Record<ProjectUserType, number> = {
@@ -64,9 +125,13 @@ const USER_TYPE_INDEX: Record<ProjectUserType, number> = {
   Cliente: 4,
 }
 
-const PERMISSION_KEYS = PROJECT_PERMISSION_TABLE.flatMap((row) =>
-  row.key ? [row.key] : [],
-) as ProjectPermissionKey[]
+const PERMISSION_KEYS = PROJECT_PERMISSION_TABLE.map((row) => row.key)
+
+export function getProjectPermissionColumnIndex(
+  userType: ProjectPermissionDisplayColumn,
+): number {
+  return USER_TYPE_INDEX[userType]
+}
 
 export function getProjectPermissions(userType: ProjectUserType): ProjectPermissions {
   const columnIndex = USER_TYPE_INDEX[userType]
@@ -77,7 +142,6 @@ export function getProjectPermissions(userType: ProjectUserType): ProjectPermiss
   }
 
   for (const row of PROJECT_PERMISSION_TABLE) {
-    if (!row.key) continue
     permissions[row.key] = row.values[columnIndex] ?? false
   }
 

@@ -92,21 +92,13 @@ async function loadExistingStructureState(
 function collectIncomingStructureIds(
   floors: StructureFloorSaveInput[],
   existing: ExistingStructureState,
-): { incoming: IncomingStructureIds; emptyFloorIdsToDelete: string[] } {
+): IncomingStructureIds {
   const incoming: IncomingStructureIds = {
     floorIds: new Set<string>(),
     unitIds: new Set<string>(),
   }
-  const emptyFloorIdsToDelete: string[] = []
 
   for (const floor of floors) {
-    if (floor.units.length === 0) {
-      if (isPersistedId(floor.id, existing.floorIds)) {
-        emptyFloorIdsToDelete.push(floor.id)
-      }
-      continue
-    }
-
     if (isPersistedId(floor.id, existing.floorIds)) {
       incoming.floorIds.add(floor.id)
     }
@@ -118,7 +110,7 @@ function collectIncomingStructureIds(
     }
   }
 
-  return { incoming, emptyFloorIdsToDelete }
+  return incoming
 }
 
 async function assertRemovableUnits(
@@ -244,13 +236,10 @@ export async function syncProjectStructure(
     }
 
     const unitTypeMap = new Map(unitTypes.map((ut) => [ut.label, ut.id]))
-    const { incoming, emptyFloorIdsToDelete } = collectIncomingStructureIds(floors, existing)
+    const incoming = collectIncomingStructureIds(floors, existing)
 
     const unitsToDelete = [...existing.unitIds].filter((id) => !incoming.unitIds.has(id))
-    const floorsToDelete = [
-      ...[...existing.floorIds].filter((id) => !incoming.floorIds.has(id)),
-      ...emptyFloorIdsToDelete,
-    ]
+    const floorsToDelete = [...existing.floorIds].filter((id) => !incoming.floorIds.has(id))
 
     const unitRemovalError = await assertRemovableUnits(
       supabase,
@@ -273,7 +262,6 @@ export async function syncProjectStructure(
 
     for (let floorIndex = 0; floorIndex < floors.length; floorIndex++) {
       const floor = floors[floorIndex]
-      if (floor.units.length === 0) continue
 
       let floorId: string
       if (isPersistedId(floor.id, existing.floorIds)) {

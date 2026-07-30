@@ -60,3 +60,24 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+@keyframes new-item-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.new-item-highlight {
+  animation: new-item-pulse 0.85s ease-in-out 3;
+}
+
+html:has([data-project-shell]),
+html:has([data-project-shell]) body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}

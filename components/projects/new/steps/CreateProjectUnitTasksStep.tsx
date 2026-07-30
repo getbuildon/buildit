@@ -7,12 +7,11 @@ import type {
   RubroItemDraft,
 } from "@/lib/projects/createProjectDraft"
 import { cn } from "@/lib/utils"
-import { CONFIG_SECTION_SCROLL } from "@/lib/projects/createProjectTokens"
+import { AnimatedCollapsible } from "@/components/ui/animated-collapsible"
 
 type Props = {
   draft: CreateProjectDraft
   onChange: (patch: Partial<CreateProjectDraft>) => void
-  scrollableList?: boolean
 }
 
 type CheckboxState = "checked" | "unchecked" | "indeterminate"
@@ -150,7 +149,6 @@ function UnitCheckbox({
 export function CreateProjectUnitTasksStep({
   draft,
   onChange,
-  scrollableList = false,
 }: Props) {
   const [expandedFloors, setExpandedFloors] = useState<Set<string>>(
     () => new Set(draft.floors.map((f) => f.id)),
@@ -225,12 +223,7 @@ export function CreateProjectUnitTasksStep({
         rubros o tareas que no le correspondan.
       </p>
 
-      <div
-        className={cn(
-          "flex flex-col gap-0.5 rounded-[8px]",
-          scrollableList ? CONFIG_SECTION_SCROLL : "overflow-hidden",
-        )}
-      >
+      <div className="flex flex-col gap-0.5 rounded-[8px]">
         {draft.floors.map((floor) => {
           const floorExpanded = expandedFloors.has(floor.id)
 
@@ -247,7 +240,7 @@ export function CreateProjectUnitTasksStep({
               >
                 <ChevronDown
                   className={cn(
-                    "size-4 shrink-0 text-[#272a2d] transition-transform duration-150",
+                    "size-4 shrink-0 text-[#272a2d] transition-transform duration-300 ease-in-out",
                     !floorExpanded && "-rotate-90",
                   )}
                 />
@@ -257,8 +250,8 @@ export function CreateProjectUnitTasksStep({
               </button>
 
               {/* Units */}
-              {floorExpanded &&
-                floor.units.map((unit, unitIndex) => {
+              <AnimatedCollapsible open={floorExpanded}>
+                {floor.units.map((unit, unitIndex) => {
                   const unitExpanded = expandedUnits.has(unit.id)
                   const unitLabel = `${unit.type} ${unitIndex + 1}`
 
@@ -272,7 +265,7 @@ export function CreateProjectUnitTasksStep({
                       >
                         <ChevronDown
                           className={cn(
-                            "size-4 shrink-0 text-[#272a2d] transition-transform duration-150",
+                            "size-4 shrink-0 text-[#272a2d] transition-transform duration-300 ease-in-out",
                             !unitExpanded && "-rotate-90",
                           )}
                         />
@@ -282,8 +275,8 @@ export function CreateProjectUnitTasksStep({
                       </button>
 
                       {/* Rubros */}
-                      {unitExpanded &&
-                        flatRubros.map(({ rubro, groupNumber, rubroNumber }) => {
+                      <AnimatedCollapsible open={unitExpanded}>
+                        {flatRubros.map(({ rubro, groupNumber, rubroNumber }) => {
                           const rubroKey = `${unit.id}::${rubro.id}`
                           const rubroExpanded = expandedRubros.has(rubroKey)
                           const rubroState = getRubroCheckboxState(
@@ -306,7 +299,7 @@ export function CreateProjectUnitTasksStep({
                                 >
                                   <ChevronDown
                                     className={cn(
-                                      "size-4 shrink-0 text-[#272a2d] transition-transform duration-150",
+                                      "size-4 shrink-0 text-[#272a2d] transition-transform duration-300 ease-in-out",
                                       !rubroExpanded && "-rotate-90",
                                     )}
                                   />
@@ -322,8 +315,8 @@ export function CreateProjectUnitTasksStep({
                                 />
                               </div>
 
-                              {rubroExpanded &&
-                                rubro.tasks
+                              <AnimatedCollapsible open={rubroExpanded}>
+                                {rubro.tasks
                                   .map((task, taskIndex) => ({ task, taskIndex }))
                                   .filter(({ task }) => task.name.trim())
                                   .map(({ task, taskIndex }) => {
@@ -354,12 +347,15 @@ export function CreateProjectUnitTasksStep({
                                     </div>
                                   )
                                 })}
+                              </AnimatedCollapsible>
                             </div>
                           )
                         })}
+                      </AnimatedCollapsible>
                     </div>
                   )
                 })}
+              </AnimatedCollapsible>
             </div>
           )
         })}

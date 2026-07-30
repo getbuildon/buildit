@@ -305,7 +305,7 @@ export async function setUnitTaskAssignments(
   const id = projectId.trim()
   if (!id) return { ok: false, error: "Proyecto inválido." }
 
-  const permission = await checkProjectPermission(id, "editTasks")
+  const permission = await checkProjectPermission(id, "configureProject")
   if (!permission.ok) return permission
 
   await requireAuthenticatedUser()
@@ -550,7 +550,7 @@ export async function saveProjectRubros(
   const id = projectId.trim()
   if (!id) return { ok: false, error: "Proyecto inválido." }
 
-  const permission = await checkProjectPermission(id, "editTasks")
+  const permission = await checkProjectPermission(id, "configureProject")
   if (!permission.ok) return permission
 
   await requireAuthenticatedUser()

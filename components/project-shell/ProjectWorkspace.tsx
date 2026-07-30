@@ -46,10 +46,9 @@ export function ProjectSidebar({ project, userProfile }: ProjectSidebarProps) {
 
   return (
     <aside
-      className="sticky top-3 my-3 ml-3 flex shrink-0 flex-col overflow-hidden"
+      className="flex h-full min-h-0 shrink-0 flex-col overflow-hidden"
       style={{
         width: "254px",
-        height: "calc(100vh - 24px)",
         backgroundColor: "#fefcfb",
         borderRadius: "24px",
         boxShadow: "0 0 39px 4px rgba(0,0,0,0.08)",
@@ -257,15 +256,23 @@ type ProjectWorkspaceProps = {
 
 export function ProjectWorkspace({ project, userProfile, children }: ProjectWorkspaceProps) {
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: SHELL_COLORS.mainBg }}>
-      <ProjectSidebar project={project} userProfile={userProfile} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <main className="flex-1">
+    <div
+      className="flex h-full min-h-0 w-full overflow-hidden"
+      style={{ backgroundColor: SHELL_COLORS.mainBg }}
+    >
+      <div
+        className="box-border flex h-full min-h-0 shrink-0 flex-col py-3 pl-3"
+        style={{ width: `calc(${SHELL_LAYOUT.sidebarWidth} + ${SHELL_LAYOUT.sidebarMargin})` }}
+      >
+        <ProjectSidebar project={project} userProfile={userProfile} />
+      </div>
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain">
           <div
-            className="mx-auto w-full"
+            className="mx-auto flex min-h-full w-full flex-col"
             style={{
               maxWidth: SHELL_LAYOUT.contentMaxWidth,
-              padding: SHELL_LAYOUT.contentPadding,
+              padding: `${SHELL_LAYOUT.contentPadding} ${SHELL_LAYOUT.contentPadding} 0`,
             }}
           >
             {children}

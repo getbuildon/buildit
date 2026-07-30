@@ -105,3 +105,46 @@ export function isConfigDirty(
     current.exclusions !== snapshot.exclusions
   )
 }
+
+export function getConfigSaveConfirmMessage(
+  basics: ConfigBasicsState,
+  draft: CreateProjectDraft | null,
+  snapshot: ConfigSavedSnapshot | null,
+): string {
+  if (!draft || !snapshot) {
+    return "Se guardará la configuración del proyecto. ¿Deseás continuar?"
+  }
+
+  const current = buildConfigSnapshot(basics, draft)
+  const basicsChanged =
+    current.basics.name !== snapshot.basics.name ||
+    current.basics.location !== snapshot.basics.location ||
+    current.basics.totalSurface !== snapshot.basics.totalSurface ||
+    current.basics.startDate !== snapshot.basics.startDate ||
+    current.basics.endDate !== snapshot.basics.endDate
+  const floorsChanged = current.floors !== snapshot.floors
+  const groupsChanged = current.groups !== snapshot.groups
+  const exclusionsChanged = current.exclusions !== snapshot.exclusions
+
+  if (exclusionsChanged) {
+    return "Los cambios se verán reflejados en todas las unidades funcionales. ¿Deseás continuar?"
+  }
+
+  if (floorsChanged && groupsChanged) {
+    return "Se actualizará la estructura del edificio y los rubros del proyecto. ¿Deseás continuar?"
+  }
+
+  if (floorsChanged) {
+    return "Se actualizará la estructura del edificio, pisos y unidades. ¿Deseás continuar?"
+  }
+
+  if (groupsChanged) {
+    return "Se actualizarán los rubros y tareas del proyecto. ¿Deseás continuar?"
+  }
+
+  if (basicsChanged) {
+    return "Se actualizarán los datos básicos del proyecto. ¿Deseás continuar?"
+  }
+
+  return "Se guardará la configuración del proyecto. ¿Deseás continuar?"
+}

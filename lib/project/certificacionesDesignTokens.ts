@@ -112,7 +112,7 @@ export const CERTIFICACION_CONFIRM = {
   notesInput:
     "min-h-[72px] w-full resize-none rounded-[10px] border border-[#cad5e2] px-3 py-2 text-[14px] font-normal leading-[1.4] text-[#272a2d] outline-none placeholder:text-[#777b84] focus:border-[#ff7433]",
   cancelBtn:
-    "flex flex-1 items-center justify-center rounded-[10px] border border-[#696e77] px-4 py-3 text-[14px] font-normal leading-[1.4] text-[#363a3f] transition-colors hover:bg-[#fafafa]",
+    "flex flex-1 items-center justify-center rounded-[10px] border border-[#696e77] bg-white px-4 py-3 text-[14px] font-normal leading-[1.4] text-[#363a3f] transition-colors hover:border-[#696e77] hover:bg-[#f4f5f6] hover:text-[#272a2d] focus-visible:border-[#696e77] focus-visible:text-[#272a2d] focus-visible:ring-0",
   confirmBtn:
     "flex flex-1 items-center justify-center gap-2 rounded-[10px] bg-[#ff7433] px-4 py-2.5 text-[16px] font-medium leading-6 tracking-[-0.31px] text-white shadow-[0_0_10px_rgba(243,103,31,0.3)] transition-colors hover:bg-[#ff7433]/90 disabled:opacity-50",
   bulkNotesLabel:

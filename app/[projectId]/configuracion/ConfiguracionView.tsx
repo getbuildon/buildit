@@ -1,9 +1,13 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react"
+import { createPortal } from "react-dom"
 import { AlertCircle, Building2, CalendarDays, Check, ChevronDown, MapPin } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
+import { useToast } from "@/components/ui/toast"
+import { ConfigConfirmDialog } from "./ConfigConfirmDialog"
 import { CreateProjectStructureStep } from "@/components/projects/new/steps/CreateProjectStructureStep"
 import { CreateProjectTasksStep } from "@/components/projects/new/steps/CreateProjectTasksStep"
 import { CreateProjectUnitTasksStep } from "@/components/projects/new/steps/CreateProjectUnitTasksStep"
@@ -20,13 +24,16 @@ import {
   remapUnitTaskExclusions,
 } from "@/lib/projects/unitTaskAssignments"
 import { CREATE_PROJECT_LAYOUT } from "@/lib/projects/createProjectTokens"
+import { SHELL_LAYOUT } from "@/lib/project/designTokens"
 import {
   buildConfigSnapshot,
+  getConfigSaveConfirmMessage,
   isConfigDirty,
   type ConfigBasicsState,
   type ConfigSavedSnapshot,
 } from "@/lib/projects/configDirtyState"
 import { cn } from "@/lib/utils"
+import { AnimatedCollapsible } from "@/components/ui/animated-collapsible"
 import {
   clearUnitPlanPhoto,
   clearUnitRenderPhoto,
@@ -50,11 +57,37 @@ type ConfiguracionViewProps = {
 
 type SaveFeedback = { type: "success" | "error"; message: string } | null
 
+function useAnimatedFooterVisibility(isDirty: boolean) {
+  const [mounted, setMounted] = useState(isDirty)
+  const [visible, setVisible] = useState(isDirty)
+
+  useEffect(() => {
+    if (isDirty) {
+      setMounted(true)
+      const frame = requestAnimationFrame(() => setVisible(true))
+      return () => cancelAnimationFrame(frame)
+    }
+
+    setVisible(false)
+    const timeout = window.setTimeout(
+      () => setMounted(false),
+      CONFIG_SAVE_FOOTER_ANIMATION_MS,
+    )
+    return () => window.clearTimeout(timeout)
+  }, [isDirty])
+
+  return { mounted, visible }
+}
+
 // Inputs de la card Información Básica — Figma 1226:6422: 42px, r10, borde #e2e8f0
 const basicInputClassName =
   "h-[42px] w-full rounded-[10px] border bg-white px-3 text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:ring-0"
 const basicInputStyle = { borderColor: "#e2e8f0" } as const
 const basicDatePickerClassName = cn(basicInputClassName, "border-[#e2e8f0] text-left")
+
+const CONFIG_CARD_SHADOW = "0 0 10px rgba(243, 103, 31, 0.08)" as const
+
+const CONFIG_SAVE_FOOTER_ANIMATION_MS = 320
 
 function SettingsCard({
   title,
@@ -73,7 +106,7 @@ function SettingsCard({
     return (
       <section
         className="flex flex-col gap-5 rounded-[16px] border border-[#edeef0] bg-white p-6"
-        style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
+        style={{ boxShadow: CONFIG_CARD_SHADOW }}
       >
         <h2 className="text-[18px] font-normal leading-5 text-[#272a2d]">{title}</h2>
         {children}
@@ -84,7 +117,7 @@ function SettingsCard({
   return (
     <section
       className="rounded-[16px] border border-[#edeef0] bg-white px-6 py-4"
-      style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
+      style={{ boxShadow: CONFIG_CARD_SHADOW }}
     >
       <button
         type="button"
@@ -96,11 +129,16 @@ function SettingsCard({
           {title}
         </h2>
         <ChevronDown
-          className={`size-4 shrink-0 text-[#43484e] transition-transform ${open ? "rotate-180" : ""}`}
+          className={cn(
+            "size-4 shrink-0 text-[#43484e] transition-transform duration-300 ease-in-out",
+            open && "rotate-180",
+          )}
           aria-hidden
         />
       </button>
-      {open ? <div className="mt-5 flex flex-col gap-5">{children}</div> : null}
+      <AnimatedCollapsible open={open}>
+        <div className="mt-5 flex flex-col gap-5">{children}</div>
+      </AnimatedCollapsible>
     </section>
   )
 }
@@ -114,64 +152,213 @@ function FieldLabel({ icon, children }: { icon?: ReactNode; children: ReactNode 
   )
 }
 
-function ConfigSaveFooter({
-  saving,
-  feedback,
-  onCancel,
-  onSave,
-}: {
-  saving: boolean
-  feedback: SaveFeedback
-  onCancel: () => void
-  onSave: () => void
-}) {
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#edeef0] bg-white/95 backdrop-blur-sm">
-      <div
-        className="mx-auto flex w-full flex-wrap items-center justify-end gap-4 px-6 py-4"
-        style={{ maxWidth: CREATE_PROJECT_LAYOUT.contentMaxWidth }}
-      >
-        {feedback ? (
-          <span
-            className={cn(
-              "mr-auto flex items-center gap-1.5 text-[13px] leading-4",
-              feedback.type === "success" ? "text-[#15803d]" : "text-[#b91c1c]",
-            )}
-          >
-            {feedback.type === "success" ? (
-              <Check className="size-3.5" aria-hidden />
-            ) : (
-              <AlertCircle className="size-3.5" aria-hidden />
-            )}
-            {feedback.message}
-          </span>
-        ) : null}
+const CONFIG_SAVE_FOOTER_SCROLL_GAP = 20
+const CONFIG_SAVE_FOOTER_FALLBACK_HEIGHT = 88
 
-        <div className="flex items-center justify-end gap-6 rounded-[8px] bg-[rgba(237,238,240,0.4)] px-4 py-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="text-[14px] font-medium leading-[1.4] text-[#777b84] transition-opacity hover:opacity-80 disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={saving}
-            className="inline-flex items-center gap-1 rounded-[10px] px-2 py-3 text-[14px] font-medium leading-[1.4] text-[#111113] shadow-[0_0_10px_rgba(243,103,31,0.3)] transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            <Check className="size-4" aria-hidden />
-            {saving ? "Guardando..." : "Guardar cambios"}
-          </button>
-        </div>
+type FooterAlign = {
+  left: number
+  width: number
+}
+
+function useContentFooterAlign(contentRef: RefObject<HTMLDivElement | null>) {
+  const [align, setAlign] = useState<FooterAlign | null>(null)
+
+  useEffect(() => {
+    const node = contentRef.current
+    if (!node) return
+
+    const update = () => {
+      const rect = node.getBoundingClientRect()
+      const next = {
+        left: Math.round(rect.left),
+        width: Math.round(rect.width),
+      }
+
+      setAlign((current) => {
+        if (
+          current &&
+          current.left === next.left &&
+          current.width === next.width
+        ) {
+          return current
+        }
+        return next
+      })
+    }
+
+    update()
+
+    const observer = new ResizeObserver(update)
+    observer.observe(node)
+
+    const layoutRoot = node.closest("main")
+    if (layoutRoot instanceof HTMLElement) {
+      observer.observe(layoutRoot)
+    }
+
+    window.addEventListener("resize", update)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener("resize", update)
+    }
+  }, [contentRef])
+
+  return align
+}
+
+function ConfigSaveFooter({
+  visible,
+  saving,
+  errorMessage,
+  onRequestDiscard,
+  onSave,
+  onHeightChange,
+  align,
+}: {
+  visible: boolean
+  saving: boolean
+  errorMessage: string | null
+  onRequestDiscard: () => void
+  onSave: () => void
+  onHeightChange?: (height: number) => void
+  align: FooterAlign | null
+}) {
+  const footerRef = useRef<HTMLDivElement>(null)
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
+  const [entered, setEntered] = useState(false)
+
+  useEffect(() => {
+    setPortalTarget(document.body)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!visible) {
+      setEntered(false)
+      return
+    }
+
+    if (!align || entered) return
+
+    setEntered(false)
+    let innerFrame = 0
+    const outerFrame = requestAnimationFrame(() => {
+      innerFrame = requestAnimationFrame(() => {
+        setEntered(true)
+      })
+    })
+
+    return () => {
+      cancelAnimationFrame(outerFrame)
+      cancelAnimationFrame(innerFrame)
+    }
+  }, [align, entered, visible])
+
+  useLayoutEffect(() => {
+    const node = footerRef.current
+    if (!node || !visible) return
+    onHeightChange?.(node.getBoundingClientRect().height)
+  }, [align, entered, onHeightChange, visible])
+
+  useEffect(() => {
+    const node = footerRef.current
+    if (!node) return
+
+    if (!visible) {
+      const timeout = window.setTimeout(() => {
+        onHeightChange?.(0)
+      }, CONFIG_SAVE_FOOTER_ANIMATION_MS)
+      return () => window.clearTimeout(timeout)
+    }
+
+    const reportHeight = () => {
+      onHeightChange?.(node.getBoundingClientRect().height)
+    }
+
+    reportHeight()
+
+    const observer = new ResizeObserver(reportHeight)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [onHeightChange, visible])
+
+  if (!portalTarget || !align) return null
+
+  return createPortal(
+    <div
+      aria-hidden={!visible}
+      className="pointer-events-none fixed bottom-0 z-50"
+      style={{
+        left: align.left,
+        width: align.width,
+      }}
+    >
+      <div
+        className={cn(
+          "transition-[transform,opacity] ease-out will-change-transform",
+          entered
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none translate-y-full opacity-0",
+        )}
+        style={{
+          transitionDuration: `${CONFIG_SAVE_FOOTER_ANIMATION_MS}ms`,
+        }}
+      >
+        <section
+          ref={footerRef}
+          data-viewport-bottom-inset={visible ? "" : undefined}
+          className="pointer-events-auto w-full overflow-hidden rounded-t-[16px] border border-b-0 border-[#d8d9db] bg-[#edeef0] px-6 py-4 shadow-[0_-8px_24px_rgba(24,25,27,0.08)]"
+        >
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            {errorMessage ? (
+              <span className="mr-auto flex items-center gap-1.5 text-[13px] leading-4 text-[#b91c1c]">
+                <AlertCircle className="size-3.5 shrink-0" aria-hidden />
+                {errorMessage}
+              </span>
+            ) : (
+              <div className="mr-auto flex min-w-0 items-center gap-2.5">
+                <span className="size-2 shrink-0 rounded-full bg-[#696e77]" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium leading-4 text-[#272a2d]">
+                    Cambios sin guardar
+                  </p>
+                  <p className="hidden text-[12px] leading-4 text-[#777b84] sm:block">
+                    Guardá para aplicar la configuración del proyecto
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex w-full flex-wrap items-center justify-end gap-2.5 sm:w-auto sm:gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onRequestDiscard}
+                disabled={saving}
+                className="h-11 rounded-[10px] border-[#afb3ba] bg-white px-4 text-[14px] font-medium text-[#43484e] shadow-none hover:border-[#696e77] hover:bg-[#f4f5f6] hover:text-[#272a2d]"
+              >
+                Descartar cambios
+              </Button>
+              <Button
+                type="button"
+                onClick={onSave}
+                disabled={saving}
+                className="inline-flex h-11 min-w-[168px] items-center justify-center gap-2 rounded-[10px] border border-[#43484e] bg-[#43484e] px-4 text-[14px] font-medium text-white shadow-none transition-colors hover:border-[#363a3f] hover:bg-[#363a3f] disabled:pointer-events-none disabled:opacity-50"
+              >
+                <Check className="size-4" aria-hidden />
+                {saving ? "Guardando..." : "Guardar cambios"}
+              </Button>
+            </div>
+          </div>
+        </section>
       </div>
-    </div>
+    </div>,
+    portalTarget,
   )
 }
 
 export function ConfiguracionView({ project }: ConfiguracionViewProps) {
+  const toast = useToast()
   // El draft de estructura/rubros usa IDs aleatorios (crypto.randomUUID), que
   // difieren entre el render del servidor y el del cliente. Lo construimos solo
   // en el cliente, tras montar, para evitar errores de hidratación.
@@ -185,6 +372,8 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
   const [endDate, setEndDate] = useState(project.endDate)
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState<SaveFeedback>(null)
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false)
 
   const parsedStartDate = parseDraftDateString(startDate)
   const parsedEndDate = parseDraftDateString(endDate)
@@ -198,6 +387,25 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     () => isConfigDirty(basicsState, draft, savedSnapshot),
     [basicsState, draft, savedSnapshot],
   )
+  const saveConfirmMessage = useMemo(
+    () => getConfigSaveConfirmMessage(basicsState, draft, savedSnapshot),
+    [basicsState, draft, savedSnapshot],
+  )
+  const { mounted: footerMounted, visible: footerVisible } = useAnimatedFooterVisibility(isDirty)
+  const [footerHeight, setFooterHeight] = useState(0)
+  const footerContentInset = useMemo(() => {
+    if (!footerMounted) {
+      return Number.parseInt(SHELL_LAYOUT.contentPadding, 10) || 24
+    }
+
+    return (
+      Math.max(footerHeight, CONFIG_SAVE_FOOTER_FALLBACK_HEIGHT) +
+      CONFIG_SAVE_FOOTER_SCROLL_GAP
+    )
+  }, [footerHeight, footerMounted])
+  const contentRef = useRef<HTMLDivElement>(null)
+  const footerAlign = useContentFooterAlign(contentRef)
+  const errorMessage = feedback?.type === "error" ? feedback.message : null
 
   const loadProjectData = async (
     basicsOverride?: ConfigBasicsState,
@@ -257,16 +465,21 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     if (!savedSnapshot) return
 
     setFeedback(null)
+    setDiscardDialogOpen(false)
     applySavedBasics(savedSnapshot.basics)
     await loadProjectData(savedSnapshot.basics, { updateSnapshot: false })
   }
 
-  const handleSave = async () => {
+  const handleConfirmDiscard = () => {
+    void handleCancel()
+  }
+
+  const handleSave = async (): Promise<boolean> => {
     setFeedback(null)
 
     if (!name.trim()) {
       setFeedback({ type: "error", message: "El nombre del proyecto es obligatorio." })
-      return
+      return false
     }
 
     // Capturar snapshot síncrono del draft antes de cualquier await
@@ -327,7 +540,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     if (!basicResult.ok) {
       setSaving(false)
       setFeedback({ type: "error", message: basicResult.error })
-      return
+      return false
     }
 
     // Guardar estructura (pisos y unidades)
@@ -336,7 +549,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     if (!structureResult.ok) {
       setSaving(false)
       setFeedback({ type: "error", message: structureResult.error })
-      return
+      return false
     }
 
     const unitsWithAssets = (draftSnapshot?.floors ?? []).flatMap((floor) => floor.units)
@@ -348,7 +561,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     if (!assetUploadResult.ok) {
       setSaving(false)
       setFeedback({ type: "error", message: assetUploadResult.error })
-      return
+      return false
     }
 
     for (const unit of unitsWithAssets) {
@@ -359,7 +572,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
         if (!clearResult.ok) {
           setSaving(false)
           setFeedback({ type: "error", message: clearResult.error })
-          return
+          return false
         }
       }
 
@@ -368,7 +581,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
         if (!clearResult.ok) {
           setSaving(false)
           setFeedback({ type: "error", message: clearResult.error })
-          return
+          return false
         }
       }
     }
@@ -379,7 +592,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
     if (!rubrosResult.ok) {
       setSaving(false)
       setFeedback({ type: "error", message: rubrosResult.error })
-      return
+      return false
     }
 
     const [floors, units, groups, assignments] = await Promise.all([
@@ -424,22 +637,30 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
           savedDraft,
         ),
       )
-      setFeedback({ type: "success", message: "Cambios guardados correctamente." })
-    } else {
-      setFeedback({ type: "error", message: assignmentsResult.error })
+      toast.success("Cambios guardados correctamente.")
+      setFeedback(null)
+      return true
     }
+
+    setFeedback({ type: "error", message: assignmentsResult.error })
+    return false
+  }
+
+  const handleConfirmSave = async () => {
+    await handleSave()
+    setSaveDialogOpen(false)
   }
 
   return (
     <>
       <div
-        className={cn("flex flex-col gap-5 pt-6", isDirty && "pb-28")}
+        ref={contentRef}
+        className="mx-auto flex min-h-full w-full flex-col"
         style={{
           maxWidth: CREATE_PROJECT_LAYOUT.contentMaxWidth,
-          width: "100%",
-          margin: "0 auto",
         }}
       >
+        <div className="flex flex-col gap-5 pt-6">
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-col gap-0.5">
@@ -550,7 +771,6 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
           <CreateProjectStructureStep
             draft={draft}
             onChange={updateDraft}
-            scrollableList
           />
         </SettingsCard>
       ) : null}
@@ -562,7 +782,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
           collapsible
           defaultOpen={false}
         >
-          <CreateProjectTasksStep draft={draft} onChange={updateDraft} scrollableList />
+          <CreateProjectTasksStep draft={draft} onChange={updateDraft} />
         </SettingsCard>
       ) : null}
 
@@ -576,20 +796,51 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
           <CreateProjectUnitTasksStep
             draft={draft}
             onChange={updateDraft}
-            scrollableList
           />
         </SettingsCard>
       ) : null}
+
+          <div
+            aria-hidden
+            className="shrink-0"
+            style={{ height: footerContentInset }}
+          />
+        </div>
       </div>
 
-      {isDirty ? (
+      {footerMounted ? (
         <ConfigSaveFooter
+          visible={footerVisible}
           saving={saving}
-          feedback={feedback}
-          onCancel={handleCancel}
-          onSave={handleSave}
+          errorMessage={errorMessage}
+          onRequestDiscard={() => setDiscardDialogOpen(true)}
+          onSave={() => setSaveDialogOpen(true)}
+          onHeightChange={setFooterHeight}
+          align={footerAlign}
         />
       ) : null}
+
+      <ConfigConfirmDialog
+        open={saveDialogOpen}
+        onOpenChange={(open) => {
+          if (saving) return
+          setSaveDialogOpen(open)
+        }}
+        title="Confirmar cambios"
+        description={saveConfirmMessage}
+        confirmLabel="Confirmar"
+        loading={saving}
+        onConfirm={() => void handleConfirmSave()}
+      />
+
+      <ConfigConfirmDialog
+        open={discardDialogOpen}
+        onOpenChange={setDiscardDialogOpen}
+        title="¿Descartar cambios?"
+        description="Se perderán todos los cambios no guardados en la configuración del proyecto. ¿Deseás continuar?"
+        confirmLabel="Descartar cambios"
+        onConfirm={handleConfirmDiscard}
+      />
     </>
   )
 }

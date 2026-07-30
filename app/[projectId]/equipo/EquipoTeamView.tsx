@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import {
   ChevronDown,
   Clock,
@@ -13,6 +13,13 @@ import {
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -43,14 +50,16 @@ import {
 } from "@/lib/projects/createProjectDraft"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { useProjectPermission } from "@/components/project-shell/ProjectAccessProvider"
-import { EQUIPO_EDIT_ROW } from "@/lib/project/designTokens"
+import { RolePermissionTooltip } from "@/components/ui/role-permission-tooltip"
+import { FORM_MODAL_DIALOG, EQUIPO_LAYOUT } from "@/lib/project/designTokens"
 import {
+  getProjectPermissionColumnIndex,
+  PROJECT_PERMISSION_DISPLAY_COLUMNS,
   PROJECT_PERMISSION_TABLE,
-  PROJECT_USER_TYPE_COLUMNS,
+  PROJECT_ROLE_PERMISSION_TOOLTIPS,
+  type ProjectPermissionDisplayColumn,
   type ProjectPermissionValue,
 } from "@/lib/project/projectPermissions"
-
-const PERMISSION_COLUMNS = PROJECT_USER_TYPE_COLUMNS
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -133,41 +142,180 @@ function FormSelect({
   )
 }
 
-function EditSelect({
-  value,
-  options,
-  onChange,
+function EditMemberDialog({
+  member,
+  open,
+  onOpenChange,
+  onSave,
 }: {
-  value: string
-  options: readonly string[]
-  onChange: (value: string) => void
+  member: ProjectTeamMember | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSave: (
+    userType: ProjectUserType,
+    role: ProjectTeamRole,
+  ) => Promise<{ ok: boolean; error?: string }>
 }) {
+  const [editUserType, setEditUserType] = useState<ProjectUserType>(PROJECT_USER_TYPES[0])
+  const [editRole, setEditRole] = useState<ProjectTeamRole>(
+    USER_TYPE_ROLES[PROJECT_USER_TYPES[0]][0],
+  )
+  const [isSaving, setIsSaving] = useState(false)
+  const [editError, setEditError] = useState("")
+
+  useEffect(() => {
+    if (!member || !open) return
+
+    const nextUserType = (PROJECT_USER_TYPES.find((t) => t === member.userTypeLabel) ??
+      PROJECT_USER_TYPES[0]) as ProjectUserType
+    const nextRole = USER_TYPE_ROLES[nextUserType].find((r) => r === member.roleLabel)
+      ? (member.roleLabel as ProjectTeamRole)
+      : USER_TYPE_ROLES[nextUserType][0]
+
+    setEditUserType(nextUserType)
+    setEditRole(nextRole)
+    setEditError("")
+    setIsSaving(false)
+  }, [member, open])
+
+  const handleSave = async () => {
+    if (!member) return
+
+    const currentUserType = (PROJECT_USER_TYPES.find((t) => t === member.userTypeLabel) ??
+      PROJECT_USER_TYPES[0]) as ProjectUserType
+    const currentRole = USER_TYPE_ROLES[currentUserType].find((r) => r === member.roleLabel)
+      ? (member.roleLabel as ProjectTeamRole)
+      : USER_TYPE_ROLES[currentUserType][0]
+
+    const hasChanges =
+      editUserType !== currentUserType || editRole !== currentRole
+
+    if (!hasChanges) {
+      onOpenChange(false)
+      return
+    }
+
+    setIsSaving(true)
+    setEditError("")
+
+    const result = await onSave(editUserType, editRole)
+
+    setIsSaving(false)
+
+    if (result.ok) {
+      onOpenChange(false)
+      return
+    }
+
+    setEditError(result.error ?? "No se pudieron guardar los cambios.")
+  }
+
+  if (!member) return null
+
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="appearance-none border bg-white pl-2.5 pr-7 font-normal shadow-none outline-none focus:border-[#ff7433] focus-visible:ring-0"
-        style={{
-          height: EQUIPO_EDIT_ROW.selectHeight,
-          borderRadius: EQUIPO_EDIT_ROW.selectRadius,
-          borderColor: EQUIPO_EDIT_ROW.selectBorder,
-          color: EQUIPO_EDIT_ROW.selectText,
-          fontSize: EQUIPO_EDIT_ROW.selectFontSize,
-          lineHeight: EQUIPO_EDIT_ROW.selectLineHeight,
-        }}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        overlayClassName={FORM_MODAL_DIALOG.overlay}
+        className={FORM_MODAL_DIALOG.content}
+        showCloseButton={false}
       >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-[#90a1b9]"
-        aria-hidden
-      />
-    </div>
+        <div className={FORM_MODAL_DIALOG.body}>
+          <div className={FORM_MODAL_DIALOG.header}>
+            <DialogTitle className={FORM_MODAL_DIALOG.title}>
+              Editar miembro
+            </DialogTitle>
+            <DialogDescription className={FORM_MODAL_DIALOG.description}>
+              Actualizá el tipo de usuario y el rol de {member.firstName}{" "}
+              {member.lastName}.
+            </DialogDescription>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-3 rounded-[12px] border border-[#edeef0] bg-[#fefcfb] px-4 py-3">
+              <MemberAvatar member={member} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-medium leading-5 text-[#1d293d]">
+                  {member.firstName} {member.lastName}
+                </p>
+                <MemberEmail email={member.email} />
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="edit-member-user-type"
+                  className="text-[12px] font-medium leading-4 text-[#43484e]"
+                >
+                  Tipo de usuario
+                </label>
+                <FormSelect
+                  id="edit-member-user-type"
+                  value={editUserType}
+                  placeholder="Tipo de usuario"
+                  options={PROJECT_USER_TYPES}
+                  onChange={(v) => {
+                    const nextType = v as ProjectUserType
+                    setEditUserType(nextType)
+                    setEditRole(USER_TYPE_ROLES[nextType][0])
+                    if (editError) setEditError("")
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="edit-member-role"
+                  className="text-[12px] font-medium leading-4 text-[#43484e]"
+                >
+                  Rol
+                </label>
+                <FormSelect
+                  id="edit-member-role"
+                  value={editRole}
+                  placeholder="Rol"
+                  options={USER_TYPE_ROLES[editUserType]}
+                  onChange={(v) => {
+                    setEditRole(v as ProjectTeamRole)
+                    if (editError) setEditError("")
+                  }}
+                />
+              </div>
+            </div>
+
+            {editError ? (
+              <p className="text-[13px] leading-5 text-[#dc2626]">{editError}</p>
+            ) : null}
+          </div>
+
+          <div className={FORM_MODAL_DIALOG.actions}>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              disabled={isSaving}
+              className={FORM_MODAL_DIALOG.cancelBtn}
+            >
+              Cancelar
+            </button>
+            <Button
+              type="button"
+              variant="brand"
+              onClick={() => void handleSave()}
+              disabled={isSaving}
+              className={FORM_MODAL_DIALOG.confirmBtn}
+            >
+              {isSaving ? (
+                <>
+                  <Spinner className="size-4" />
+                  Guardando...
+                </>
+              ) : (
+                "Confirmar"
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -270,142 +418,6 @@ function MemberRow({
   )
 }
 
-function EditMemberRow({
-  member,
-  onSave,
-  onCancel,
-  onRemove,
-}: {
-  member: ProjectTeamMember
-  onSave: (
-    userType: ProjectUserType,
-    role: ProjectTeamRole,
-  ) => Promise<{ ok: boolean; error?: string }>
-  onCancel: () => void
-  onRemove: () => void
-}) {
-  const initialUserType = (PROJECT_USER_TYPES.find(
-    (t) => t === member.userTypeLabel,
-  ) ?? PROJECT_USER_TYPES[0]) as ProjectUserType
-  const initialRole = USER_TYPE_ROLES[initialUserType].find((r) => r === member.roleLabel)
-    ? (member.roleLabel as ProjectTeamRole)
-    : USER_TYPE_ROLES[initialUserType][0]
-
-  const [editUserType, setEditUserType] = useState<ProjectUserType>(initialUserType)
-  const [editRole, setEditRole] = useState<ProjectTeamRole>(initialRole)
-  const [isSaving, setIsSaving] = useState(false)
-  const [editError, setEditError] = useState("")
-
-  const handleSave = async () => {
-    const hasChanges =
-      editUserType !== initialUserType || editRole !== initialRole
-
-    if (!hasChanges) {
-      onCancel()
-      return
-    }
-
-    setIsSaving(true)
-    setEditError("")
-
-    const result = await onSave(editUserType, editRole)
-
-    setIsSaving(false)
-
-    if (!result.ok) {
-      setEditError(result.error ?? "No se pudieron guardar los cambios.")
-    }
-  }
-
-  return (
-    <div
-      className="border-b last:border-b-0"
-      style={{
-        backgroundColor: EQUIPO_EDIT_ROW.background,
-        borderColor: EQUIPO_EDIT_ROW.border,
-      }}
-    >
-      <div className={TEAM_ROW_GRID}>
-        <MemberAvatar
-          member={member}
-          bgClassName="bg-[#ff7433]"
-          textClassName="text-[12px] font-semibold text-white"
-        />
-
-        <div className="flex min-w-0 flex-col gap-1">
-          <h3
-            className="truncate text-[14px] font-medium leading-5"
-            style={{ color: EQUIPO_EDIT_ROW.nameColor }}
-          >
-            {member.firstName} {member.lastName}
-          </h3>
-          <div className="flex items-center gap-2">
-            <EditSelect
-              value={editUserType}
-              options={PROJECT_USER_TYPES}
-              onChange={(v) => {
-                const nextType = v as ProjectUserType
-                setEditUserType(nextType)
-                setEditRole(USER_TYPE_ROLES[nextType][0])
-                if (editError) setEditError("")
-              }}
-            />
-            <EditSelect
-              value={editRole}
-              options={USER_TYPE_ROLES[editUserType]}
-              onChange={(v) => {
-                setEditRole(v as ProjectTeamRole)
-                if (editError) setEditError("")
-              }}
-            />
-          </div>
-        </div>
-
-        <MemberEmail email={member.email} />
-
-        <div className="flex shrink-0 items-center justify-end gap-1">
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={isSaving}
-            className="inline-flex min-w-[72px] items-center justify-center uppercase tracking-wide transition-opacity hover:opacity-80 disabled:opacity-50"
-            style={{
-              backgroundColor: EQUIPO_EDIT_ROW.listoBg,
-              color: EQUIPO_EDIT_ROW.listoText,
-              fontSize: EQUIPO_EDIT_ROW.listoFontSize,
-              fontWeight: EQUIPO_EDIT_ROW.listoFontWeight,
-              paddingLeft: EQUIPO_EDIT_ROW.listoPaddingX,
-              paddingRight: EQUIPO_EDIT_ROW.listoPaddingX,
-              paddingTop: EQUIPO_EDIT_ROW.listoPaddingY,
-              paddingBottom: EQUIPO_EDIT_ROW.listoPaddingY,
-              borderRadius: EQUIPO_EDIT_ROW.listoRadius,
-            }}
-          >
-            {isSaving ? (
-              <Spinner className="size-3.5" style={{ color: EQUIPO_EDIT_ROW.listoText }} />
-            ) : (
-              "Listo"
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="inline-flex size-7 items-center justify-center transition-opacity hover:opacity-80"
-            style={{ color: EQUIPO_EDIT_ROW.actionIconColor }}
-            aria-label={`Eliminar a ${member.firstName} ${member.lastName}`}
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </button>
-        </div>
-      </div>
-
-      {editError ? (
-        <p className="px-4 pb-4 text-[13px] leading-5 text-[#dc2626]">{editError}</p>
-      ) : null}
-    </div>
-  )
-}
-
 function PendingRow({
   invitation,
   canRevoke,
@@ -470,14 +482,37 @@ function PendingRow({
 
 function PermissionCell({ value }: { value: ProjectPermissionValue }) {
   if (value === false) {
-    return <span className="text-[16px] font-bold text-[#e5484d]">✕</span>
+    return (
+      <span className="text-[16px] font-bold leading-4 tracking-[-0.3125px] text-[#e5484d]">
+        ✕
+      </span>
+    )
   }
+
   return (
-    <span className="inline-flex flex-col items-center">
-      <span className="text-[16px] font-bold text-[#56ba9f]">✓</span>
+    <span className="inline-flex flex-col items-center gap-0.5">
+      <span className="text-[16px] font-bold leading-4 tracking-[-0.3125px] text-[#56ba9f]">
+        ✓
+      </span>
       {value === "unitOnly" ? (
-        <span className="text-[10px] leading-3 text-[#90a1b9]">Su unidad</span>
+        <span className="text-[10px] font-normal leading-[14.286px] tracking-[0.1172px] text-[#90a1b9]">
+          Su unidad
+        </span>
       ) : null}
+    </span>
+  )
+}
+
+function PermissionColumnHeader({ column }: { column: ProjectPermissionDisplayColumn }) {
+  const tooltip = PROJECT_ROLE_PERMISSION_TOOLTIPS[column]
+
+  return (
+    <span className="inline-flex items-center justify-center gap-1.5">
+      <span>{column}</span>
+      <RolePermissionTooltip
+        description={tooltip.description}
+        roles={tooltip.roles}
+      />
     </span>
   )
 }
@@ -500,6 +535,8 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
   const [formError, setFormError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null)
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
+  const [isRemoving, setIsRemoving] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [permisosOpen, setPermisosOpen] = useState(true)
   const canAddUsers = useProjectPermission("addUsers")
@@ -569,11 +606,31 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
   }
 
   const handleRemoveMember = async (memberId: string) => {
+    setIsRemoving(true)
+
     const result = await removeTeamMember(memberId, projectId)
+
+    setIsRemoving(false)
+
     if (result.ok) {
+      const removedMember = members.find((member) => member.memberId === memberId)
       setMembers((prev) => prev.filter((m) => m.memberId !== memberId))
+      setRemovingMemberId(null)
       void refreshSeatSummary()
+      if (removedMember) {
+        toast.success(
+          `${removedMember.firstName} ${removedMember.lastName} fue eliminado del equipo.`,
+        )
+      }
+      return
     }
+
+    toast.error(result.error)
+  }
+
+  const handleConfirmRemove = () => {
+    if (!removingMemberId || isRemoving) return
+    void handleRemoveMember(removingMemberId)
   }
 
   const handleUpdateMember = async (
@@ -627,10 +684,24 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       )
     : pendingInvitations
 
+  const editingMember =
+    editingMemberId != null
+      ? members.find((member) => member.memberId === editingMemberId) ?? null
+      : null
+  const removingMember =
+    removingMemberId != null
+      ? members.find((member) => member.memberId === removingMemberId) ?? null
+      : null
+
   return (
     <div
       className="flex flex-col gap-8 pt-6"
-      style={{ maxWidth: "747px", width: "100%", margin: "0 auto" }}
+      style={{
+        maxWidth: EQUIPO_LAYOUT.contentMaxWidth,
+        width: "100%",
+        margin: "0 auto",
+        paddingBottom: EQUIPO_LAYOUT.pageBottomPadding,
+      }}
     >
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -779,33 +850,21 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
               {searchQuery ? "Sin resultados para esa búsqueda." : "No hay miembros activos."}
             </div>
           ) : (
-            filteredMembers.map((member) =>
-              editingMemberId === member.memberId ? (
-                canEditPermissions ? (
-                <EditMemberRow
-                  key={member.memberId}
-                  member={member}
-                  onSave={(userType, role) =>
-                    handleUpdateMember(member.memberId, userType, role)
-                  }
-                  onCancel={() => setEditingMemberId(null)}
-                  onRemove={() => {
+            filteredMembers.map((member) => (
+              <MemberRow
+                key={member.memberId}
+                member={member}
+                canEdit={canEditPermissions && !member.isYou}
+                canRemove={canEditPermissions && !member.isYou}
+                onEdit={() => setEditingMemberId(member.memberId)}
+                onRemove={() => {
+                  setRemovingMemberId(member.memberId)
+                  if (editingMemberId === member.memberId) {
                     setEditingMemberId(null)
-                    void handleRemoveMember(member.memberId)
-                  }}
-                />
-                ) : null
-              ) : (
-                <MemberRow
-                  key={member.memberId}
-                  member={member}
-                  canEdit={canEditPermissions && !member.isYou}
-                  canRemove={canEditPermissions && !member.isYou}
-                  onEdit={() => setEditingMemberId(member.memberId)}
-                  onRemove={() => void handleRemoveMember(member.memberId)}
-                />
-              ),
-            )
+                  }
+                }}
+              />
+            ))
           )}
           </div>
         </div>
@@ -844,7 +903,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
 
       {/* Permisos de usuarios */}
       <div
-        className="rounded-[16px] border border-[#edeef0] bg-white px-6 py-4"
+        className="rounded-[16px] border border-[#edeef0] bg-white px-4 py-6"
         style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
       >
         <button
@@ -864,19 +923,26 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
         </button>
 
         {permisosOpen ? (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full border-collapse text-[12px]">
+          <div className="mt-4">
+            <table className="w-full table-fixed border-collapse">
+              <colgroup>
+                <col style={{ width: EQUIPO_LAYOUT.permissionsActionColumnWidth }} />
+                <col />
+                <col />
+                <col />
+                <col />
+              </colgroup>
               <thead>
-                <tr className="border-b border-[#e2e8f0]">
-                  <th className="px-3 py-2.5 text-left text-[12px] font-normal leading-4 text-[#696e77]">
+                <tr className="border-b-2 border-[#e2e8f0]">
+                  <th className="h-[41px] px-4 text-left text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#696e77]">
                     Pantalla / Acción
                   </th>
-                  {PERMISSION_COLUMNS.map((col) => (
+                  {PROJECT_PERMISSION_DISPLAY_COLUMNS.map((column) => (
                     <th
-                      key={col}
-                      className="px-3 py-2.5 text-center text-[14px] font-medium leading-5 text-[#314158]"
+                      key={column}
+                      className="h-[41px] px-4 text-center text-[14px] font-medium leading-[1.4] text-[#314158]"
                     >
-                      {col}
+                      <PermissionColumnHeader column={column} />
                     </th>
                   ))}
                 </tr>
@@ -885,16 +951,26 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
                 {PROJECT_PERMISSION_TABLE.map((row, index) => (
                   <tr
                     key={row.action}
-                    style={{ backgroundColor: index % 2 === 0 ? "#ffffff" : "#edeef0" }}
+                    className="h-9"
+                    style={{
+                      backgroundColor:
+                        index % 2 === 0 ? "#ffffff" : "rgba(237, 238, 240, 0.4)",
+                    }}
                   >
-                    <td className="px-3 py-2.5 text-[12px] font-normal leading-4 text-[#43484e]">
+                    <td className="px-4 py-2 text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#43484e]">
                       {row.action}
                     </td>
-                    {row.values.map((value, colIndex) => (
-                      <td key={colIndex} className="px-3 py-2.5 text-center align-middle">
-                        <PermissionCell value={value} />
-                      </td>
-                    ))}
+                    {PROJECT_PERMISSION_DISPLAY_COLUMNS.map((column) => {
+                      const columnIndex = getProjectPermissionColumnIndex(column)
+                      return (
+                        <td
+                          key={column}
+                          className="px-4 py-2 text-center align-middle"
+                        >
+                          <PermissionCell value={row.values[columnIndex] ?? false} />
+                        </td>
+                      )
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -902,6 +978,36 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
           </div>
         ) : null}
       </div>
+
+      <EditMemberDialog
+        member={editingMember}
+        open={canEditPermissions && editingMember != null}
+        onOpenChange={(open) => {
+          if (!open) setEditingMemberId(null)
+        }}
+        onSave={(userType, role) => {
+          if (!editingMember) return Promise.resolve({ ok: false as const })
+          return handleUpdateMember(editingMember.memberId, userType, role)
+        }}
+      />
+
+      <ConfirmActionDialog
+        open={canEditPermissions && removingMember != null}
+        onOpenChange={(open) => {
+          if (isRemoving) return
+          if (!open) setRemovingMemberId(null)
+        }}
+        title="¿Eliminar miembro?"
+        description={
+          removingMember
+            ? `Se quitará a ${removingMember.firstName} ${removingMember.lastName} del equipo de trabajo del proyecto. ¿Deseás continuar?`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        loading={isRemoving}
+        loadingLabel="Eliminando..."
+        onConfirm={handleConfirmRemove}
+      />
     </div>
   )
 }

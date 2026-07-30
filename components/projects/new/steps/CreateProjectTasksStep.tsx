@@ -19,7 +19,6 @@ import { CSS } from "@dnd-kit/utilities"
 import {
   Check,
   ChevronDown,
-  ChevronRight,
   GripVertical,
   Plus,
   SquarePen,
@@ -46,8 +45,12 @@ import {
 } from "@/lib/projects/createProjectDraft"
 import { RubroIncidenceBadge, RubroIncidenceEditor, validateRubroWeightDraft } from "@/components/projects/new/RubroIncidenceBadge"
 import { getAllRubrosFromGroups, isManualRubroWeightOverLimit, isRubroWeightAuto, parseRubroWeightInput, RUBRO_WEIGHT_OVER_LIMIT_MESSAGE } from "@/lib/projects/rubroWeights"
-import { CONFIG_SECTION_SCROLL } from "@/lib/projects/createProjectTokens"
 import { cn } from "@/lib/utils"
+import { AnimatedCollapsible } from "@/components/ui/animated-collapsible"
+import {
+  newItemHighlightClass,
+  useNewItemHighlight,
+} from "@/components/projects/new/useNewItemHighlight"
 
 type SortableTaskItemProps = {
   task: RubroTaskDraft
@@ -62,6 +65,7 @@ type SortableTaskItemProps = {
   onCancelEditing: () => void
   onUpdateName: (name: string) => void
   onRemove: (groupId: string, rubroId: string, taskId: string) => void
+  isHighlighted?: boolean
 }
 
 function SortableTaskItem({
@@ -77,19 +81,24 @@ function SortableTaskItem({
   onCancelEditing,
   onUpdateName,
   onRemove,
+  isHighlighted = false,
 }: SortableTaskItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
 
   return (
     <div
       ref={setNodeRef}
+      data-new-item-id={task.id}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
         backgroundColor: "#f8fafc",
       }}
-      className="flex h-10 items-center gap-2 rounded-lg border border-[#edeef0] px-2"
+      className={cn(
+        "flex h-10 items-center gap-2 rounded-lg border border-[#edeef0] px-2",
+        newItemHighlightClass(isHighlighted),
+      )}
     >
       {isEditing ? (
         <>
@@ -163,7 +172,6 @@ function SortableTaskItem({
 type CreateProjectTasksStepProps = {
   draft: CreateProjectDraft
   onChange: (patch: Partial<CreateProjectDraft>) => void
-  scrollableList?: boolean
 }
 
 function rubroKey(groupId: string, rubroId: string) {
@@ -171,10 +179,14 @@ function rubroKey(groupId: string, rubroId: string) {
 }
 
 function ExpandToggleIcon({ expanded }: { expanded: boolean }) {
-  return expanded ? (
-    <ChevronDown className="size-5 shrink-0 text-[#111113]" aria-hidden />
-  ) : (
-    <ChevronRight className="size-5 shrink-0 text-[#111113]" aria-hidden />
+  return (
+    <ChevronDown
+      className={cn(
+        "size-5 shrink-0 text-[#111113] transition-transform duration-300 ease-in-out",
+        !expanded && "-rotate-90",
+      )}
+      aria-hidden
+    />
   )
 }
 
@@ -254,8 +266,8 @@ function InExecutionTasksCallout() {
 export function CreateProjectTasksStep({
   draft,
   onChange,
-  scrollableList = false,
 }: CreateProjectTasksStepProps) {
+  const { markAsNew, isHighlighted } = useNewItemHighlight()
   const [newGroupName, setNewGroupName] = useState("")
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(() => {
     const first = draft.groups[0]
@@ -435,6 +447,7 @@ export function CreateProjectTasksStep({
     setGroups([...draft.groups, group])
     setNewGroupName("")
     setExpandedGroupIds((current) => new Set(current).add(group.id))
+    markAsNew(group.id)
   }
 
   const removeGroup = (groupId: string) => {
@@ -465,6 +478,7 @@ export function CreateProjectTasksStep({
     setExpandedRubroIds((current) =>
       new Set(current).add(rubroKey(groupId, rubro.id)),
     )
+    markAsNew(rubro.id)
   }
 
   const updateRubroInGroup = (
@@ -508,6 +522,7 @@ export function CreateProjectTasksStep({
     setExpandedRubroIds((current) =>
       new Set(current).add(rubroKey(groupId, rubroId)),
     )
+    markAsNew(task.id)
   }
 
   const updateTaskInRubro = (
@@ -588,7 +603,7 @@ export function CreateProjectTasksStep({
         </Button>
       </div>
 
-      <div className={cn("flex flex-col gap-2", scrollableList && CONFIG_SECTION_SCROLL)}>
+      <div className="flex flex-col gap-2">
         {draft.groups.map((group, groupIndex) => {
           const stats = getGroupDisplayStats(group)
           const isGroupExpanded = expandedGroupIds.has(group.id)
@@ -597,7 +612,11 @@ export function CreateProjectTasksStep({
           return (
             <div
               key={group.id}
-              className="rounded-[10px] border border-[#e2e8f0] bg-white"
+              data-new-item-id={group.id}
+              className={cn(
+                "rounded-[10px] border border-[#e2e8f0] bg-white",
+                newItemHighlightClass(isHighlighted(group.id)),
+              )}
             >
               <div
                 className={`flex min-h-[62px] w-full items-center gap-3 px-3 py-3 ${
@@ -683,7 +702,7 @@ export function CreateProjectTasksStep({
                 )}
               </div>
 
-              {isGroupExpanded ? (
+              <AnimatedCollapsible open={isGroupExpanded}>
                 <div className="space-y-2 rounded-b-[10px] bg-white px-3 py-3">
                   <DashedAddButton
                     label="Agregar Rubro"
@@ -700,7 +719,11 @@ export function CreateProjectTasksStep({
                     return (
                       <div
                         key={rubro.id}
-                        className="rounded-[10px] border border-[#ffeae0] bg-[#fefcfb]"
+                        data-new-item-id={rubro.id}
+                        className={cn(
+                          "rounded-[10px] border border-[#ffeae0] bg-[#fefcfb]",
+                          newItemHighlightClass(isHighlighted(rubro.id)),
+                        )}
                       >
                         <div
                           className={`relative flex min-h-[48px] w-full items-center gap-2 overflow-visible px-3 py-2 ${
@@ -823,7 +846,7 @@ export function CreateProjectTasksStep({
                           )}
                         </div>
 
-                        {isRubroExpanded ? (
+                        <AnimatedCollapsible open={isRubroExpanded}>
                           <div className="space-y-2 rounded-b-[10px] bg-white px-3 py-3">
                             <DashedAddButton
                               label="Agregar Tarea"
@@ -856,6 +879,7 @@ export function CreateProjectTasksStep({
                                         onCancelEditing={cancelEditing}
                                         onUpdateName={setEditingName}
                                         onRemove={removeTaskFromRubro}
+                                        isHighlighted={isHighlighted(task.id)}
                                       />
                                     ))}
                                   </div>
@@ -863,12 +887,12 @@ export function CreateProjectTasksStep({
                               </DndContext>
                             ) : null}
                           </div>
-                        ) : null}
+                        </AnimatedCollapsible>
                       </div>
                     )
                   })}
                 </div>
-              ) : null}
+              </AnimatedCollapsible>
             </div>
           )
         })}

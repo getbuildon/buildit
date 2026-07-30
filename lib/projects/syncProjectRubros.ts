@@ -95,22 +95,14 @@ async function loadExistingRubrosState(
 function collectIncomingIds(
   groups: RubroGroupSaveInput[],
   existing: ExistingRubrosState,
-): { incoming: IncomingIds; emptyGroupIdsToDelete: string[] } {
+): IncomingIds {
   const incoming: IncomingIds = {
     groupIds: new Set<string>(),
     rubroIds: new Set<string>(),
     taskIds: new Set<string>(),
   }
-  const emptyGroupIdsToDelete: string[] = []
 
   for (const group of groups) {
-    if (group.rubros.length === 0) {
-      if (isPersistedId(group.id, existing.groupIds)) {
-        emptyGroupIdsToDelete.push(group.id)
-      }
-      continue
-    }
-
     if (isPersistedId(group.id, existing.groupIds)) {
       incoming.groupIds.add(group.id)
     }
@@ -128,7 +120,7 @@ function collectIncomingIds(
     }
   }
 
-  return { incoming, emptyGroupIdsToDelete }
+  return incoming
 }
 
 async function assertRemovableTasks(
@@ -206,14 +198,11 @@ export async function syncProjectRubros(
     }
 
     const defaultTrackingTypeId = trackingTypes[0].id
-    const { incoming, emptyGroupIdsToDelete } = collectIncomingIds(groups, existing)
+    const incoming = collectIncomingIds(groups, existing)
 
     const tasksToDelete = [...existing.taskIds].filter((id) => !incoming.taskIds.has(id))
     const rubrosToDelete = [...existing.rubroIds].filter((id) => !incoming.rubroIds.has(id))
-    const groupsToDelete = [
-      ...[...existing.groupIds].filter((id) => !incoming.groupIds.has(id)),
-      ...emptyGroupIdsToDelete,
-    ]
+    const groupsToDelete = [...existing.groupIds].filter((id) => !incoming.groupIds.has(id))
 
     const removalError = await assertRemovableTasks(
       supabase,
@@ -227,21 +216,22 @@ export async function syncProjectRubros(
 
     for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
       const group = groups[groupIndex]
-      if (group.rubros.length === 0) continue
+      const groupName = group.name.trim()
+      if (!groupName) continue
 
       let groupId: string
       if (isPersistedId(group.id, existing.groupIds)) {
         groupId = group.id
         const { error: groupUpdateError } = await supabase
           .from("rubro_groups")
-          .update({ name: group.name, sort_order: groupIndex })
+          .update({ name: groupName, sort_order: groupIndex })
           .eq("id", groupId)
           .eq("project_id", projectId)
         if (groupUpdateError) throw groupUpdateError
       } else {
         const { data: insertedGroup, error: groupInsertError } = await supabase
           .from("rubro_groups")
-          .insert({ project_id: projectId, name: group.name, sort_order: groupIndex })
+          .insert({ project_id: projectId, name: groupName, sort_order: groupIndex })
           .select("id")
           .single()
         if (groupInsertError || !insertedGroup) {
@@ -252,6 +242,7 @@ export async function syncProjectRubros(
 
       for (let rubroIndex = 0; rubroIndex < group.rubros.length; rubroIndex++) {
         const rubro = group.rubros[rubroIndex]
+        const rubroName = rubro.name.trim() || "Nuevo rubro"
         let rubroId: string
 
         if (isPersistedId(rubro.id, existing.rubroIds)) {
@@ -259,7 +250,7 @@ export async function syncProjectRubros(
           const { error: rubroUpdateError } = await supabase
             .from("rubros")
             .update({
-              name: rubro.name,
+              name: rubroName,
               sort_order: rubroIndex,
               group_id: groupId,
               weight_percent: rubro.weight_percent ?? null,
@@ -273,7 +264,7 @@ export async function syncProjectRubros(
             .insert({
               project_id: projectId,
               group_id: groupId,
-              name: rubro.name,
+              name: rubroName,
               tracking_scope: "unit",
               sort_order: rubroIndex,
               tracking_type_id: defaultTrackingTypeId,
@@ -289,12 +280,14 @@ export async function syncProjectRubros(
 
         for (let taskIndex = 0; taskIndex < rubro.tasks.length; taskIndex++) {
           const task = rubro.tasks[taskIndex]
+          const taskName = task.name.trim()
+          if (!taskName) continue
 
           if (isPersistedId(task.id, existing.taskIds)) {
             const { error: taskUpdateError } = await supabase
               .from("rubro_tasks")
               .update({
-                name: task.name,
+                name: taskName,
                 weight_percent: task.default_weight ?? null,
                 sort_order: taskIndex,
                 rubro_id: rubroId,
@@ -308,7 +301,7 @@ export async function syncProjectRubros(
               .insert({
                 project_id: projectId,
                 rubro_id: rubroId,
-                name: task.name,
+                name: taskName,
                 description: null,
                 weight_percent: task.default_weight ?? null,
                 sort_order: taskIndex,

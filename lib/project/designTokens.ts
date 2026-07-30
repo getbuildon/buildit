@@ -72,6 +72,14 @@ export const CLIENTES_LAYOUT = {
   contentMaxWidth: "1022px",
 } as const
 
+/** Figma node 1226:9053 — ancho del contenido de Equipo (~1011px). */
+export const EQUIPO_LAYOUT = {
+  contentMaxWidth: "1011px",
+  permissionsTableWidth: "979px",
+  permissionsActionColumnWidth: "160px",
+  pageBottomPadding: "40px",
+} as const
+
 /** Figma node 1228:12933 — sidebar nav link selected (black pill 229x40, r12) */
 export const SIDEBAR_NAV_ACTIVE_LINK_STYLE = {
   height: "40px",
@@ -210,4 +218,42 @@ export const EQUIPO_EDIT_ROW = {
   listoPaddingY: "6px",
   listoRadius: "9999px",
   actionIconColor: "#777b84",
+} as const
+
+/** Figma node 1846:2174 — modal con header, contenido y acciones */
+export const FORM_MODAL_DIALOG = {
+  content:
+    "flex w-full max-w-[480px] flex-col gap-0 rounded-[16px] border border-[#e2e8f0] bg-white p-0 shadow-[0_0_5px_rgba(243,103,31,0.08)]",
+  overlay: "bg-[rgba(17,17,19,0.6)] backdrop-blur-[5px]",
+  body: "flex flex-col gap-6 px-[33px] py-[41px]",
+  header: "flex w-full flex-col items-start",
+  title:
+    "text-left font-recoleta text-[24px] font-normal leading-[1.05] text-[#18191b]",
+  description:
+    "pt-2 text-left text-[16px] font-normal leading-[1.4] text-[#18191b]",
+  actions: "flex w-full gap-2",
+  cancelBtn:
+    "inline-flex h-auto min-h-[44px] flex-1 items-center justify-center rounded-[10px] border border-[#696e77] bg-white px-4 py-3 text-[14px] font-normal leading-[1.4] text-[#363a3f] shadow-none transition-colors hover:border-[#696e77] hover:bg-[#f4f5f6] hover:text-[#272a2d] focus-visible:border-[#696e77] focus-visible:text-[#272a2d] focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50",
+  confirmBtn:
+    "h-auto min-h-[44px] flex-1 rounded-[10px] px-4 py-3 text-[14px] font-normal leading-[1.4] text-white shadow-[0_0_10px_rgba(243,103,31,0.3)]",
+} as const
+
+/** Figma node 1846:2151 — modal de confirmación con ícono */
+export const CONFIRM_ACTION_DIALOG = {
+  content:
+    "flex w-full max-w-[448px] flex-col gap-0 rounded-[16px] border border-[#e2e8f0] bg-white p-0 shadow-[0_0_5px_rgba(243,103,31,0.08)]",
+  body: "flex flex-col gap-8 px-[33px] py-[41px]",
+  overlay: "bg-[rgba(17,17,19,0.6)] backdrop-blur-[5px]",
+  iconWrap:
+    "flex size-20 items-center justify-center rounded-full bg-[#ffeae0]",
+  icon: "size-10 text-[#ff7433]",
+  title:
+    "text-center font-recoleta text-[24px] font-normal leading-[1.05] text-[#18191b]",
+  description:
+    "mx-auto max-w-[382px] pt-2 text-center text-[16px] font-normal leading-[1.4] text-[#18191b]",
+  actions: "flex w-full gap-2",
+  cancelBtn:
+    "inline-flex h-auto min-h-[44px] flex-1 items-center justify-center rounded-[10px] border border-[#696e77] bg-white px-4 py-3 text-[14px] font-normal leading-[1.4] text-[#363a3f] shadow-none transition-colors hover:border-[#696e77] hover:bg-[#f4f5f6] hover:text-[#272a2d] focus-visible:border-[#696e77] focus-visible:text-[#272a2d] focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50",
+  confirmBtn:
+    "h-auto min-h-[44px] flex-1 rounded-[10px] px-4 py-3 text-[14px] font-normal leading-[1.4] text-white shadow-[0_0_10px_rgba(243,103,31,0.3)]",
 } as const

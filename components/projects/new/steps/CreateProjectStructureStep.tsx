@@ -48,19 +48,21 @@ import {
   UNIT_ROOM_COUNT_OPTIONS,
 } from "@/lib/projects/unitTypes"
 import { cn } from "@/lib/utils"
-import { CONFIG_SECTION_SCROLL } from "@/lib/projects/createProjectTokens"
+import {
+  newItemHighlightClass,
+  useNewItemHighlight,
+} from "@/components/projects/new/useNewItemHighlight"
 
 type CreateProjectStructureStepProps = {
   draft: CreateProjectDraft
   onChange: (patch: Partial<CreateProjectDraft>) => void
-  scrollableList?: boolean
 }
 
 export function CreateProjectStructureStep({
   draft,
   onChange,
-  scrollableList = false,
 }: CreateProjectStructureStepProps) {
+  const { markAsNew, isHighlighted } = useNewItemHighlight()
   const floorCount = draft.floors.length
   const unitCount = countStructureUnits(draft.floors)
 
@@ -80,7 +82,9 @@ export function CreateProjectStructureStep({
   }
 
   const addFloor = () => {
-    setFloors([...draft.floors, createDefaultFloor(draft.floors.length + 1)])
+    const floor = createDefaultFloor(draft.floors.length + 1)
+    setFloors([...draft.floors, floor])
+    markAsNew(floor.id)
   }
 
   const removeFloor = (floorId: string) => {
@@ -88,12 +92,14 @@ export function CreateProjectStructureStep({
   }
 
   const addUnit = (floorId: string) => {
+    const unit = createDefaultUnit()
     updateFloor(floorId, {
       units: [
         ...(draft.floors.find((f) => f.id === floorId)?.units ?? []),
-        createDefaultUnit(),
+        unit,
       ],
     })
+    markAsNew(unit.id)
   }
 
   const updateUnit = (
@@ -168,16 +174,14 @@ export function CreateProjectStructureStep({
           </p>
         ) : (
           <div
-            className={cn(
-              "flex w-full flex-col gap-2",
-              scrollableList && CONFIG_SECTION_SCROLL,
-            )}
+            className="flex w-full flex-col gap-2"
             style={{ maxWidth: STRUCTURE_STEP_LAYOUT.floorCardMaxWidth }}
           >
             {draft.floors.map((floor) => (
               <StructureFloorCard
                 key={floor.id}
                 floor={floor}
+                isHighlighted={isHighlighted(floor.id)}
                 onUpdateFloor={(patch) => updateFloor(floor.id, patch)}
                 onRemoveFloor={() => removeFloor(floor.id)}
                 onAddUnit={() => addUnit(floor.id)}
@@ -185,6 +189,7 @@ export function CreateProjectStructureStep({
                   updateUnit(floor.id, unitId, patch)
                 }
                 onRemoveUnit={(unitId) => removeUnit(floor.id, unitId)}
+                isUnitHighlighted={isHighlighted}
               />
             ))}
           </div>
@@ -240,24 +245,32 @@ function StructureProjectSummary({
 
 type StructureFloorCardProps = {
   floor: StructureFloorDraft
+  isHighlighted: boolean
   onUpdateFloor: (patch: Partial<StructureFloorDraft>) => void
   onRemoveFloor: () => void
   onAddUnit: () => void
   onUpdateUnit: (unitId: string, patch: Partial<StructureUnitDraft>) => void
   onRemoveUnit: (unitId: string) => void
+  isUnitHighlighted: (unitId: string) => boolean
 }
 
 function StructureFloorCard({
   floor,
+  isHighlighted,
   onUpdateFloor,
   onRemoveFloor,
   onAddUnit,
   onUpdateUnit,
   onRemoveUnit,
+  isUnitHighlighted,
 }: StructureFloorCardProps) {
   return (
     <div
-      className="flex w-full flex-col gap-3 rounded-[10px] bg-white p-3"
+      data-new-item-id={floor.id}
+      className={cn(
+        "flex w-full flex-col gap-3 rounded-[10px] bg-white p-3",
+        newItemHighlightClass(isHighlighted),
+      )}
       style={{
         maxWidth: STRUCTURE_STEP_LAYOUT.floorCardMaxWidth,
         boxShadow: "0 0 7.5px rgba(0, 0, 0, 0.05)",
@@ -352,6 +365,7 @@ function StructureFloorCard({
             <StructureUnitRow
               key={unit.id}
               unit={unit}
+              isHighlighted={isUnitHighlighted(unit.id)}
               onUpdateUnit={(patch) => onUpdateUnit(unit.id, patch)}
               onRemoveUnit={() => onRemoveUnit(unit.id)}
             />
@@ -364,12 +378,14 @@ function StructureFloorCard({
 
 type StructureUnitRowProps = {
   unit: StructureUnitDraft
+  isHighlighted: boolean
   onUpdateUnit: (patch: Partial<StructureUnitDraft>) => void
   onRemoveUnit: () => void
 }
 
 function StructureUnitRow({
   unit,
+  isHighlighted,
   onUpdateUnit,
   onRemoveUnit,
 }: StructureUnitRowProps) {
@@ -380,7 +396,11 @@ function StructureUnitRow({
 
   return (
     <div
-      className="w-full rounded-[4px] px-3 pt-3 pb-3"
+      data-new-item-id={unit.id}
+      className={cn(
+        "w-full rounded-[4px] px-3 pt-3 pb-3",
+        newItemHighlightClass(isHighlighted),
+      )}
       style={{
         backgroundColor: STRUCTURE_STEP_COLORS.unitRowBg,
         maxWidth: STRUCTURE_STEP_LAYOUT.floorCardInnerWidth,

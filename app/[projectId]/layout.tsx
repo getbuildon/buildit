@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import type { ReactNode } from "react"
 import { ProjectWorkspace } from "@/components/project-shell/ProjectWorkspace"
+import { ProjectShell } from "@/components/project-shell/ProjectShell"
 import { ProjectAccessProvider } from "@/components/project-shell/ProjectAccessProvider"
 import { assertProjectRoute } from "@/lib/project/assertProjectRoute"
 import { getProjectAccessContext } from "@/lib/project/projectAccess"
@@ -31,9 +32,11 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
 
   return (
     <ProjectAccessProvider value={accessContext}>
-      <ProjectWorkspace project={project} userProfile={userProfile}>
-        {children}
-      </ProjectWorkspace>
+      <ProjectShell>
+        <ProjectWorkspace project={project} userProfile={userProfile}>
+          {children}
+        </ProjectWorkspace>
+      </ProjectShell>
     </ProjectAccessProvider>
   )
 }
