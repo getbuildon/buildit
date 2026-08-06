@@ -1,4 +1,6 @@
 import { LandingDemoSection } from "@/components/landing/LandingDemoSection"
+import { LandingFaqSection } from "@/components/landing/LandingFaqSection"
+import { LandingFooter } from "@/components/landing/LandingFooter"
 import { LandingHeader } from "@/components/landing/LandingHeader"
 import { LandingHero } from "@/components/landing/LandingHero"
 import { LandingPricingSection } from "@/components/landing/LandingPricingSection"
@@ -14,6 +16,8 @@ export default function LandingPage() {
       <LandingSolutionsSection />
       <LandingPricingSection />
       <LandingDemoSection />
+      <LandingFaqSection />
+      <LandingFooter />
     </div>
   )
 }

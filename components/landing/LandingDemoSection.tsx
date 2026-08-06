@@ -1,7 +1,7 @@
 import Image from "next/image"
 import Link from "next/link"
 
-const CONTACT_EMAIL = "hola@buildon.com"
+import { LANDING_CONTACT_EMAIL } from "@/lib/landing/footerLinks"
 
 export function LandingDemoSection() {
   return (
@@ -22,7 +22,7 @@ export function LandingDemoSection() {
             </div>
 
             <Link
-              href={`mailto:${CONTACT_EMAIL}`}
+              href={`mailto:${LANDING_CONTACT_EMAIL}`}
               className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-primary px-4 py-3.5 text-sm font-medium leading-[1.4] text-white"
             >
               <Image
