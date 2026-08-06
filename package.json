@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "eslint .",
     "sync:email-templates": "node scripts/sync-supabase-email-templates.mjs",
-    "sync:email-templates:dry-run": "node scripts/sync-supabase-email-templates.mjs --dry-run"
+    "sync:email-templates:dry-run": "node scripts/sync-supabase-email-templates.mjs --dry-run",
+    "generate:email-logo": "npx --yes @resvg/resvg-js-cli --fit-width 200 public/logo-build-on.svg public/logo-build-on-email.png"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
