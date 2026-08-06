@@ -239,8 +239,8 @@ export function PricingContractModalDesktop({
   const surfaceLabel = getPlanSurfaceLabel(plan, surfaceTierId)
 
   return (
-    <div className="flex w-full flex-row">
-      <aside className="w-[340px] shrink-0 bg-[#18191b] p-10">
+    <div className="grid w-full grid-cols-[340px_minmax(0,1fr)] items-stretch">
+      <aside className="bg-[#18191b] p-10">
         <div className="grid size-10 place-items-center rounded-[14px] bg-[rgba(255,116,51,0.2)]">
           <Image
             src="/landing/contract/desktop/modal-celebration.svg"
@@ -277,7 +277,7 @@ export function PricingContractModalDesktop({
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col bg-[#fefcfb]">
+      <div className="flex min-h-full flex-col bg-[#fefcfb]">
         <div className="flex shrink-0 items-center justify-between border-b border-[#eef0f2] px-8 py-5">
           <p className="text-base leading-[1.4] text-[#18191b]">
             Completá tus datos
@@ -294,7 +294,7 @@ export function PricingContractModalDesktop({
 
         <form
           onSubmit={onSubmit}
-          className="flex flex-col px-8 py-7"
+          className="flex flex-1 flex-col bg-[#fefcfb] px-8 py-7"
         >
           <div className="flex flex-col gap-5">
             <div className="grid grid-cols-2 gap-4">
