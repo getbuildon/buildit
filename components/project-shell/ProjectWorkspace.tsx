@@ -1,20 +1,17 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { type ReactNode, useState } from "react"
+import { type ReactNode, useRef, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { BuiltItIsoIcon } from "@/components/brand/BuiltItIsoIcon"
+import { ProjectNavLinks } from "@/components/project-shell/ProjectNavLinks"
 import { SidebarSwitchProjectButton } from "@/components/project-shell/SidebarSwitchProjectButton"
 import { SHELL_COLORS, SHELL_LAYOUT } from "@/lib/project/designTokens"
-import { isProjectNavActive, getAllowedProjectNavItems } from "@/lib/project/navigation"
-import { useProjectAccess } from "@/components/project-shell/ProjectAccessProvider"
-import { projectHref } from "@/lib/project/routes"
 import type { UserProjectListItem } from "@/lib/projects/types"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
 import { cn } from "@/lib/utils"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { UserMenuDropdown } from "./UserMenuDropdown"
+import { ProjectMobileHeader } from "./ProjectMobileHeader"
 
 // Figma node 1157:2701 — exact specs
 // Sidebar: bg=#fefcfb, radius=24, border=#dadada w=1, shadow: blur=39.2 spread=3.9 a=0.08
@@ -40,10 +37,8 @@ type ProjectSidebarProps = {
 }
 
 export function ProjectSidebar({ project, userProfile }: ProjectSidebarProps) {
-  const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
-  const { permissions } = useProjectAccess()
-  const navItems = getAllowedProjectNavItems(permissions)
+  const userMenuAnchorRef = useRef<HTMLDivElement>(null)
 
   return (
     <aside
@@ -98,71 +93,18 @@ export function ProjectSidebar({ project, userProfile }: ProjectSidebarProps) {
       </div>
 
       {/* Nav */}
-      <nav
+      <div
         className="flex flex-1 flex-col overflow-y-auto"
-        style={{ padding: "16px 12px 12px", gap: "4px" }}
+        style={{ padding: "16px 12px 12px" }}
       >
-        {navItems.map((item) => {
-          const href = projectHref(project.projectId, item.segment || undefined)
-          const active = isProjectNavActive(pathname, project.projectId, item.segment)
-          const Icon = item.icon
-
-          return (
-            <Link
-              key={item.label}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex items-center rounded-[10px] transition-all duration-150",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18191b]/20 focus-visible:ring-offset-1",
-                active
-                  ? "bg-[#18191b] text-white"
-                  : cn(
-                      "text-[#111113]",
-                      "hover:bg-[#f0f0f2] hover:text-[#000000]",
-                      "active:bg-[#e4e4e6] active:scale-[0.99]",
-                    ),
-              )}
-              style={{
-                height: "40px",
-                paddingLeft: "12px",
-                paddingRight: "12px",
-                gap: "12px",
-                fontSize: "14px",
-                fontWeight: 400,
-                lineHeight: "19.6px",
-                textDecoration: "none",
-              }}
-            >
-              <Icon
-                aria-hidden
-                style={{
-                  width: "16px",
-                  height: "16px",
-                  flexShrink: 0,
-                  color: "currentColor",
-                  strokeWidth: 1.32,
-                }}
-              />
-              {item.label}
-            </Link>
-          )
-        })}
-      </nav>
+        <ProjectNavLinks projectId={project.projectId} />
+      </div>
 
       {/* User footer */}
       <div
-        className="relative shrink-0 border-t"
+        className="relative z-10 shrink-0 overflow-visible border-t"
         style={{ padding: "17px 12px 16px", borderColor: "#dadada" }}
       >
-        {menuOpen && (
-          <UserMenuDropdown
-            onClose={() => setMenuOpen(false)}
-            projectId={project.projectId}
-            userProfile={userProfile}
-          />
-        )}
-
         {/* User card: bg=#f9f9fb, radius=10, padding=12, gap=12 */}
         <div
           className="flex items-center"
@@ -197,34 +139,45 @@ export function ProjectSidebar({ project, userProfile }: ProjectSidebarProps) {
             </p>
           </div>
 
-          {/* Chevron button: 24x24 gray — states: default, hover, pressed, open */}
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label="Menú de usuario"
-            aria-expanded={menuOpen}
-            aria-haspopup="menu"
-            className={cn(
-              "flex shrink-0 items-center justify-center",
-              "rounded-[8px] transition-all duration-150",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18191b]/20 focus-visible:ring-offset-1",
-              "active:scale-95",
-              menuOpen
-                ? "bg-[#18191b] text-white"
-                : "bg-[#edeef0] text-[#272a2d] hover:bg-[#d8d9db] active:bg-[#c8c9cb]",
-            )}
-            style={{ width: "24px", height: "24px" }}
-          >
-            <ChevronDown
-              aria-hidden
-              style={{
-                width: "14px",
-                height: "14px",
-                transition: "transform 0.2s ease",
-                transform: menuOpen ? "rotate(180deg)" : "rotate(0deg)",
-              }}
-            />
-          </button>
+          {/* Chevron + profile menu */}
+          <div ref={userMenuAnchorRef} className="relative shrink-0">
+            {menuOpen ? (
+              <UserMenuDropdown
+                onClose={() => setMenuOpen(false)}
+                projectId={project.projectId}
+                userProfile={userProfile}
+                anchorRef={userMenuAnchorRef}
+              />
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Menú de usuario"
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              className={cn(
+                "flex shrink-0 items-center justify-center",
+                "rounded-[8px] transition-all duration-150",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18191b]/20 focus-visible:ring-offset-1",
+                "active:scale-95",
+                menuOpen
+                  ? "bg-[#18191b] text-white"
+                  : "bg-[#edeef0] text-[#272a2d] hover:bg-[#d8d9db] active:bg-[#c8c9cb]",
+              )}
+              style={{ width: "24px", height: "24px" }}
+            >
+              <ChevronDown
+                aria-hidden
+                style={{
+                  width: "14px",
+                  height: "14px",
+                  transition: "transform 0.2s ease",
+                  transform: menuOpen ? "rotate(180deg)" : "rotate(0deg)",
+                }}
+              />
+            </button>
+          </div>
         </div>
       </div>
     </aside>
@@ -240,22 +193,25 @@ type ProjectWorkspaceProps = {
 export function ProjectWorkspace({ project, userProfile, children }: ProjectWorkspaceProps) {
   return (
     <div
-      className="flex h-full min-h-0 w-full overflow-hidden"
+      className="flex h-full min-h-0 w-full flex-col overflow-hidden lg:flex-row"
       style={{ backgroundColor: SHELL_COLORS.mainBg }}
     >
+      <ProjectMobileHeader project={project} userProfile={userProfile} />
+
       <div
-        className="box-border flex h-full min-h-0 shrink-0 flex-col py-3 pl-3"
+        className="box-border hidden h-full min-h-0 shrink-0 flex-col py-3 pl-3 lg:flex"
         style={{ width: `calc(${SHELL_LAYOUT.sidebarWidth} + ${SHELL_LAYOUT.sidebarMargin})` }}
       >
         <ProjectSidebar project={project} userProfile={userProfile} />
       </div>
+
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain">
           <div
-            className="mx-auto flex min-h-full w-full flex-col"
+            className="mx-auto flex min-h-full w-full flex-col px-4 pt-4 lg:px-6 lg:pt-6"
             style={{
               maxWidth: SHELL_LAYOUT.contentMaxWidth,
-              padding: `${SHELL_LAYOUT.contentPadding} ${SHELL_LAYOUT.contentPadding} 0`,
+              paddingBottom: 0,
             }}
           >
             {children}

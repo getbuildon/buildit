@@ -1,42 +1,43 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, type RefObject } from "react"
 import { useRouter } from "next/navigation"
-import { User, LogOut } from "lucide-react"
-import { useAuth } from "@/context/AuthContextSupabase"
-import { UserAvatar } from "@/components/user/UserAvatar"
-import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
 
-// Figma node 1157:3306 — Profile Menu
-// Container: bg=#ffffff radius=14 border=#e2e8f0 w=1 shadows: (blur=6 spread=-4 a=0.1) + (blur=15 spread=-3 a=0.1)
-// Size: 192x176, padding T=5 H=1 B=1
-// Header section: padding H=16 T=8 B=1, border-bottom=#f1f5f9
-//   Name: 14px w=500 color=#314158
-//   Email: 12px w=400 color=#90a1b9
-//   Role badge: bg=#f1f5f9 radius=full padding H=8 V=2 | text 12px w=400 color=#45556c
-// Menu items: padding H=16
-//   "Mi Perfil": icon 16x16 stroke=#314158 | text 14px w=500 color=#314158
-//   "Cerrar sesión": icon 16x16 stroke=#e7000b | text 14px w=500 color=#e7000b
+import {
+  ProfileMenuLogoutIcon,
+  ProfileMenuProfileIcon,
+} from "@/components/project-shell/ProjectProfileMenuIcons"
+import { useAuth } from "@/context/AuthContextSupabase"
+import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
+import { cn } from "@/lib/utils"
+
+// Figma node 1157:3306 — Profile Menu (192×176)
 
 type UserMenuDropdownProps = {
   onClose: () => void
   projectId: string
   userProfile: SidebarUserProfile
+  anchorRef?: RefObject<HTMLElement | null>
 }
 
-export function UserMenuDropdown({ onClose, projectId, userProfile }: UserMenuDropdownProps) {
+export function UserMenuDropdown({
+  onClose,
+  projectId,
+  userProfile,
+  anchorRef,
+}: UserMenuDropdownProps) {
   const router = useRouter()
   const { user, logOut } = useAuth()
   const ref = useRef<HTMLDivElement>(null)
 
-  // Close on click outside
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        onClose()
-      }
+      const target = e.target as Node
+      if (ref.current?.contains(target)) return
+      if (anchorRef?.current?.contains(target)) return
+      onClose()
     }
-    // delay so the toggle click doesn't immediately close
+
     const id = setTimeout(() => document.addEventListener("mousedown", handleClick), 0)
     return () => {
       clearTimeout(id)
@@ -44,11 +45,11 @@ export function UserMenuDropdown({ onClose, projectId, userProfile }: UserMenuDr
     }
   }, [onClose])
 
-  // Close on Escape
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose()
     }
+
     document.addEventListener("keydown", handleKey)
     return () => document.removeEventListener("keydown", handleKey)
   }, [onClose])
@@ -60,137 +61,69 @@ export function UserMenuDropdown({ onClose, projectId, userProfile }: UserMenuDr
     router.refresh()
   }
 
+  const email = userProfile.email || user?.email || ""
+
   return (
     <div
       ref={ref}
       role="menu"
       aria-label="Menú de usuario"
-      style={{
-        position: "absolute",
-        bottom: "calc(100% + 8px)",
-        left: "0",
-        right: "0",
-        width: "192px",
-        backgroundColor: "#ffffff",
-        borderRadius: "14px",
-        border: "1px solid #e2e8f0",
-        overflow: "hidden",
-        boxShadow: "0 6px 6px -4px rgba(0,0,0,0.10), 0 15px 15px -3px rgba(0,0,0,0.10)",
-        padding: "5px 1px 1px",
-        zIndex: 50,
-      }}
+      className={cn(
+        "absolute right-0 bottom-full z-50 mb-2 w-[192px]",
+        "overflow-hidden rounded-[14px] border border-[#e2e8f0] bg-white px-px pb-px pt-[5px]",
+        "shadow-[0px_10px_7.5px_rgba(0,0,0,0.1),0px_4px_3px_rgba(0,0,0,0.1)]",
+      )}
     >
-      {/* Header: name + email + role badge */}
-      <div
-        style={{
-          padding: "8px 16px",
-          borderBottom: "1px solid #f1f5f9",
-          marginBottom: "0",
+      <div className="h-[53px] border-b border-[#f1f5f9] px-4 pb-px pt-2">
+        <p className="h-5 truncate text-sm font-medium leading-5 tracking-[-0.1504px] text-[#314158]">
+          {userProfile.fullName}
+        </p>
+        <p
+          className="h-4 truncate text-xs leading-4 text-[#90a1b9]"
+          title={email || undefined}
+        >
+          {email}
+        </p>
+      </div>
+
+      <div className="flex h-[41px] items-start border-b border-[#f1f5f9] px-4 pb-px pt-[12.5px]">
+        <span className="inline-flex h-[18px] shrink-0 items-center rounded-full bg-[#f1f5f9] px-2 py-[2px] text-xs leading-4 text-[#45556c]">
+          {userProfile.roleLabel}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => {
+          onClose()
+          router.push(`/${projectId}/perfil`)
         }}
+        className={cn(
+          "flex h-9 w-full items-center gap-2 px-4 text-left",
+          "text-sm font-medium leading-5 tracking-[-0.1504px] text-[#314158]",
+          "transition-colors duration-150 hover:bg-[#f8fafc]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#314158]/20",
+        )}
       >
-        <div className="flex items-start gap-3">
-          <UserAvatar
-            firstName={userProfile.firstName}
-            lastName={userProfile.lastName}
-            email={userProfile.email}
-            avatarUrl={userProfile.avatarUrl}
-            size={31}
-          />
-          <div className="min-w-0 flex-1 overflow-hidden">
-            <p className="truncate" style={{ fontSize: "14px", fontWeight: 500, lineHeight: "19.6px", color: "#314158" }}>
-              {userProfile.fullName}
-            </p>
-            <p
-              className="truncate"
-              style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16.8px", color: "#90a1b9", marginTop: "2px" }}
-              title={userProfile.email || user?.email || undefined}
-            >
-              {userProfile.email || user?.email}
-            </p>
-            <div style={{ marginTop: "10px", marginBottom: "4px" }}>
-              <span
-                style={{
-                  display: "inline-block",
-                  backgroundColor: "#f1f5f9",
-                  borderRadius: "9999px",
-                  padding: "2px 8px",
-                  fontSize: "12px",
-                  fontWeight: 400,
-                  color: "#45556c",
-                  lineHeight: "16.8px",
-                }}
-              >
-                {userProfile.roleLabel}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+        <ProfileMenuProfileIcon />
+        Mi Perfil
+      </button>
 
-      {/* Menu items */}
-      <div style={{ padding: "4px 0" }}>
-        {/* Mi Perfil */}
-        <button
-          type="button"
-          role="menuitem"
-          onClick={() => { onClose(); router.push(`/${projectId}/perfil`) }}
-          className={[
-            "flex w-full items-center gap-3 rounded-lg",
-            "text-[#314158] transition-all duration-150",
-            "hover:bg-[#f1f5f9] hover:text-[#1d293d]",
-            "active:scale-[0.98] active:bg-[#e8edf3]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#314158]/20",
-          ].join(" ")}
-          style={{
-            padding: "9px 12px",
-            margin: "0 4px",
-            width: "calc(100% - 8px)",
-            fontSize: "14px",
-            fontWeight: 500,
-            lineHeight: "19.6px",
-            border: "none",
-            cursor: "pointer",
-            textAlign: "left",
-          }}
-        >
-          <User
-            aria-hidden
-            style={{ width: "16px", height: "16px", flexShrink: 0, color: "currentColor", strokeWidth: 1.33 }}
-          />
-          Mi Perfil
-        </button>
-
-        {/* Cerrar sesión */}
-        <button
-          type="button"
-          role="menuitem"
-          onClick={handleLogout}
-          className={[
-            "flex w-full items-center gap-3 rounded-lg",
-            "text-[#e7000b] transition-all duration-150",
-            "hover:bg-[#fff1f1]",
-            "active:scale-[0.98] active:bg-[#ffe4e4]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e7000b]/20",
-          ].join(" ")}
-          style={{
-            padding: "9px 12px",
-            margin: "0 4px",
-            width: "calc(100% - 8px)",
-            fontSize: "14px",
-            fontWeight: 500,
-            lineHeight: "19.6px",
-            border: "none",
-            cursor: "pointer",
-            textAlign: "left",
-          }}
-        >
-          <LogOut
-            aria-hidden
-            style={{ width: "16px", height: "16px", flexShrink: 0, color: "currentColor", strokeWidth: 1.33 }}
-          />
-          Cerrar sesión
-        </button>
-      </div>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={handleLogout}
+        className={cn(
+          "flex h-9 w-full items-center gap-2 px-4 text-left",
+          "text-sm font-medium leading-5 tracking-[-0.1504px] text-[#e7000b]",
+          "transition-colors duration-150 hover:bg-[#fff1f1]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#e7000b]/20",
+        )}
+      >
+        <ProfileMenuLogoutIcon />
+        Cerrar sesión
+      </button>
     </div>
   )
 }

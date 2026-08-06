@@ -1,12 +1,4 @@
-import type { LucideIcon } from "lucide-react"
-import {
-  LayoutDashboard,
-  FileCheck2,
-  BadgeCheck,
-  Users,
-  UserCircle2,
-  Settings,
-} from "lucide-react"
+import type { ProjectNavIconId } from "@/components/project-shell/ProjectNavIcons"
 import {
   isNavSegmentAllowed,
   type ProjectPermissions,
@@ -15,16 +7,16 @@ import {
 export type ProjectNavItem = {
   label: string
   segment: string
-  icon: LucideIcon
+  icon: ProjectNavIconId
 }
 
 export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
-  { label: "Dashboard", segment: "", icon: LayoutDashboard },
-  { label: "Trabajo Diario", segment: "trabajo-diario", icon: FileCheck2 },
-  { label: "Certificaciones", segment: "certificaciones", icon: BadgeCheck },
-  { label: "Equipo", segment: "equipo", icon: Users },
-  { label: "Clientes", segment: "clientes", icon: UserCircle2 },
-  { label: "Configuración", segment: "configuracion", icon: Settings },
+  { label: "Dashboard", segment: "", icon: "dashboard" },
+  { label: "Trabajo Diario", segment: "trabajo-diario", icon: "trabajo-diario" },
+  { label: "Certificaciones", segment: "certificaciones", icon: "certificaciones" },
+  { label: "Equipo", segment: "equipo", icon: "equipo" },
+  { label: "Clientes", segment: "clientes", icon: "clientes" },
+  { label: "Configuración", segment: "configuracion", icon: "configuracion" },
 ]
 
 export function getAllowedProjectNavItems(
