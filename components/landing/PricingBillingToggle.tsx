@@ -34,20 +34,11 @@ export function PricingBillingToggle({
         <div className="relative flex h-[43px] w-[273px]">
           <span
             aria-hidden
-            className="absolute inset-y-0 rounded-full bg-[#272a2d] transition-[left,right,width] duration-300 ease-out motion-reduce:transition-none"
-            style={
-              isAnnual
-                ? {
-                    left: 0,
-                    right: "auto",
-                    width: TAB_ANNUAL_WIDTH_PX,
-                  }
-                : {
-                    left: "auto",
-                    right: 0,
-                    width: TAB_MONTHLY_WIDTH_PX,
-                  }
-            }
+            className="absolute inset-y-0 left-0 rounded-full bg-[#272a2d] transition-[transform,width] duration-300 ease-in-out motion-reduce:transition-none"
+            style={{
+              width: isAnnual ? TAB_ANNUAL_WIDTH_PX : TAB_MONTHLY_WIDTH_PX,
+              transform: `translateX(${isAnnual ? 0 : TAB_ANNUAL_WIDTH_PX}px)`,
+            }}
           />
 
           <button

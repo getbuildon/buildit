@@ -28,7 +28,9 @@ export function LandingPricingPlans({
   return (
     <>
       <div className="px-6 pb-6">
-        <PricingBillingToggle value={billing} onChange={onBillingChange} />
+        <div className="flex justify-center">
+          <PricingBillingToggle value={billing} onChange={onBillingChange} />
+        </div>
 
         <div className="flex flex-col gap-3 pt-6">
           {PRICING_PLANS.map((plan) => (
