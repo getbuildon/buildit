@@ -1,5 +1,7 @@
 export const STACK_PEEK_PX = 12
 export const CARD_ENTER_PX = 80
+/** Escala inicial de la tarjeta que entra (zoom-in al aparecer) */
+export const CARD_ENTER_SCALE = 1.16
 /** px de scroll anclado para completar las 3 transiciones de tarjetas */
 export const SCROLL_DISTANCE_PX = 540
 export const STACK_SCALE_MIN = 0.89

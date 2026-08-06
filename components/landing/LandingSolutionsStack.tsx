@@ -10,6 +10,7 @@ import { SolutionSlideCard } from "@/components/landing/SolutionSlideCard"
 import { SOLUTION_SLIDES } from "@/lib/landing/solutionSlides"
 import {
   CARD_ENTER_PX,
+  CARD_ENTER_SCALE,
   getPeekOffset,
   getStackedCardVars,
   SCROLL_DISTANCE_PX,
@@ -41,7 +42,7 @@ function setInitialCardState(cards: HTMLDivElement[]) {
   })
   gsap.set(cards.slice(1), {
     y: CARD_ENTER_PX,
-    scale: 1,
+    scale: CARD_ENTER_SCALE,
     opacity: 0,
     pointerEvents: "none",
     force3D: true,
@@ -59,7 +60,7 @@ function buildTimeline(cards: HTMLDivElement[]) {
 
     timeline.to(
       entering,
-      { y: 0, opacity: 1, pointerEvents: "auto", force3D: true },
+      { y: 0, scale: 1, opacity: 1, pointerEvents: "auto", force3D: true },
       index === 1 ? 0 : ">",
     )
 
