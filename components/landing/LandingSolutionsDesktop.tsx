@@ -15,10 +15,12 @@ import {
   DESKTOP_CARD_HEIGHT_PX,
   DESKTOP_CARDS_TO_CONTROLS_PX,
   DESKTOP_CONTENT_WIDTH_PX,
+  DESKTOP_CONTROLS_BOTTOM_PX,
   DESKTOP_HEADER_GAP_PX,
   DESKTOP_HEADER_TO_CARDS_PX,
   DESKTOP_HEADING_WIDTH_PX,
   DESKTOP_SECTION_HEIGHT_PX,
+  DESKTOP_SECTION_TOP_PX,
   DESKTOP_STACK_LEFT_PADDING_PX,
   DESKTOP_TRACK_WIDTH_PX,
   getDesktopCardTarget,
@@ -132,7 +134,10 @@ export function LandingSolutionsDesktop() {
         style={{ height: DESKTOP_SECTION_HEIGHT_PX }}
       />
 
-      <div className="relative z-10 mx-auto max-w-[1280px] px-20 py-28">
+      <div
+        className="relative z-10 mx-auto max-w-[1280px] px-20"
+        style={{ paddingTop: DESKTOP_SECTION_TOP_PX }}
+      >
         <div
           className="flex items-end"
           style={{
@@ -190,54 +195,57 @@ export function LandingSolutionsDesktop() {
               ))}
             </div>
           </div>
-
-          <div
-            className="flex items-center justify-center gap-6"
-            style={{ paddingTop: DESKTOP_CARDS_TO_CONTROLS_PX }}
-          >
-            <button
-              type="button"
-              aria-label="Solución anterior"
-              disabled={activeIndex === 0}
-              onClick={() => goToSlide(activeIndex - 1)}
-              className="grid size-10 place-items-center rounded-full border border-white/20 text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
-            >
-              <ChevronLeft className="size-5" strokeWidth={1.75} />
-            </button>
-
-            <div className="flex items-center gap-2">
-              {SOLUTION_SLIDES.map((slide, index) => {
-                const isActive = index === activeIndex
-
-                return (
-                  <button
-                    key={slide.number}
-                    type="button"
-                    aria-label={`Ir a solución ${index + 1}`}
-                    aria-current={isActive ? "true" : undefined}
-                    onClick={() => goToSlide(index)}
-                    className={cn(
-                      "rounded-full transition-all duration-300",
-                      isActive
-                        ? "h-2 w-6 bg-primary"
-                        : "size-2 bg-white/25 hover:bg-white/40",
-                    )}
-                  />
-                )
-              })}
-            </div>
-
-            <button
-              type="button"
-              aria-label="Solución siguiente"
-              disabled={activeIndex === SLIDE_COUNT - 1}
-              onClick={() => goToSlide(activeIndex + 1)}
-              className="grid size-10 place-items-center rounded-full border border-white/20 text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
-            >
-              <ChevronRight className="size-5" strokeWidth={1.75} />
-            </button>
-          </div>
         </div>
+      </div>
+
+      <div
+        className="relative z-10 flex items-center justify-center gap-6"
+        style={{
+          marginTop: DESKTOP_CARDS_TO_CONTROLS_PX,
+          paddingBottom: DESKTOP_CONTROLS_BOTTOM_PX,
+        }}
+      >
+        <button
+          type="button"
+          aria-label="Solución anterior"
+          disabled={activeIndex === 0}
+          onClick={() => goToSlide(activeIndex - 1)}
+          className="grid size-10 place-items-center rounded-full border border-white/20 text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          <ChevronLeft className="size-5" strokeWidth={1.75} />
+        </button>
+
+        <div className="flex items-center gap-2">
+          {SOLUTION_SLIDES.map((slide, index) => {
+            const isActive = index === activeIndex
+
+            return (
+              <button
+                key={slide.number}
+                type="button"
+                aria-label={`Ir a solución ${index + 1}`}
+                aria-current={isActive ? "true" : undefined}
+                onClick={() => goToSlide(index)}
+                className={cn(
+                  "rounded-full transition-all duration-300",
+                  isActive
+                    ? "h-2 w-6 bg-primary"
+                    : "size-2 bg-white/25 hover:bg-white/40",
+                )}
+              />
+            )
+          })}
+        </div>
+
+        <button
+          type="button"
+          aria-label="Solución siguiente"
+          disabled={activeIndex === SLIDE_COUNT - 1}
+          onClick={() => goToSlide(activeIndex + 1)}
+          className="grid size-10 place-items-center rounded-full border border-white/20 text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          <ChevronRight className="size-5" strokeWidth={1.75} />
+        </button>
       </div>
     </div>
   )
