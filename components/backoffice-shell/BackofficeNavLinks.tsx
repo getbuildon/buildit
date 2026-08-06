@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 
+import { useBackofficeNavigation } from "@/components/backoffice-shell/BackofficeNavigationContext"
 import {
   BACKOFFICE_NAV_ITEMS,
   backofficeHref,
@@ -22,6 +23,8 @@ export function BackofficeNavLinks({
   className,
   linkClassName,
 }: BackofficeNavLinksProps) {
+  const { navigate } = useBackofficeNavigation()
+
   return (
     <nav className={cn("flex flex-col gap-1", className)}>
       {BACKOFFICE_NAV_ITEMS.map((item) => {
@@ -33,7 +36,16 @@ export function BackofficeNavLinks({
           <Link
             key={item.segment}
             href={href}
-            onClick={onNavigate}
+            onClick={(event) => {
+              if (active) {
+                event.preventDefault()
+                return
+              }
+
+              event.preventDefault()
+              onNavigate?.()
+              navigate(href)
+            }}
             aria-current={active ? "page" : undefined}
             className={cn(
               "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.25 text-[13px] font-medium leading-[19.5px] transition-colors",

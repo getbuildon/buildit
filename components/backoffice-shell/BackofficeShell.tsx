@@ -4,7 +4,12 @@ import { useEffect, useState, type ReactNode } from "react"
 import { PanelLeft } from "lucide-react"
 
 import { BackofficeMobileHeader } from "@/components/backoffice-shell/BackofficeMobileHeader"
+import {
+  BackofficeNavigationProvider,
+  useBackofficeNavigation,
+} from "@/components/backoffice-shell/BackofficeNavigationContext"
 import { BackofficeSidebar } from "@/components/backoffice-shell/BackofficeSidebar"
+import { Spinner } from "@/components/ui/spinner"
 import { BACKOFFICE_SHELL } from "@/lib/backoffice/designTokens"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
 import { cn } from "@/lib/utils"
@@ -15,6 +20,17 @@ type BackofficeShellProps = {
 }
 
 export function BackofficeShell({ children, userProfile }: BackofficeShellProps) {
+  return (
+    <BackofficeNavigationProvider>
+      <BackofficeShellContent userProfile={userProfile}>
+        {children}
+      </BackofficeShellContent>
+    </BackofficeNavigationProvider>
+  )
+}
+
+function BackofficeShellContent({ children, userProfile }: BackofficeShellProps) {
+  const { isNavigating } = useBackofficeNavigation()
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   useEffect(() => {
@@ -60,6 +76,15 @@ export function BackofficeShell({ children, userProfile }: BackofficeShellProps)
       </aside>
 
       <main className="relative min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain">
+        {isNavigating ? (
+          <div
+            className="absolute inset-0 z-20 flex items-center justify-center bg-[#fefcfb]/70"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <Spinner className="size-8 text-[#ff7433]" />
+          </div>
+        ) : null}
         {!sidebarOpen ? (
           <button
             type="button"
