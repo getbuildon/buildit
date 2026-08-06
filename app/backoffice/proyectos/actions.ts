@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache"
 
 import { requireBackofficeUser } from "@/lib/auth/backofficeAccess"
 import { BACKOFFICE_PROYECTOS_PAGE_SIZE } from "@/lib/backoffice/proyectosQuery"
+import type {
+  BackofficeProjectsPlanFilter,
+  BackofficeProjectsStatusFilter,
+} from "@/lib/backoffice/proyectosQuery"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
 import { createAdminClient } from "@/utils/supabase/admin"
 
@@ -43,6 +47,8 @@ export type GetBackofficeProjectsParams = {
   page?: number
   pageSize?: number
   search?: string
+  plan?: BackofficeProjectsPlanFilter
+  status?: BackofficeProjectsStatusFilter
 }
 
 export type BackofficeProjectsResult = {
@@ -199,6 +205,44 @@ async function getPlanNamesByProject(
   return plansByProject
 }
 
+async function getProjectIdsForPlanFamily(
+  admin: ReturnType<typeof createAdminClient>,
+  planFamily: BackofficeProjectsPlanFilter,
+): Promise<string[] | null> {
+  if (planFamily === "all") return null
+
+  let plansQuery = admin.from("subscription_plans").select("id").eq("is_active", true)
+
+  if (planFamily === "compacto") {
+    plansQuery = plansQuery.like("slug", "compacto-%")
+  } else if (planFamily === "gran-escala") {
+    plansQuery = plansQuery.like("slug", "gran-escala-%")
+  } else {
+    plansQuery = plansQuery.eq("slug", "multiobra")
+  }
+
+  const { data: plans, error: plansError } = await plansQuery
+
+  if (plansError) {
+    throw new Error(plansError.message)
+  }
+
+  const planIds = (plans ?? []).map((plan) => plan.id as string)
+  if (planIds.length === 0) return []
+
+  const { data: subscriptions, error: subscriptionsError } = await admin
+    .from("project_subscriptions")
+    .select("project_id")
+    .in("plan_id", planIds)
+    .eq("status", "active")
+
+  if (subscriptionsError) {
+    throw new Error(subscriptionsError.message)
+  }
+
+  return [...new Set((subscriptions ?? []).map((row) => row.project_id as string))]
+}
+
 function mapProjectRows(
   rows: ProjectRow[],
   memberCounts: Map<string, number>,
@@ -269,6 +313,19 @@ export async function getBackofficeProjects(
   const page = parsePage(params.page)
   const pageSize = parsePageSize(params.pageSize)
   const search = sanitizeSearchTerm(params.search ?? "")
+  const planFilter = params.plan ?? "all"
+  const statusFilter = params.status ?? "all"
+
+  const projectIdsForPlan = await getProjectIdsForPlanFamily(admin, planFilter)
+  if (projectIdsForPlan !== null && projectIdsForPlan.length === 0) {
+    return {
+      projects: [],
+      totalCount: 0,
+      page: 1,
+      pageSize,
+      totalPages: 1,
+    }
+  }
 
   let query = admin
     .from("projects")
@@ -277,6 +334,16 @@ export async function getBackofficeProjects(
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
+
+  if (projectIdsForPlan !== null) {
+    query = query.in("id", projectIdsForPlan)
+  }
+
+  if (statusFilter === "active") {
+    query = query.eq("status", "active")
+  } else if (statusFilter === "inactive") {
+    query = query.neq("status", "active")
+  }
 
   if (search) {
     const pattern = `%${search}%`

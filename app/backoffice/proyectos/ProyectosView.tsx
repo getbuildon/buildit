@@ -22,11 +22,17 @@ import {
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { formatArgentinaTaskDate } from "@/lib/datetime/argentinaDateTime"
+import type {
+  BackofficeProjectsPlanFilter,
+  BackofficeProjectsStatusFilter,
+} from "@/lib/backoffice/proyectosQuery"
 import { cn } from "@/lib/utils"
 
 type ProyectosViewProps = {
   result: BackofficeProjectsResult
   initialSearch: string
+  initialPlan: BackofficeProjectsPlanFilter
+  initialStatus: BackofficeProjectsStatusFilter
 }
 
 const TABLE_GRID =
@@ -75,7 +81,12 @@ function formatStatus(status: string): string {
   return STATUS_LABELS[status] ?? status
 }
 
-function buildProyectosQueryString(options: { page?: number; q?: string }) {
+function buildProyectosQueryString(options: {
+  page?: number
+  q?: string
+  plan?: BackofficeProjectsPlanFilter
+  status?: BackofficeProjectsStatusFilter
+}) {
   const params = new URLSearchParams()
 
   if (options.page && options.page > 1) {
@@ -86,9 +97,71 @@ function buildProyectosQueryString(options: { page?: number; q?: string }) {
     params.set("q", options.q.trim())
   }
 
+  if (options.plan && options.plan !== "all") {
+    params.set("plan", options.plan)
+  }
+
+  if (options.status && options.status !== "all") {
+    params.set("status", options.status)
+  }
+
   const query = params.toString()
   return query ? `?${query}` : ""
 }
+
+function FilterTabs<T extends string>({
+  value,
+  onChange,
+  disabled,
+  tabs,
+  ariaLabel,
+}: {
+  value: T
+  onChange: (value: T) => void
+  disabled?: boolean
+  tabs: { id: T; label: string }[]
+  ariaLabel: string
+}) {
+  return (
+    <div className="flex items-center gap-1.5" role="tablist" aria-label={ariaLabel}>
+      {tabs.map((tab) => {
+        const selected = value === tab.id
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            disabled={disabled}
+            onClick={() => onChange(tab.id)}
+            className={cn(
+              "rounded-[7px] px-2.5 py-1.5 text-xs font-medium leading-4 transition-colors disabled:opacity-60",
+              selected
+                ? "bg-[#111113] text-white"
+                : "text-[#777b84] hover:text-[#363a3f]",
+            )}
+          >
+            {tab.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+const PLAN_FILTER_TABS: { id: BackofficeProjectsPlanFilter; label: string }[] = [
+  { id: "all", label: "Todos" },
+  { id: "compacto", label: "Compacto" },
+  { id: "gran-escala", label: "Gran Escala" },
+  { id: "multiobra", label: "Multiobra" },
+]
+
+const STATUS_FILTER_TABS: { id: BackofficeProjectsStatusFilter; label: string }[] =
+  [
+    { id: "all", label: "Todos" },
+    { id: "active", label: "Activo" },
+    { id: "inactive", label: "Inactivo" },
+  ]
 
 function ProjectRowActions({
   project,
@@ -245,7 +318,12 @@ function ProyectosPageJump({
   )
 }
 
-export function ProyectosView({ result, initialSearch }: ProyectosViewProps) {
+export function ProyectosView({
+  result,
+  initialSearch,
+  initialPlan,
+  initialStatus,
+}: ProyectosViewProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
@@ -259,10 +337,17 @@ export function ProyectosView({ result, initialSearch }: ProyectosViewProps) {
     setSearchInput(initialSearch)
   }, [initialSearch])
 
-  const navigate = (options: { page?: number; q?: string }) => {
+  const navigate = (options: {
+    page?: number
+    q?: string
+    plan?: BackofficeProjectsPlanFilter
+    status?: BackofficeProjectsStatusFilter
+  }) => {
     const href = `${pathname}${buildProyectosQueryString({
       page: options.page,
       q: options.q ?? searchInput,
+      plan: options.plan ?? initialPlan,
+      status: options.status ?? initialStatus,
     })}`
 
     startTransition(() => {
@@ -279,13 +364,15 @@ export function ProyectosView({ result, initialSearch }: ProyectosViewProps) {
           `${pathname}${buildProyectosQueryString({
             page: 1,
             q: searchInput,
+            plan: initialPlan,
+            status: initialStatus,
           })}`,
         )
       })
     }, 350)
 
     return () => window.clearTimeout(timeout)
-  }, [searchInput, initialSearch, pathname, router])
+  }, [searchInput, initialSearch, initialPlan, initialStatus, pathname, router])
 
   const rangeStart =
     result.totalCount === 0 ? 0 : (result.page - 1) * result.pageSize + 1
@@ -323,8 +410,25 @@ export function ProyectosView({ result, initialSearch }: ProyectosViewProps) {
             isPending && "opacity-70",
           )}
         >
-          <div className="flex flex-wrap items-center justify-end gap-4 border-b border-[#f4f5f6] px-4 py-3">
-            <label className="relative block w-full max-w-[320px]">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f4f5f6] px-4 py-3">
+            <div className="flex flex-wrap items-center gap-4">
+              <FilterTabs
+                value={initialPlan}
+                disabled={isPending}
+                tabs={PLAN_FILTER_TABS}
+                ariaLabel="Filtrar por tipo de plan"
+                onChange={(plan) => navigate({ page: 1, plan })}
+              />
+              <FilterTabs
+                value={initialStatus}
+                disabled={isPending}
+                tabs={STATUS_FILTER_TABS}
+                ariaLabel="Filtrar por estado"
+                onChange={(status) => navigate({ page: 1, status })}
+              />
+            </div>
+
+            <label className="relative block w-full max-w-[300px]">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#696e77]"
                 strokeWidth={1.75}

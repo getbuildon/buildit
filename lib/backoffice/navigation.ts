@@ -1,6 +1,5 @@
 import {
   Building2,
-  CreditCard,
   FolderKanban,
   LayoutDashboard,
   UserRound,
@@ -14,7 +13,6 @@ export type BackofficeNavSegment =
   | "usuarios"
   | "empresas"
   | "proyectos"
-  | "subscripciones"
 
 export type BackofficeNavItem = {
   segment: BackofficeNavSegment
@@ -28,11 +26,6 @@ export const BACKOFFICE_NAV_ITEMS: BackofficeNavItem[] = [
   { segment: "usuarios", label: "Usuarios", icon: UserRound },
   { segment: "empresas", label: "Empresas", icon: Building2 },
   { segment: "proyectos", label: "Proyectos", icon: FolderKanban },
-  {
-    segment: "subscripciones",
-    label: "Subscripciones",
-    icon: CreditCard,
-  },
 ]
 
 export function backofficeHref(segment: BackofficeNavSegment) {
