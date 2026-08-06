@@ -207,3 +207,50 @@ export function getDefaultSurfaceTierId(plan: PricingPlan): string | undefined {
   if (!plan.surfaceTiers?.length) return undefined
   return plan.defaultSurfaceTierId ?? plan.surfaceTiers[0].id
 }
+
+export type PlanPriceBreakdown = {
+  isQuote: boolean
+  monthlyPrice: number | null
+  annualMonthlyPrice: number | null
+}
+
+export function getPlanPriceBreakdown(
+  plan: PricingPlan,
+  surfaceTierId?: string,
+): PlanPriceBreakdown {
+  if (plan.priceLabel) {
+    return { isQuote: true, monthlyPrice: null, annualMonthlyPrice: null }
+  }
+
+  if (plan.surfaceTiers?.length) {
+    const tier =
+      plan.surfaceTiers.find((item) => item.id === surfaceTierId) ??
+      plan.surfaceTiers.find((item) => item.id === plan.defaultSurfaceTierId) ??
+      plan.surfaceTiers[0]
+
+    return {
+      isQuote: false,
+      monthlyPrice: tier.monthlyPrice,
+      annualMonthlyPrice: tier.annualMonthlyPrice,
+    }
+  }
+
+  return {
+    isQuote: false,
+    monthlyPrice: plan.monthlyPrice ?? null,
+    annualMonthlyPrice: plan.annualMonthlyPrice ?? null,
+  }
+}
+
+export function getPlanSurfaceLabel(
+  plan: PricingPlan,
+  surfaceTierId?: string,
+): string {
+  const tier =
+    plan.surfaceTiers?.find((item) => item.id === surfaceTierId) ??
+    plan.surfaceTiers?.find((item) => item.id === plan.defaultSurfaceTierId) ??
+    plan.surfaceTiers?.[0]
+
+  if (tier) return tier.label
+  return plan.surface ?? plan.subtitle
+}
