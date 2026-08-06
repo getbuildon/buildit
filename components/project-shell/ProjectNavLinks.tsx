@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 import { useProjectAccess } from "@/components/project-shell/ProjectAccessProvider"
+import { useProjectNavigation } from "@/components/project-shell/ProjectNavigationContext"
 import { ProjectNavIcon } from "@/components/project-shell/ProjectNavIcons"
 import {
   getAllowedProjectNavItems,
@@ -27,6 +28,7 @@ export function ProjectNavLinks({
 }: ProjectNavLinksProps) {
   const pathname = usePathname()
   const { permissions } = useProjectAccess()
+  const { navigate } = useProjectNavigation()
   const navItems = getAllowedProjectNavItems(permissions)
 
   return (
@@ -39,7 +41,16 @@ export function ProjectNavLinks({
           <Link
             key={item.label}
             href={href}
-            onClick={onNavigate}
+            onClick={(event) => {
+              if (active) {
+                event.preventDefault()
+                return
+              }
+
+              event.preventDefault()
+              onNavigate?.()
+              navigate(href)
+            }}
             aria-current={active ? "page" : undefined}
             className={cn(
               "flex items-center rounded-[10px] transition-all duration-150",

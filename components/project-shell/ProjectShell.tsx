@@ -2,6 +2,8 @@
 
 import { useEffect, type ReactNode } from "react"
 
+import { ProjectNavigationProvider } from "@/components/project-shell/ProjectNavigationContext"
+
 type ProjectShellProps = {
   children: ReactNode
 }
@@ -23,11 +25,13 @@ export function ProjectShell({ children }: ProjectShellProps) {
   }, [])
 
   return (
-    <div
-      data-project-shell
-      className="fixed inset-0 flex overflow-hidden"
-    >
-      {children}
-    </div>
+    <ProjectNavigationProvider>
+      <div
+        data-project-shell
+        className="fixed inset-0 flex overflow-hidden"
+      >
+        {children}
+      </div>
+    </ProjectNavigationProvider>
   )
 }
