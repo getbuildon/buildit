@@ -205,11 +205,8 @@ export function LandingSolutionsStack() {
       >
         <LandingSolutionsHeader />
 
-        <div className="mt-[52px] px-6 pb-4">
-          <div
-            className="relative mx-auto w-full max-w-[324px] overflow-x-hidden pt-2"
-            style={{ paddingBottom: CARD_ENTER_PX }}
-          >
+        <div className="mt-[52px] px-6">
+          <div className="relative mx-auto w-full max-w-[324px] overflow-x-hidden overflow-y-visible pt-2">
             <div className="invisible pointer-events-none" aria-hidden>
               <SolutionSlideCard slide={SOLUTION_SLIDES[0]} />
             </div>
