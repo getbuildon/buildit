@@ -10,7 +10,7 @@ export function LandingPricingSection() {
   const [billing, setBilling] = useState<BillingPeriod>("annual")
 
   return (
-    <section id="planes" className="bg-[#fefcfb]">
+    <section id="planes" className="scroll-mt-[80px] bg-[#fefcfb]">
       <div className="px-6 pb-6 pt-10 text-center">
         <h2 className="font-recoleta text-2xl leading-[1.05] text-[#272a2d]">
           Planes que se adaptan a cada{" "}

@@ -1,15 +1,13 @@
 "use client"
 
 import Image from "next/image"
-import { useState } from "react"
 
-import { ContactTeamModal } from "@/components/landing/ContactTeamModal"
+import { useLandingActions } from "@/components/landing/LandingActionsProvider"
 
 export function LandingDemoSection() {
-  const [contactOpen, setContactOpen] = useState(false)
+  const { openContactModal } = useLandingActions()
 
   return (
-    <>
       <section id="demo" className="bg-primary">
         <div className="mx-auto max-w-[1280px] px-6 py-10">
           <div className="overflow-hidden rounded-[4px] bg-[#212225] shadow-[0px_48px_120px_0px_rgba(0,0,0,0.2)]">
@@ -29,7 +27,7 @@ export function LandingDemoSection() {
 
               <button
                 type="button"
-                onClick={() => setContactOpen(true)}
+                onClick={openContactModal}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-primary px-4 py-3.5 text-sm font-medium leading-[1.4] text-white"
               >
                 <Image
@@ -56,8 +54,5 @@ export function LandingDemoSection() {
           </div>
         </div>
       </section>
-
-      <ContactTeamModal open={contactOpen} onOpenChange={setContactOpen} />
-    </>
   )
 }

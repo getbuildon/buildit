@@ -1,3 +1,4 @@
+import { LandingActionsProvider } from "@/components/landing/LandingActionsProvider"
 import { LandingDemoSection } from "@/components/landing/LandingDemoSection"
 import { LandingFaqSection } from "@/components/landing/LandingFaqSection"
 import { LandingFooter } from "@/components/landing/LandingFooter"
@@ -8,6 +9,7 @@ import { LandingSolutionsSection } from "@/components/landing/LandingSolutionsSe
 
 export default function LandingPage() {
   return (
+    <LandingActionsProvider>
     <div className="landing-page min-h-screen overflow-x-hidden bg-background text-foreground">
       <LandingHeader />
       <div className="hidden lg:block">
@@ -19,5 +21,6 @@ export default function LandingPage() {
       <LandingFaqSection />
       <LandingFooter />
     </div>
+    </LandingActionsProvider>
   )
 }

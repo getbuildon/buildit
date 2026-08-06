@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Menu, X } from "lucide-react"
 import { useEffect, useState } from "react"
 
+import { useLandingActions } from "@/components/landing/LandingActionsProvider"
 import {
   AnimatedCollapsible,
   ANIMATED_COLLAPSE_DURATION_MS,
@@ -20,8 +21,31 @@ const NAV_LINKS = [
 
 export function LandingHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const { openContactModal, scrollToPlans } = useLandingActions()
 
   const closeMenu = () => setMenuOpen(false)
+
+  const handleNavClick = (
+    event: React.MouseEvent<HTMLAnchorElement>,
+    href: string,
+  ) => {
+    closeMenu()
+
+    if (href === "#planes") {
+      event.preventDefault()
+      scrollToPlans()
+    }
+  }
+
+  const handleSolicitarDemo = () => {
+    closeMenu()
+    openContactModal()
+  }
+
+  const handleVerPlanes = () => {
+    closeMenu()
+    scrollToPlans()
+  }
 
   useEffect(() => {
     if (!menuOpen) return
@@ -101,7 +125,7 @@ export function LandingHeader() {
                   key={link.href}
                   href={link.href}
                   className="border-b border-[#edeef0] py-4 text-lg leading-[1.2] tracking-[0.36px] text-[#363a3f]"
-                  onClick={closeMenu}
+                  onClick={(event) => handleNavClick(event, link.href)}
                 >
                   {link.label}
                 </Link>
@@ -126,20 +150,20 @@ export function LandingHeader() {
               </Link>
 
               <div className="flex gap-2">
-                <Link
-                  href="#demo"
+                <button
+                  type="button"
                   className="flex flex-1 items-center justify-center rounded-[10px] bg-[#edeef0] px-4 py-2.5 text-sm font-medium leading-[1.4] text-[#272a2d]"
-                  onClick={closeMenu}
+                  onClick={handleSolicitarDemo}
                 >
                   Solicitar demo
-                </Link>
-                <Link
-                  href="#planes"
+                </button>
+                <button
+                  type="button"
                   className="flex flex-1 items-center justify-center rounded-[10px] bg-[#272a2d] px-5 py-2.5 text-sm font-medium leading-[1.4] text-white"
-                  onClick={closeMenu}
+                  onClick={handleVerPlanes}
                 >
                   Ver planes
-                </Link>
+                </button>
               </div>
             </div>
           </div>

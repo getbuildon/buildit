@@ -1,7 +1,12 @@
+"use client"
+
 import Image from "next/image"
-import Link from "next/link"
+
+import { useLandingActions } from "@/components/landing/LandingActionsProvider"
 
 export function LandingHero() {
+  const { openContactModal, scrollToPlans } = useLandingActions()
+
   return (
     <section id="landing-hero" className="relative z-2 overflow-visible">
       <div className="relative">
@@ -30,8 +35,9 @@ export function LandingHero() {
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-9">
-            <Link
-              href="#planes"
+            <button
+              type="button"
+              onClick={scrollToPlans}
               className="inline-flex items-center gap-2 rounded-[10px] bg-primary px-6 py-3.5 text-base font-medium leading-[1.4] text-white"
             >
               <Image
@@ -43,14 +49,15 @@ export function LandingHero() {
                 className="size-4"
               />
               Ver planes
-            </Link>
+            </button>
 
-            <Link
-              href="#demo"
+            <button
+              type="button"
+              onClick={openContactModal}
               className="inline-flex items-center rounded-[10px] border border-[#777b84] px-[25px] py-[15px] text-base font-medium leading-[1.4] text-white"
             >
               Solicitar demo
-            </Link>
+            </button>
           </div>
         </div>
 
