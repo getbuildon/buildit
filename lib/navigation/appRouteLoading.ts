@@ -1,9 +1,8 @@
-export type AppRouteLoadingType = "home" | "project" | "backoffice"
+export type AppRouteLoadingType = "home" | "project" | "backoffice" | "company"
 
 const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "home",
   "login",
-  "company",
   "recovery-password",
   "perfil",
 ])
@@ -25,6 +24,10 @@ export function getAppRouteLoadingType(href: string): AppRouteLoadingType | null
 
   if (path === "/backoffice" || path.startsWith("/backoffice/")) {
     return "backoffice"
+  }
+
+  if (path === "/company/new" || path.startsWith("/company/")) {
+    return "company"
   }
 
   const segments = path.split("/").filter(Boolean)
@@ -53,6 +56,10 @@ export function hasReachedAppRoute(pathname: string, href: string) {
       return current.startsWith("/backoffice")
     }
 
+    return current === target || current.startsWith(`${target}/`)
+  }
+
+  if (targetType === "company") {
     return current === target || current.startsWith(`${target}/`)
   }
 

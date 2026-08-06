@@ -5,6 +5,13 @@ import { usePathname } from "next/navigation"
 import { type ReactNode, useState } from "react"
 import { ArrowLeftRight, ChevronDown } from "lucide-react"
 import { BuiltItIsoIcon } from "@/components/brand/BuiltItIsoIcon"
+import {
+  matchesCompanyNavHref,
+  useCompanyNavigation,
+  CompanyNavigationProvider,
+} from "@/components/company-shell/CompanyNavigationContext"
+import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
+import { Spinner } from "@/components/ui/spinner"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import type { CompanyData } from "@/lib/company/getCompanies"
 import {
@@ -24,6 +31,8 @@ type CompanySidebarProps = {
 
 function CompanySidebar({ company, userProfile }: CompanySidebarProps) {
   const pathname = usePathname()
+  const { navigate: navigateAppRoute } = useAppRouteNavigation()
+  const { navigate, pendingHref } = useCompanyNavigation()
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
@@ -65,6 +74,10 @@ function CompanySidebar({ company, userProfile }: CompanySidebarProps) {
         <Link
           href="/home"
           aria-label="Volver al inicio"
+          onClick={(event) => {
+            event.preventDefault()
+            navigateAppRoute("/home")
+          }}
           className={cn(
             "flex shrink-0 items-center justify-center rounded-[8px] bg-[#edeef0] p-1 text-[#afb3ba]",
             "transition-all duration-150 hover:bg-[#d8d9db] hover:text-[#696e77] active:scale-95",
@@ -78,13 +91,24 @@ function CompanySidebar({ company, userProfile }: CompanySidebarProps) {
       <nav className="flex flex-1 flex-col overflow-y-auto" style={{ padding: "16px 12px 12px", gap: "4px" }}>
         {COMPANY_NAV_ITEMS.map((item) => {
           const href = companyHref(company.id, item.segment)
-          const active = isCompanyNavActive(pathname, company.id, item.segment)
+          const active = pendingHref
+            ? matchesCompanyNavHref(pendingHref, href)
+            : isCompanyNavActive(pathname, company.id, item.segment)
           const Icon = item.icon
 
           return (
             <Link
               key={item.segment}
               href={href}
+              onClick={(event) => {
+                if (active) {
+                  event.preventDefault()
+                  return
+                }
+
+                event.preventDefault()
+                navigate(href)
+              }}
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex items-center rounded-[10px] transition-all duration-150",
@@ -184,9 +208,34 @@ type CompanyWorkspaceProps = {
 
 export function CompanyWorkspace({ company, userProfile, children }: CompanyWorkspaceProps) {
   return (
+    <CompanyNavigationProvider>
+      <CompanyWorkspaceContent company={company} userProfile={userProfile}>
+        {children}
+      </CompanyWorkspaceContent>
+    </CompanyNavigationProvider>
+  )
+}
+
+function CompanyWorkspaceContent({
+  company,
+  userProfile,
+  children,
+}: CompanyWorkspaceProps) {
+  const { isNavigating } = useCompanyNavigation()
+
+  return (
     <div className="flex min-h-screen" style={{ backgroundColor: SHELL_COLORS.mainBg }}>
       <CompanySidebar company={company} userProfile={userProfile} />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
+        {isNavigating ? (
+          <div
+            className="absolute inset-0 z-20 flex items-center justify-center bg-[#fefcfb]/70"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <Spinner className="size-8 text-[#ff7433]" />
+          </div>
+        ) : null}
         <main className="flex-1">
           <div
             className="mx-auto w-full"
