@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ChevronDown, LogOut, UserCircle } from "lucide-react"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { useAuth } from "@/context/AuthContextSupabase"
+import { cn } from "@/lib/utils"
 
 type UserMenuProps = {
   displayName: string
@@ -53,25 +54,12 @@ export function UserMenu({
     <div ref={ref} style={{ position: "relative" }}>
       {/* Trigger */}
       <button
+        type="button"
         onClick={() => setIsOpen((v) => !v)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          padding: "5px 10px 5px 5px",
-          borderRadius: "8px",
-          border: "1px solid rgba(255,255,255,0.2)",
-          backgroundColor: isOpen ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.08)",
-          cursor: "pointer",
-          transition: "background-color 0.15s",
-          color: "#ffffff",
-        }}
-        onMouseEnter={(e) => {
-          if (!isOpen) (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.12)"
-        }}
-        onMouseLeave={(e) => {
-          if (!isOpen) (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.08)"
-        }}
+        className={cn(
+          "flex cursor-pointer items-center gap-2 rounded-lg py-1.5 pl-1.5 pr-2.5 text-white/85 transition-colors hover:bg-white/10 hover:text-white",
+          isOpen && "bg-white/10 text-white",
+        )}
       >
         <UserAvatar
           firstName={resolvedFirstName}
@@ -81,18 +69,15 @@ export function UserMenu({
           size={26}
           textClassName="text-[11px] font-semibold text-white"
         />
-        <span style={{ fontSize: "13px", fontWeight: 500, maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span className="max-w-[120px] truncate text-[13px] font-medium">
           {displayName}
         </span>
         <ChevronDown
-          style={{
-            width: "14px",
-            height: "14px",
-            opacity: 0.7,
-            flexShrink: 0,
-            transition: "transform 0.15s",
-            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-          }}
+          className={cn(
+            "size-3.5 shrink-0 text-white/70 transition-transform",
+            isOpen && "rotate-180",
+          )}
+          aria-hidden
         />
       </button>
 

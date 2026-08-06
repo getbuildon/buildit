@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { AddProjectCard } from "@/components/projects/AddProjectCard"
 import { ProjectCard } from "@/components/projects/ProjectCard"
 import { HomePageLayout } from "@/components/home/HomePageLayout"
 import { HomePageSkeleton } from "@/components/home/HomePageSkeleton"
@@ -94,7 +93,6 @@ function HomePage() {
         {projects.map((project) => (
           <ProjectCard key={project.projectId} project={project} />
         ))}
-        {canCreateProjects ? <AddProjectCard /> : null}
       </div>
     </HomePageLayout>
   )

@@ -34,12 +34,13 @@ export const HOME_TYPE = {
 /** Layout responsive compartido entre home y skeleton. */
 export const HOME_LAYOUT = {
   shell:
-    "relative flex min-h-[100dvh] flex-col items-center px-4 pb-10 pt-4 text-white sm:px-6 sm:pt-6 lg:px-10 lg:pb-12",
-  topBarWrap: "flex w-full max-w-[1080px] shrink-0 justify-center",
+    "relative flex min-h-[100dvh] flex-col items-center px-4 pb-10 pt-4 text-white sm:px-6 sm:pt-6 lg:px-10 lg:pb-0 lg:pt-0",
+  topBarWrap:
+    "flex w-full max-w-[1080px] shrink-0 justify-center lg:absolute lg:right-10 lg:top-6 lg:z-10 lg:w-auto lg:max-w-none lg:justify-end xl:right-16",
   topBar:
     "flex w-full flex-wrap items-center justify-end gap-2 sm:gap-3",
   content:
-    "flex w-full max-w-[1080px] flex-1 flex-col items-center justify-center pt-8 sm:pt-10 lg:pt-12",
+    "flex w-full max-w-[1080px] flex-1 flex-col items-center justify-center py-8 sm:py-10 lg:min-h-[100dvh] lg:flex-none lg:py-0",
   header:
     "flex w-full max-w-[720px] flex-col items-center gap-2 px-1 text-center sm:gap-3",
   greeting:

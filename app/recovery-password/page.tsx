@@ -5,6 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { ArrowLeft, Eye, EyeOff, Lock, Mail } from "lucide-react"
 import { AuthFormCard, AuthSplitLayout } from "@/components/auth/AuthSplitLayout"
+import {
+  AUTH_FORM_TITLE_CLASSNAME,
+  AUTH_INPUT_CLASSNAME,
+  AUTH_PASSWORD_INPUT_CLASSNAME,
+  AuthFieldIcon,
+  AuthFieldToggle,
+} from "@/components/auth/authFormStyles"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -201,13 +208,11 @@ function RecoveryPasswordPage() {
     }
   }
 
-  const inputClassName = cn(
-    "h-[46px] w-full rounded-[10px] border bg-transparent pl-10 shadow-none",
-    LOGIN_TYPE.fieldInput,
-    "focus-visible:border-[#e2e8f0] focus-visible:ring-0",
-  )
-
-  const passwordInputClassName = cn(inputClassName, "pr-10")
+  const inputStyle = {
+    backgroundColor: LOGIN_COLORS.inputBg,
+    borderColor: LOGIN_COLORS.inputBorder,
+    color: "#0a0a0a",
+  }
 
   if (phase === "verifying" || (phase === "request" && (authLoading || user))) {
     return (
@@ -228,7 +233,7 @@ function RecoveryPasswordPage() {
     return (
       <AuthSplitLayout>
         <AuthFormCard>
-          <h2 className={LOGIN_TYPE.cardTitle} style={{ color: LOGIN_COLORS.title }}>
+          <h2 className={AUTH_FORM_TITLE_CLASSNAME} style={{ color: LOGIN_COLORS.title }}>
             Enlace inválido
           </h2>
           <p
@@ -256,7 +261,7 @@ function RecoveryPasswordPage() {
     return (
       <AuthSplitLayout>
         <AuthFormCard>
-          <h2 className={LOGIN_TYPE.cardTitle} style={{ color: LOGIN_COLORS.title }}>
+          <h2 className={AUTH_FORM_TITLE_CLASSNAME} style={{ color: LOGIN_COLORS.title }}>
             Revisá tu correo
           </h2>
           <p
@@ -288,7 +293,7 @@ function RecoveryPasswordPage() {
     return (
       <AuthSplitLayout>
         <AuthFormCard>
-          <h2 className={LOGIN_TYPE.cardTitle} style={{ color: LOGIN_COLORS.title }}>
+          <h2 className={AUTH_FORM_TITLE_CLASSNAME} style={{ color: LOGIN_COLORS.title }}>
             Nueva contraseña
           </h2>
           <p className={LOGIN_TYPE.cardDescription} style={{ color: LOGIN_COLORS.cardDescription }}>
@@ -322,11 +327,10 @@ function RecoveryPasswordPage() {
               >
                 Nueva contraseña
               </Label>
-              <div className="relative h-[46px]">
-                <Lock
-                  className="pointer-events-none absolute top-[15px] left-3 size-4 text-[#64748b]"
-                  aria-hidden
-                />
+              <div className="relative">
+                <AuthFieldIcon>
+                  <Lock className="size-4" strokeWidth={1.75} aria-hidden />
+                </AuthFieldIcon>
                 <Input
                   id="recovery-password"
                   name="password"
@@ -337,30 +341,27 @@ function RecoveryPasswordPage() {
                   aria-invalid={Boolean(passwordFieldErrors.password)}
                   disabled={updateSuccess}
                   className={cn(
-                    passwordInputClassName,
+                    AUTH_PASSWORD_INPUT_CLASSNAME,
                     "placeholder:text-[rgba(10,10,10,0.5)]",
                     passwordFieldErrors.password && "border-red-400",
                   )}
                   style={{
-                    backgroundColor: LOGIN_COLORS.inputBg,
+                    ...inputStyle,
                     borderColor: passwordFieldErrors.password
                       ? undefined
                       : LOGIN_COLORS.inputBorder,
-                    color: "#0a0a0a",
                   }}
                 />
-                <button
-                  type="button"
-                  className="absolute top-[15px] right-3 text-[#64748b]"
+                <AuthFieldToggle
+                  label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                   onClick={() => setShowPassword((prev) => !prev)}
-                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
                   {showPassword ? (
                     <EyeOff className="size-4" aria-hidden />
                   ) : (
                     <Eye className="size-4" aria-hidden />
                   )}
-                </button>
+                </AuthFieldToggle>
               </div>
               {passwordFieldErrors.password ? (
                 <p className="text-sm text-red-600">{passwordFieldErrors.password}</p>
@@ -375,11 +376,10 @@ function RecoveryPasswordPage() {
               >
                 Confirmar contraseña
               </Label>
-              <div className="relative h-[46px]">
-                <Lock
-                  className="pointer-events-none absolute top-[15px] left-3 size-4 text-[#64748b]"
-                  aria-hidden
-                />
+              <div className="relative">
+                <AuthFieldIcon>
+                  <Lock className="size-4" strokeWidth={1.75} aria-hidden />
+                </AuthFieldIcon>
                 <Input
                   id="recovery-confirm-password"
                   name="confirmPassword"
@@ -390,32 +390,29 @@ function RecoveryPasswordPage() {
                   aria-invalid={Boolean(passwordFieldErrors.confirmPassword)}
                   disabled={updateSuccess}
                   className={cn(
-                    passwordInputClassName,
+                    AUTH_PASSWORD_INPUT_CLASSNAME,
                     "placeholder:text-[rgba(10,10,10,0.5)]",
                     passwordFieldErrors.confirmPassword && "border-red-400",
                   )}
                   style={{
-                    backgroundColor: LOGIN_COLORS.inputBg,
+                    ...inputStyle,
                     borderColor: passwordFieldErrors.confirmPassword
                       ? undefined
                       : LOGIN_COLORS.inputBorder,
-                    color: "#0a0a0a",
                   }}
                 />
-                <button
-                  type="button"
-                  className="absolute top-[15px] right-3 text-[#64748b]"
-                  onClick={() => setShowConfirmPassword((prev) => !prev)}
-                  aria-label={
+                <AuthFieldToggle
+                  label={
                     showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"
                   }
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="size-4" aria-hidden />
                   ) : (
                     <Eye className="size-4" aria-hidden />
                   )}
-                </button>
+                </AuthFieldToggle>
               </div>
               {passwordFieldErrors.confirmPassword ? (
                 <p className="text-sm text-red-600">{passwordFieldErrors.confirmPassword}</p>
@@ -426,7 +423,7 @@ function RecoveryPasswordPage() {
               type="submit"
               disabled={updateLoading || updateSuccess}
               className={cn(
-                "h-[44px] w-full rounded-[10px] py-2.5 hover:opacity-90",
+                "h-11 w-full rounded-[10px] py-2.5 hover:opacity-90 sm:h-[44px]",
                 LOGIN_TYPE.button,
               )}
               style={{ backgroundColor: LOGIN_COLORS.primary, color: "#ffffff" }}
@@ -442,7 +439,7 @@ function RecoveryPasswordPage() {
   return (
     <AuthSplitLayout>
       <AuthFormCard>
-        <h2 className={LOGIN_TYPE.cardTitle} style={{ color: LOGIN_COLORS.title }}>
+        <h2 className={AUTH_FORM_TITLE_CLASSNAME} style={{ color: LOGIN_COLORS.title }}>
           Recuperar contraseña
         </h2>
 
@@ -468,11 +465,10 @@ function RecoveryPasswordPage() {
             >
               Correo electrónico
             </Label>
-            <div className="relative h-[46px]">
-              <Mail
-                className="pointer-events-none absolute top-[15px] left-3 size-4 text-[#64748b]"
-                aria-hidden
-              />
+            <div className="relative">
+              <AuthFieldIcon>
+                <Mail className="size-4" strokeWidth={1.75} aria-hidden />
+              </AuthFieldIcon>
               <Input
                 id="recovery-email"
                 name="email"
@@ -485,14 +481,13 @@ function RecoveryPasswordPage() {
                 placeholder="tu@ejemplo.com"
                 aria-invalid={Boolean(fieldError)}
                 className={cn(
-                  inputClassName,
+                  AUTH_INPUT_CLASSNAME,
                   "pr-4 placeholder:text-[rgba(10,10,10,0.5)]",
                   fieldError && "border-red-400",
                 )}
                 style={{
-                  backgroundColor: LOGIN_COLORS.inputBg,
+                  ...inputStyle,
                   borderColor: fieldError ? undefined : LOGIN_COLORS.inputBorder,
-                  color: "#0a0a0a",
                 }}
               />
             </div>
@@ -503,7 +498,7 @@ function RecoveryPasswordPage() {
             type="submit"
             disabled={isLoading}
             className={cn(
-              "h-[44px] w-full rounded-[10px] py-2.5 hover:opacity-90",
+              "h-11 w-full rounded-[10px] py-2.5 hover:opacity-90 sm:h-[44px]",
               LOGIN_TYPE.button,
             )}
             style={{ backgroundColor: LOGIN_COLORS.primary, color: "#ffffff" }}
