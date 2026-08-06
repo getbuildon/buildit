@@ -11,6 +11,9 @@ import { SOLUTION_SLIDES } from "@/lib/landing/solutionSlides"
 import {
   CARD_ENTER_PX,
   CARD_ENTER_SCALE,
+  CARD_HEIGHT_PX,
+  CARD_STACK_STAGE_WIDTH_PX,
+  CARD_WIDTH_PX,
   getPeekOffset,
   getStackedCardVars,
   SCROLL_DISTANCE_PX,
@@ -187,24 +190,41 @@ export function LandingSolutionsStack() {
         <div className="relative z-10 mx-auto w-full max-w-[390px] pt-10">
         <LandingSolutionsHeader />
 
-        <div className="mt-[52px] px-6">
-          <div className="relative mx-auto w-full max-w-[324px] overflow-hidden pt-2">
-            <div className="invisible pointer-events-none" aria-hidden>
-              <SolutionSlideCard slide={SOLUTION_SLIDES[0]} />
+        <div className="mt-[52px] flex justify-center">
+          <div
+            className="relative overflow-hidden pt-2"
+            style={{
+              width: CARD_STACK_STAGE_WIDTH_PX,
+              height: CARD_HEIGHT_PX + 8,
+            }}
+          >
+            <div
+              className="invisible pointer-events-none mx-auto"
+              style={{ width: CARD_WIDTH_PX, height: CARD_HEIGHT_PX }}
+              aria-hidden
+            >
+              <SolutionSlideCard fixedSize slide={SOLUTION_SLIDES[0]} />
             </div>
 
             {SOLUTION_SLIDES.map((slide, index) => (
               <div
                 key={slide.number}
-                data-solution-card
-                className="absolute inset-x-0 top-2 origin-top will-change-transform"
+                className="absolute top-2 left-1/2 -translate-x-1/2"
                 style={{
+                  width: CARD_WIDTH_PX,
                   zIndex: 10 + index,
-                  opacity: index === 0 ? 1 : 0,
-                  pointerEvents: index === 0 ? "auto" : "none",
                 }}
               >
-                <SolutionSlideCard slide={slide} stacked={index > 0} />
+                <div
+                  data-solution-card
+                  className="origin-top will-change-transform"
+                  style={{
+                    opacity: index === 0 ? 1 : 0,
+                    pointerEvents: index === 0 ? "auto" : "none",
+                  }}
+                >
+                  <SolutionSlideCard fixedSize slide={slide} stacked={index > 0} />
+                </div>
               </div>
             ))}
           </div>
