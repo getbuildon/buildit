@@ -4,6 +4,8 @@ import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
+import { applyEmailLogo } from "./emailTemplateLogo.mjs"
+
 const projectRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const templatesDir = path.join(projectRoot, "supabase", "templates")
 
@@ -94,7 +96,10 @@ function readTemplatePayload() {
     }
 
     payload[template.subjectKey] = template.subject
-    payload[template.contentKey] = fs.readFileSync(filePath, "utf8")
+    payload[template.contentKey] = applyEmailLogo(
+      fs.readFileSync(filePath, "utf8"),
+      projectRoot,
+    )
   }
 
   return payload
@@ -113,6 +118,8 @@ Variables requeridas:
 Variables opcionales:
   SUPABASE_PROJECT_REF    Ref del proyecto (default: derivado de NEXT_PUBLIC_SUPABASE_URL)
   NEXT_PUBLIC_SUPABASE_URL
+
+El logo se incrusta en base64 al sincronizar para que funcione en mails enviados.
 
 Ejemplo:
   SUPABASE_ACCESS_TOKEN=sbp_... npm run sync:email-templates

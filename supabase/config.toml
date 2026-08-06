@@ -123,19 +123,19 @@ max_frequency = "1s"
 
 [auth.email.template.invite]
 subject = "Te invitaron a BuildOn"
-content_path = "./supabase/templates/invite.html"
+content_path = "./supabase/templates/generated/invite.html"
 
 [auth.email.template.confirmation]
 subject = "Confirmá tu correo en BuildOn"
-content_path = "./supabase/templates/confirmation.html"
+content_path = "./supabase/templates/generated/confirmation.html"
 
 [auth.email.template.recovery]
 subject = "Restablecé tu contraseña en BuildOn"
-content_path = "./supabase/templates/recovery.html"
+content_path = "./supabase/templates/generated/recovery.html"
 
 [auth.email.template.magic_link]
 subject = "Tu enlace de acceso a BuildOn"
-content_path = "./supabase/templates/magic_link.html"
+content_path = "./supabase/templates/generated/magic_link.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.

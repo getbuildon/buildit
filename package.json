@@ -10,9 +10,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "sync:email-templates": "node scripts/sync-supabase-email-templates.mjs",
-    "sync:email-templates:dry-run": "node scripts/sync-supabase-email-templates.mjs --dry-run",
-    "generate:email-logo": "npx --yes @resvg/resvg-js-cli --fit-width 200 public/logo-build-on.svg public/logo-build-on-email.png"
+    "sync:email-templates": "node scripts/prepare-email-templates.mjs && node scripts/sync-supabase-email-templates.mjs",
+    "sync:email-templates:dry-run": "node scripts/prepare-email-templates.mjs && node scripts/sync-supabase-email-templates.mjs --dry-run",
+    "prepare:email-templates": "node scripts/prepare-email-templates.mjs",
+    "generate:email-logo": "npx --yes @resvg/resvg-js-cli --fit-width 200 public/logo-build-on.svg public/logo-build-on-email.png && node scripts/prepare-email-templates.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
