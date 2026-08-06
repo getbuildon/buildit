@@ -1,7 +1,10 @@
 "use client"
 
-import { useLayoutEffect, useRef, useState, type RefObject } from "react"
+import gsap from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
+import { useLayoutEffect, useRef, useState } from "react"
 
+import { LandingHero } from "@/components/landing/LandingHero"
 import { LandingSolutionsHeader } from "@/components/landing/LandingSolutionsHeader"
 import { SolutionSlideCard } from "@/components/landing/SolutionSlideCard"
 import { SOLUTION_SLIDES } from "@/lib/landing/solutionSlides"
@@ -12,14 +15,23 @@ import {
   SCROLL_DISTANCE_PX,
 } from "@/lib/landing/solutionStackAnimation"
 
-type LandingSolutionsStackProps = {
-  sequenceRef: RefObject<HTMLDivElement | null>
+gsap.registerPlugin(ScrollTrigger)
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useLayoutEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)")
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
+
+  return isMobile
 }
 
-function setInitialCardState(
-  gsap: typeof import("gsap").default,
-  cards: HTMLDivElement[],
-) {
+function setInitialCardState(cards: HTMLDivElement[]) {
   gsap.set(cards[0], {
     y: 0,
     scale: 1,
@@ -36,10 +48,7 @@ function setInitialCardState(
   })
 }
 
-function buildTimeline(
-  gsap: typeof import("gsap").default,
-  cards: HTMLDivElement[],
-) {
+function buildTimeline(cards: HTMLDivElement[]) {
   const timeline = gsap.timeline({
     defaults: { ease: "none", duration: 1 },
   })
@@ -75,68 +84,51 @@ function buildTimeline(
   return timeline
 }
 
-function refreshScrollTriggerAfterImages(container: HTMLElement) {
-  const images = container.querySelectorAll("img")
-  if (images.length === 0) return
+function refreshAfterImages(container: HTMLElement) {
+  const pending = Array.from(container.querySelectorAll("img")).filter(
+    (img) => !img.complete,
+  )
 
-  let pending = 0
-  const done = () => {
-    pending -= 1
-    if (pending <= 0) {
-      void import("gsap/ScrollTrigger").then(({ ScrollTrigger }) => {
-        ScrollTrigger.refresh()
-      })
-    }
+  if (pending.length === 0) {
+    ScrollTrigger.refresh()
+    return
   }
 
-  images.forEach((img) => {
-    if (img.complete) return
-    pending += 1
+  let remaining = pending.length
+  const done = () => {
+    remaining -= 1
+    if (remaining <= 0) ScrollTrigger.refresh()
+  }
+
+  pending.forEach((img) => {
     img.addEventListener("load", done, { once: true })
     img.addEventListener("error", done, { once: true })
   })
 }
 
-export function LandingSolutionsStack({
-  sequenceRef,
-}: LandingSolutionsStackProps) {
-  const contentRef = useRef<HTMLDivElement>(null)
+export function LandingSolutionsStack() {
+  const rootRef = useRef<HTMLDivElement>(null)
   const [initError, setInitError] = useState<string | null>(null)
+  const isMobile = useIsMobile()
 
   useLayoutEffect(() => {
-    const sequence = sequenceRef.current
-    const content = contentRef.current
-    if (!sequence || !content) return
+    const root = rootRef.current
+    if (!isMobile || !root) return
 
-    let ctx: ReturnType<typeof import("gsap").default.context> | undefined
-    let refreshTimer: ReturnType<typeof setTimeout> | undefined
-    let resizeObserver: ResizeObserver | undefined
+    let ctx: gsap.Context | undefined
     let cancelled = false
 
-    const scheduleRefresh = () => {
-      clearTimeout(refreshTimer)
-      refreshTimer = setTimeout(() => {
-        void import("gsap/ScrollTrigger").then(({ ScrollTrigger }) => {
-          ScrollTrigger.refresh()
-        })
-      }, 200)
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return
     }
 
-    const init = async () => {
+    const setup = () => {
+      if (cancelled) return
+
       try {
-        const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
-          import("gsap"),
-          import("gsap/ScrollTrigger"),
-        ])
-
-        if (cancelled) return
-
-        gsap.registerPlugin(ScrollTrigger)
-        ScrollTrigger.config({ ignoreMobileResize: true })
-
         const cards = gsap.utils.toArray<HTMLDivElement>(
           "[data-solution-card]",
-          content,
+          root,
         )
 
         if (cards.length !== SOLUTION_SLIDES.length) {
@@ -144,26 +136,22 @@ export function LandingSolutionsStack({
           return
         }
 
-        setInitialCardState(gsap, cards)
+        setInitialCardState(cards)
 
-        if (
-          window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ) {
-          return
-        }
-
+        ctx?.revert()
         ctx = gsap.context(() => {
-          const timeline = buildTimeline(gsap, cards)
+          const timeline = buildTimeline(cards)
 
-          // Hero + soluciones en un solo pin (trigger = pin = sequence)
           ScrollTrigger.create({
-            trigger: sequence,
-            pin: sequence,
+            id: "solutions-stack",
+            trigger: root,
+            pin: true,
             start: "bottom bottom",
             end: `+=${SCROLL_DISTANCE_PX}`,
             scrub: true,
             animation: timeline,
             pinSpacing: true,
+            anticipatePin: 1,
             invalidateOnRefresh: true,
             onLeaveBack(self) {
               if (self.scroll() <= self.start) {
@@ -171,10 +159,10 @@ export function LandingSolutionsStack({
               }
             },
           })
-        }, sequence)
+        }, root)
 
-        refreshScrollTriggerAfterImages(sequence)
         ScrollTrigger.refresh()
+        refreshAfterImages(root)
       } catch (error) {
         setInitError(
           error instanceof Error ? error.message : "Error ScrollTrigger",
@@ -182,58 +170,53 @@ export function LandingSolutionsStack({
       }
     }
 
-    void init()
-
-    resizeObserver = new ResizeObserver(scheduleRefresh)
-    resizeObserver.observe(sequence)
-    resizeObserver.observe(content)
-
-    window.addEventListener("orientationchange", scheduleRefresh)
+    requestAnimationFrame(setup)
 
     return () => {
       cancelled = true
-      clearTimeout(refreshTimer)
-      resizeObserver?.disconnect()
-      window.removeEventListener("orientationchange", scheduleRefresh)
       ctx?.revert()
     }
-  }, [sequenceRef])
+  }, [isMobile])
 
   return (
-    <div
-      ref={contentRef}
-      className="relative z-10 mx-auto w-full max-w-[390px] bg-[#272a2d] pt-10"
-    >
-      <LandingSolutionsHeader />
+    <div ref={rootRef} className="relative lg:hidden">
+      <LandingHero />
 
-      <div className="mt-[52px] px-6">
-        <div className="relative mx-auto w-full max-w-[324px] overflow-x-hidden overflow-y-visible pt-2">
-          <div className="invisible pointer-events-none" aria-hidden>
-            <SolutionSlideCard slide={SOLUTION_SLIDES[0]} />
-          </div>
+      <div className="relative z-10 mx-auto w-full max-w-[390px] bg-[#272a2d] pt-10">
+        <LandingSolutionsHeader />
 
-          {SOLUTION_SLIDES.map((slide, index) => (
-            <div
-              key={slide.number}
-              data-solution-card
-              className="absolute inset-x-0 top-2 origin-top will-change-transform"
-              style={{
-                zIndex: 10 + index,
-                opacity: index === 0 ? 1 : 0,
-                pointerEvents: index === 0 ? "auto" : "none",
-              }}
-            >
-              <SolutionSlideCard slide={slide} stacked={index > 0} />
+        <div className="mt-[52px] px-6">
+          <div
+            className="relative mx-auto w-full max-w-[324px] overflow-x-hidden overflow-y-visible pt-2"
+            style={{ paddingBottom: CARD_ENTER_PX }}
+          >
+            <div className="invisible pointer-events-none" aria-hidden>
+              <SolutionSlideCard slide={SOLUTION_SLIDES[0]} />
             </div>
-          ))}
-        </div>
-      </div>
 
-      {initError ? (
-        <p className="px-6 pb-4 text-center text-xs text-red-300">
-          Stack: {initError}
-        </p>
-      ) : null}
+            {SOLUTION_SLIDES.map((slide, index) => (
+              <div
+                key={slide.number}
+                data-solution-card
+                className="absolute inset-x-0 top-2 origin-top will-change-transform"
+                style={{
+                  zIndex: 10 + index,
+                  opacity: index === 0 ? 1 : 0,
+                  pointerEvents: index === 0 ? "auto" : "none",
+                }}
+              >
+                <SolutionSlideCard slide={slide} stacked={index > 0} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {initError ? (
+          <p className="px-6 pb-4 text-center text-xs text-red-300">
+            Stack: {initError}
+          </p>
+        ) : null}
+      </div>
     </div>
   )
 }
