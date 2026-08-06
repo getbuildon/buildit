@@ -24,6 +24,7 @@ import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { formatArgentinaTableDate } from "@/lib/datetime/argentinaDateTime"
+import { formatCollaborationProjectCount } from "@/lib/backoffice/collaborationProjectCounts"
 import type { BackofficeUsersStatusKind } from "@/lib/backoffice/usuariosQuery"
 import {
   hasActiveUsuariosFilters,
@@ -39,7 +40,7 @@ type UsuariosViewProps = {
 }
 
 const TABLE_GRID =
-  "grid w-full grid-cols-[minmax(200px,1.4fr)_minmax(180px,1.2fr)_minmax(120px,0.8fr)_minmax(160px,1fr)_minmax(112px,auto)_56px] items-start"
+  "grid w-full grid-cols-[minmax(200px,1.4fr)_minmax(180px,1.2fr)_minmax(120px,0.8fr)_minmax(160px,1fr)_minmax(108px,auto)_minmax(112px,auto)_56px] items-start"
 
 const TABLE_CELL = "min-w-0 px-3"
 const TABLE_HEADER_CELL =
@@ -61,7 +62,7 @@ const TABLE_BODY_ROW = cn(
   "items-start border-b border-[#edeef0] px-4 py-3 last:border-b-0",
 )
 
-const TABLE_HEADERS = ["Mail", "Teléfono", "Empresa", "Alta"] as const
+const TABLE_HEADERS = ["Mail", "Teléfono", "Empresa", "Colaborador", "Alta"] as const
 
 function fullName(user: BackofficeUserRow) {
   const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim()
@@ -478,6 +479,10 @@ export function UsuariosView({
                         </p>
                       ) : null}
                     </div>
+
+                    <p className={cn(TABLE_CELL, TABLE_BODY_TEXT)}>
+                      {formatCollaborationProjectCount(user.collaborationProjectCount)}
+                    </p>
 
                     <p className={cn(TABLE_CELL, TABLE_BODY_DATE)}>
                       {formatArgentinaTableDate(user.createdAt)}

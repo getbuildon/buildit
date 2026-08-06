@@ -13,6 +13,7 @@ import {
   formatClienteStatusBreakdown,
   formatClienteUsd,
 } from "@/lib/backoffice/clientesBilling"
+import { formatCollaborationProjectCount } from "@/lib/backoffice/collaborationProjectCounts"
 import { cn } from "@/lib/utils"
 
 type ClientesViewProps = {
@@ -53,10 +54,6 @@ function buildClientesQueryString(options: { page?: number; q?: string }) {
 
   const query = params.toString()
   return query ? `?${query}` : ""
-}
-
-function formatCollaborationProjectCount(count: number): string {
-  return count === 1 ? "1 proyecto" : `${count} proyectos`
 }
 
 function ClienteRow({ client }: { client: BackofficeClienteRow }) {

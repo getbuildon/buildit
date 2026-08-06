@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { isBackofficeEmail, requireBackofficeUser } from "@/lib/auth/backofficeAccess"
 import { buildRegisterConfirmCallbackUrl } from "@/lib/auth/registerConfirmPath"
 import { BACKOFFICE_USERS_PAGE_SIZE } from "@/lib/backoffice/usuariosQuery"
+import { getCollaborationProjectCountsByUserIds } from "@/lib/backoffice/collaborationProjectCounts"
 import { formatCompanyRole } from "@/lib/company/formatCompanyRole"
 import { getSiteOrigin } from "@/lib/invitations/siteOrigin"
 import { createAdminClient } from "@/utils/supabase/admin"
@@ -28,6 +29,7 @@ export type BackofficeUserRow = {
   createdAt: string
   memberships: BackofficeUserMembership[]
   isActive: boolean
+  collaborationProjectCount: number
 }
 
 export type BackofficeUserActionResult = { ok: true } | { ok: false; error: string }
@@ -232,6 +234,9 @@ async function mapProfilesToUsers(
     membershipsByUser.set(row.user_id, current)
   }
 
+  const collaborationProjectCountsByUser =
+    await getCollaborationProjectCountsByUserIds(admin, userIds)
+
   return profileRows.map((profile) => {
     const userMemberships = membershipsByUser.get(profile.id) ?? []
     const isActive = emailConfirmedByUserId.get(profile.id) ?? false
@@ -246,6 +251,8 @@ async function mapProfilesToUsers(
       createdAt: profile.created_at,
       memberships: userMemberships,
       isActive,
+      collaborationProjectCount:
+        collaborationProjectCountsByUser.get(profile.id) ?? 0,
     }
   })
 }
