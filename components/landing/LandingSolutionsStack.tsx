@@ -155,10 +155,7 @@ export function LandingSolutionsStack({
         ctx = gsap.context(() => {
           const timeline = buildTimeline(gsap, cards)
 
-          /*
-           * Pin del contenedor completo (hero + soluciones) para que
-           * la franja naranja y los mockups queden quietos junto al título.
-           */
+          // Hero + soluciones en un solo pin (trigger = pin = sequence)
           ScrollTrigger.create({
             trigger: sequence,
             pin: sequence,
