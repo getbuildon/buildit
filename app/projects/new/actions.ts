@@ -10,7 +10,6 @@ import type {
   ProjectUserType,
 } from "@/lib/projects/createProjectDraft"
 import {
-  assignDefaultProjectSubscription,
   validateProjectSeatAllocation,
 } from "@/lib/company/projectSubscriptionLimits"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
@@ -193,12 +192,6 @@ export async function createProjectFromDraft(
     }
 
     projectId = project.id
-
-    await assignDefaultProjectSubscription(
-      supabase,
-      project.id,
-      parseOptionalNumber(draft.totalSurface),
-    )
 
     // Obtener roles de empresa para determinar user_type de cada admin/owner
     const adminClient = createAdminClient()

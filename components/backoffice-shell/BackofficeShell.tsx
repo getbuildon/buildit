@@ -1,14 +1,12 @@
 "use client"
 
-import { useEffect, useState, type ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { PanelLeft, PanelLeftClose } from "lucide-react"
 
 import { BackofficeSidebar } from "@/components/backoffice-shell/BackofficeSidebar"
 import { BACKOFFICE_SHELL } from "@/lib/backoffice/designTokens"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
 import { cn } from "@/lib/utils"
-
-const SIDEBAR_STORAGE_KEY = "backoffice-sidebar-open"
 
 type BackofficeShellProps = {
   children: ReactNode
@@ -18,19 +16,8 @@ type BackofficeShellProps = {
 export function BackofficeShell({ children, userProfile }: BackofficeShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem(SIDEBAR_STORAGE_KEY)
-    if (stored === "false") {
-      setSidebarOpen(false)
-    }
-  }, [])
-
   const toggleSidebar = () => {
-    setSidebarOpen((current) => {
-      const next = !current
-      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next))
-      return next
-    })
+    setSidebarOpen((current) => !current)
   }
 
   return (

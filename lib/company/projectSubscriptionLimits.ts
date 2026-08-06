@@ -189,7 +189,7 @@ export async function assertCanAddProjectSeat(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const limits = await loadProjectSeatLimits(supabase, projectId)
   if (!limits) {
-    return { ok: false, error: "Este proyecto no tiene un plan de suscripción activo." }
+    return { ok: true }
   }
 
   let usage = await loadProjectSeatUsage(supabase, projectId)
@@ -243,47 +243,6 @@ export async function assertCanAddProjectSeat(
   return { ok: true }
 }
 
-export function selectPlanSlugForSurface(surfaceM2: number | null | undefined): string {
-  if (surfaceM2 == null || surfaceM2 <= 60) return "starter-s"
-  return "growth-m"
-}
-
-export async function assignDefaultProjectSubscription(
-  supabase: SupabaseClient,
-  projectId: string,
-  surfaceM2: number | null | undefined,
-): Promise<void> {
-  const planSlug = selectPlanSlugForSurface(surfaceM2)
-
-  const { data: plan, error: planError } = await supabase
-    .from("subscription_plans")
-    .select("id, billing_interval")
-    .eq("slug", planSlug)
-    .eq("is_active", true)
-    .single()
-
-  if (planError || !plan) {
-    throw planError ?? new Error(`No se encontró el plan ${planSlug}.`)
-  }
-
-  const billingNote =
-    plan.billing_interval === "annual"
-      ? "Se renueva automáticamente el 01/03/2027"
-      : "Próxima facturación 05/07/2026"
-
-  const renewsAt =
-    plan.billing_interval === "annual" ? "2027-03-01T00:00:00.000Z" : "2026-07-05T00:00:00.000Z"
-
-  const { error } = await supabase.from("project_subscriptions").insert({
-    project_id: projectId,
-    plan_id: plan.id,
-    billing_note: billingNote,
-    renews_at: renewsAt,
-  })
-
-  if (error) throw error
-}
-
 export async function validateProjectSeatAllocation(
   supabase: SupabaseClient,
   projectId: string,
@@ -295,7 +254,7 @@ export async function validateProjectSeatAllocation(
   ])
 
   if (!limits) {
-    return { ok: false, error: "Este proyecto no tiene un plan de suscripción activo." }
+    return { ok: true }
   }
 
   const projected = mergeSeatUsage(usage, countSeatsByUserTypes(additionalUserTypes))
