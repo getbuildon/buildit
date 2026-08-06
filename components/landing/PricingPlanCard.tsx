@@ -1,6 +1,8 @@
+"use client"
+
+import { useState } from "react"
 import {
   Check,
-  ChevronDown,
   HardHat,
   Headphones,
   LayoutDashboard,
@@ -10,8 +12,18 @@ import {
 } from "lucide-react"
 import type { ReactNode } from "react"
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { BillingPeriod, PricingPlan } from "@/lib/landing/pricingPlans"
-import { getPlanDisplayPrice } from "@/lib/landing/pricingPlans"
+import {
+  getDefaultSurfaceTierId,
+  getPlanDisplayPrice,
+} from "@/lib/landing/pricingPlans"
 import { cn } from "@/lib/utils"
 
 type PricingPlanCardProps = {
@@ -44,9 +56,14 @@ function BulletIcon({ index, dark }: { index: number; dark: boolean }) {
 }
 
 export function PricingPlanCard({ plan, billing }: PricingPlanCardProps) {
+  const [surfaceTierId, setSurfaceTierId] = useState(
+    () => getDefaultSurfaceTierId(plan) ?? "",
+  )
+
   const isDark = plan.theme === "dark"
-  const price = getPlanDisplayPrice(plan, billing)
+  const price = getPlanDisplayPrice(plan, billing, surfaceTierId)
   const isQuote = Boolean(plan.priceLabel)
+  const hasSurfaceTiers = Boolean(plan.surfaceTiers?.length)
 
   return (
     <article
@@ -104,29 +121,47 @@ export function PricingPlanCard({ plan, billing }: PricingPlanCardProps) {
         ) : null}
       </div>
 
-      <div
-        className={cn(
-          "flex h-10 items-center justify-between rounded border px-[13px] py-[7px]",
-          isDark
-            ? "border-[#272a2d] bg-[#212225]"
-            : "border-[rgba(175,179,186,0.6)] bg-white",
-        )}
-      >
-        <p
+      {hasSurfaceTiers ? (
+        <Select value={surfaceTierId} onValueChange={setSurfaceTierId}>
+          <SelectTrigger
+            className={cn(
+              "h-10 rounded border px-[13px] py-[7px] text-sm leading-[1.4] shadow-none",
+              isDark
+                ? "border-[#272a2d] bg-[#212225] text-[#afb3ba] focus:border-[#272a2d]"
+                : "border-[rgba(175,179,186,0.6)] bg-white text-[#363a3f] focus:border-[rgba(175,179,186,0.6)]",
+              "[&_svg]:size-6 [&_svg]:opacity-100",
+              isDark ? "[&_svg]:text-[#afb3ba]" : "[&_svg]:text-[#363a3f]",
+            )}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {plan.surfaceTiers!.map((tier) => (
+              <SelectItem key={tier.id} value={tier.id}>
+                {tier.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <div
           className={cn(
-            "text-sm leading-[1.4]",
-            isDark ? "text-[#afb3ba]" : "text-[#363a3f]",
+            "flex h-10 items-center rounded border px-[13px] py-[7px]",
+            isDark
+              ? "border-[#272a2d] bg-[#212225]"
+              : "border-[rgba(175,179,186,0.6)] bg-white",
           )}
         >
-          {plan.surface}
-        </p>
-        {plan.showSurfaceChevron ? (
-          <ChevronDown
-            className={cn("size-6", isDark ? "text-[#afb3ba]" : "text-[#363a3f]")}
-            strokeWidth={1.75}
-          />
-        ) : null}
-      </div>
+          <p
+            className={cn(
+              "text-sm leading-[1.4]",
+              isDark ? "text-[#afb3ba]" : "text-[#363a3f]",
+            )}
+          >
+            {plan.surface}
+          </p>
+        </div>
+      )}
 
       <div
         className={cn(

@@ -2,16 +2,25 @@ export type BillingPeriod = "annual" | "monthly"
 
 export type PlanCtaVariant = "outline" | "primary" | "dark"
 
+export type SurfaceTier = {
+  id: string
+  label: string
+  monthlyPrice: number
+  annualMonthlyPrice: number
+}
+
 export type PricingPlan = {
   id: string
   name: string
   subtitle: string
-  /** Precio mensual cuando se factura anual */
-  annualMonthlyPrice: number | null
-  /** Precio mensual facturado mes a mes */
-  monthlyPrice: number | null
+  surfaceTiers?: SurfaceTier[]
+  defaultSurfaceTierId?: string
+  /** Precio mensual cuando se factura anual (planes sin tiers) */
+  annualMonthlyPrice?: number | null
+  /** Precio mensual facturado mes a mes (planes sin tiers) */
+  monthlyPrice?: number | null
   priceLabel?: string
-  surface: string
+  surface?: string
   showSurfaceChevron: boolean
   featured?: boolean
   badge?: string
@@ -27,9 +36,27 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: "compacto",
     name: "Compacto",
     subtitle: "Ideal para obras pequeñas.",
-    annualMonthlyPrice: 320,
-    monthlyPrice: 400,
-    surface: "Superficie hasta 60 m²",
+    defaultSurfaceTierId: "60",
+    surfaceTiers: [
+      {
+        id: "60",
+        label: "Superficie hasta 60 m²",
+        monthlyPrice: 400,
+        annualMonthlyPrice: 320,
+      },
+      {
+        id: "120",
+        label: "Superficie hasta 120 m²",
+        monthlyPrice: 600,
+        annualMonthlyPrice: 480,
+      },
+      {
+        id: "300",
+        label: "Superficie hasta 300 m²",
+        monthlyPrice: 800,
+        annualMonthlyPrice: 640,
+      },
+    ],
     showSurfaceChevron: true,
     teamFeatures: [
       "1 administradores",
@@ -49,9 +76,27 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: "gran-escala",
     name: "Gran Escala",
     subtitle: "Para edificios y complejos.",
-    annualMonthlyPrice: 800,
-    monthlyPrice: 1000,
-    surface: "Superficie hasta 1.000 m²",
+    defaultSurfaceTierId: "1000",
+    surfaceTiers: [
+      {
+        id: "1000",
+        label: "Superficie hasta 1.000 m²",
+        monthlyPrice: 1000,
+        annualMonthlyPrice: 800,
+      },
+      {
+        id: "2500",
+        label: "Superficie hasta 2.500 m²",
+        monthlyPrice: 1300,
+        annualMonthlyPrice: 1040,
+      },
+      {
+        id: "5000",
+        label: "Superficie hasta 5.000 m²",
+        monthlyPrice: 1600,
+        annualMonthlyPrice: 1280,
+      },
+    ],
     showSurfaceChevron: true,
     featured: true,
     badge: "Más elegido",
@@ -73,8 +118,6 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: "multiobra",
     name: "Multiobra",
     subtitle: "Operaciones complejas y multiobra.",
-    annualMonthlyPrice: null,
-    monthlyPrice: null,
     priceLabel: "A cotizar",
     surface: "Superficie +5.000 m²",
     showSurfaceChevron: false,
@@ -125,14 +168,42 @@ export const TEAM_ROLES: TeamRole[] = [
   },
 ]
 
+export function formatPlanPrice(amount: number): string {
+  return `$${amount.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+}
+
+export function getTierDisplayPrice(
+  tier: SurfaceTier,
+  billing: BillingPeriod,
+): string {
+  const price =
+    billing === "annual" ? tier.annualMonthlyPrice : tier.monthlyPrice
+  return formatPlanPrice(price)
+}
+
 export function getPlanDisplayPrice(
   plan: PricingPlan,
   billing: BillingPeriod,
+  surfaceTierId?: string,
 ): string | null {
   if (plan.priceLabel) return plan.priceLabel
+
+  if (plan.surfaceTiers?.length) {
+    const tier =
+      plan.surfaceTiers.find((item) => item.id === surfaceTierId) ??
+      plan.surfaceTiers.find((item) => item.id === plan.defaultSurfaceTierId) ??
+      plan.surfaceTiers[0]
+
+    return getTierDisplayPrice(tier, billing)
+  }
 
   const price =
     billing === "annual" ? plan.annualMonthlyPrice : plan.monthlyPrice
 
-  return price != null ? `$${price}` : null
+  return price != null ? formatPlanPrice(price) : null
+}
+
+export function getDefaultSurfaceTierId(plan: PricingPlan): string | undefined {
+  if (!plan.surfaceTiers?.length) return undefined
+  return plan.defaultSurfaceTierId ?? plan.surfaceTiers[0].id
 }
