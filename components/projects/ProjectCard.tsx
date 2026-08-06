@@ -1,5 +1,9 @@
+"use client"
+
 import Link from "next/link"
 import { Building2, TrendingUp } from "lucide-react"
+
+import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import type { UserProjectListItem } from "@/lib/projects/types"
 import { projectDashboardHref } from "@/lib/project/routes"
 import {
@@ -23,6 +27,7 @@ function formatWeeklyDelta(delta: number): string {
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {
+  const { navigate } = useAppRouteNavigation()
   const href = projectDashboardHref(project.projectId)
   const generalProgress = project.generalProgressPercent
   const weeklyDelta = project.weeklyProgressDelta
@@ -34,6 +39,10 @@ export function ProjectCard({ project }: ProjectCardProps) {
   return (
     <Link
       href={href}
+      onClick={(event) => {
+        event.preventDefault()
+        navigate(href)
+      }}
       className={cn(
         "block shrink-0 rounded-[16px] bg-white text-left transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60",
         HOME_LAYOUT.projectCardSize,

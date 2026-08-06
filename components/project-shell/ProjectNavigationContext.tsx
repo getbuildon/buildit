@@ -28,11 +28,24 @@ export function normalizeProjectPath(path: string) {
   return path
 }
 
-function isSameProjectRoute(pathname: string, href: string) {
+function getProjectNavTargetDepth(href: string) {
+  return normalizeProjectPath(href).split("/").filter(Boolean).length
+}
+
+export function hasReachedProjectNavHref(pathname: string, href: string) {
   const current = normalizeProjectPath(pathname)
   const target = normalizeProjectPath(href)
 
-  return current === target || current.startsWith(`${target}/`)
+  if (current === target) {
+    return true
+  }
+
+  // Dashboard vive en /{projectId}; no debe absorber sub-rutas del proyecto.
+  if (getProjectNavTargetDepth(target) === 1) {
+    return false
+  }
+
+  return current.startsWith(`${target}/`)
 }
 
 export function matchesProjectNavHref(a: string, b: string) {
@@ -47,7 +60,7 @@ export function ProjectNavigationProvider({ children }: { children: ReactNode })
 
   const navigate = useCallback(
     (href: string) => {
-      if (isSameProjectRoute(pathname, href)) return
+      if (hasReachedProjectNavHref(pathname, href)) return
 
       setPendingHref(href)
       startTransition(() => {
@@ -60,7 +73,7 @@ export function ProjectNavigationProvider({ children }: { children: ReactNode })
   useEffect(() => {
     if (!pendingHref) return
 
-    if (isSameProjectRoute(pathname, pendingHref) && !isPending) {
+    if (hasReachedProjectNavHref(pathname, pendingHref) && !isPending) {
       setPendingHref(null)
     }
   }, [pathname, pendingHref, isPending])

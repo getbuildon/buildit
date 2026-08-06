@@ -5,11 +5,15 @@ import Link from "next/link"
 import { LayoutDashboard, X } from "lucide-react"
 
 import { getHomeBackofficeAccess } from "@/app/home/actions"
+import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import { cn } from "@/lib/utils"
+
+const BACKOFFICE_DASHBOARD_HREF = "/backoffice/dashboard"
 
 const ENTER_DELAY_MS = 2000
 
 export function BackofficeAccessCallout() {
+  const { navigate } = useAppRouteNavigation()
   const [canAccess, setCanAccess] = useState<boolean | null>(null)
   const [delayElapsed, setDelayElapsed] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -70,7 +74,11 @@ export function BackofficeAccessCallout() {
           <p className="min-w-0 leading-[1.5]">
             Como administrador de BuildOn, podés acceder al{" "}
             <Link
-              href="/backoffice/dashboard"
+              href={BACKOFFICE_DASHBOARD_HREF}
+              onClick={(event) => {
+                event.preventDefault()
+                navigate(BACKOFFICE_DASHBOARD_HREF)
+              }}
               className="text-white/85 underline decoration-white/20 underline-offset-2 transition-colors hover:text-white hover:decoration-white/40"
             >
               backoffice

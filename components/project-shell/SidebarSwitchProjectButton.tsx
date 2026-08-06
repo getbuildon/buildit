@@ -1,13 +1,22 @@
+"use client"
+
 import Link from "next/link"
 
+import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import { cn } from "@/lib/utils"
 
 /** Figma node 1180:1343 — botón cambiar obra (24×24, bg #edeef0, icon 16×16 #afb3ba). */
 export function SidebarSwitchProjectButton({ className }: { className?: string }) {
+  const { navigate } = useAppRouteNavigation()
+
   return (
     <Link
       href="/home"
       aria-label="Cambiar de obra"
+      onClick={(event) => {
+        event.preventDefault()
+        navigate("/home")
+      }}
       className={cn(
         "flex size-6 shrink-0 items-center justify-center rounded-[8px] bg-[#edeef0] p-1",
         "text-[#afb3ba] transition-colors duration-150",

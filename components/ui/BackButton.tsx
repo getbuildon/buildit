@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { cva, type VariantProps } from "class-variance-authority"
 
+import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
+import { getAppRouteLoadingType } from "@/lib/navigation/appRouteLoading"
 import { cn } from "@/lib/utils"
 
 /** Figma 1850:6347 (panel) · create-project flow default */
@@ -33,8 +35,22 @@ export function BackButton({
   variant,
   className,
 }: BackButtonProps) {
+  const { navigate } = useAppRouteNavigation()
+  const usesRouteLoading = getAppRouteLoadingType(href) !== null
+
   return (
-    <Link href={href} className={cn(backButtonVariants({ variant }), className)}>
+    <Link
+      href={href}
+      onClick={
+        usesRouteLoading
+          ? (event) => {
+              event.preventDefault()
+              navigate(href)
+            }
+          : undefined
+      }
+      className={cn(backButtonVariants({ variant }), className)}
+    >
       <svg
         width="16"
         height="16"

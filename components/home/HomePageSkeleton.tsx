@@ -1,3 +1,5 @@
+"use client"
+
 import { ProjectCardSkeleton } from "@/components/projects/ProjectCardSkeleton"
 import { HomePageLayout } from "@/components/home/HomePageLayout"
 import { Skeleton } from "@/components/ui/skeleton"

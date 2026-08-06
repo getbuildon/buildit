@@ -4,7 +4,7 @@ import { Google_Sans_Flex } from "next/font/google"
 import { AuthHashCallbackHandler } from "@/components/auth/AuthHashCallbackHandler"
 import { PendingAuthSetupGuard } from "@/components/auth/PendingAuthSetupGuard"
 import { SupabaseConfigMissing } from "@/components/auth/SupabaseConfigMissing"
-import { ToastProvider } from "@/components/ui/toast"
+import { AppProviders } from "@/components/providers/AppProviders"
 import { AuthProvider } from "@/context/AuthContextSupabase"
 import { BRAND_NAME } from "@/lib/brand"
 import { readPublicSupabaseConfigFromEnv } from "@/lib/auth/publicSupabaseConfig"
@@ -75,7 +75,7 @@ export default function RootLayout({
           <AuthProvider supabasePublicConfig={supabasePublicConfig}>
             <AuthHashCallbackHandler />
             <PendingAuthSetupGuard />
-            <ToastProvider>{children}</ToastProvider>
+            <AppProviders>{children}</AppProviders>
           </AuthProvider>
         ) : (
           <SupabaseConfigMissing />
