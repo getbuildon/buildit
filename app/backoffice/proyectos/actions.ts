@@ -75,11 +75,7 @@ export type BackofficeProjectRow = {
   planLabel: string | null
   billingInterval: "monthly" | "annual" | null
   amountUsd: number | null
-  lastCharge: {
-    effectiveAt: string
-    amountUsd: number
-  } | null
-  receivableUsd: number
+  porCobrarUsd: number
   debtUsd: number
   memberCount: number
   createdAt: string
@@ -1168,9 +1164,8 @@ async function getSubscriptionInfoByProject(
 
 type ProjectBillingSnapshot = {
   balanceUsd: number
-  receivableUsd: number
+  porCobrarUsd: number
   debtUsd: number
-  lastCharge: BackofficeProjectRow["lastCharge"]
 }
 
 async function getBillingDataByProject(
@@ -1214,21 +1209,9 @@ async function getBillingDataByProject(
     const subscription = subscriptionsByProject.get(projectId)
 
     let balanceUsd = 0
-    let lastCharge: BackofficeProjectRow["lastCharge"] = null
 
     for (const entry of entries) {
       balanceUsd += entry.amountUsd
-    }
-
-    for (let index = entries.length - 1; index >= 0; index -= 1) {
-      const entry = entries[index]
-      if (entry.amountUsd > 0) {
-        lastCharge = {
-          effectiveAt: entry.effectiveAt,
-          amountUsd: entry.amountUsd,
-        }
-        break
-      }
     }
 
     const billingContext = subscription?.billingInterval
@@ -1240,13 +1223,12 @@ async function getBillingDataByProject(
         ? computeProjectOverdueDebtUsd(entries, billingContext, asOf)
         : 0
 
-    const receivableUsd = Math.max(0, balanceUsd - debtUsd)
+    const porCobrarUsd = Math.max(0, balanceUsd)
 
     billingByProject.set(projectId, {
       balanceUsd: Math.round(balanceUsd * 100) / 100,
-      receivableUsd: Math.round(receivableUsd * 100) / 100,
+      porCobrarUsd: Math.round(porCobrarUsd * 100) / 100,
       debtUsd: Math.round(debtUsd * 100) / 100,
-      lastCharge,
     })
   }
 
@@ -1417,8 +1399,7 @@ function mapProjectRows(
       planLabel: subscription?.planLabel ?? null,
       billingInterval: subscription?.billingInterval ?? null,
       amountUsd: subscription?.amountUsd ?? null,
-      lastCharge: billing?.lastCharge ?? null,
-      receivableUsd: billing?.receivableUsd ?? 0,
+      porCobrarUsd: billing?.porCobrarUsd ?? 0,
       debtUsd: billing?.debtUsd ?? 0,
       memberCount: memberCounts.get(row.id) ?? 0,
       createdAt: row.created_at,

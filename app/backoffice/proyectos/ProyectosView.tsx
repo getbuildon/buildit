@@ -38,7 +38,6 @@ import {
 } from "@/lib/backoffice/proyectosQuery"
 import {
   formatBillingDebtUsd,
-  formatBillingLastCharge,
   formatBillingUsd,
 } from "@/lib/backoffice/subscriptionBilling"
 import { formatBillingIntervalLabel } from "@/lib/backoffice/projectSubscriptionForm"
@@ -53,7 +52,7 @@ type ProyectosViewProps = {
 }
 
 const TABLE_GRID =
-  "grid grid-cols-[minmax(160px,1fr)_minmax(140px,1fr)_minmax(140px,1fr)_100px_minmax(180px,1fr)_minmax(112px,0.8fr)_minmax(180px,1fr)_minmax(108px,0.8fr)_minmax(96px,auto)_72px_minmax(112px,auto)_56px] items-start"
+  "grid grid-cols-[minmax(160px,1fr)_minmax(140px,1fr)_minmax(140px,1fr)_100px_minmax(180px,1fr)_minmax(112px,0.8fr)_minmax(108px,0.8fr)_minmax(96px,auto)_72px_minmax(112px,auto)_56px] items-start"
 
 const TABLE_CELL = "min-w-0 px-3"
 const TABLE_HEADER_CELL = "text-xs font-medium leading-4 text-[#777b84]"
@@ -79,7 +78,6 @@ const TABLE_HEADERS = [
   "Superficie",
   "Plan",
   "Importe",
-  "Último cargo",
   "Por cobrar",
   "Deuda",
   "Miembros",
@@ -570,7 +568,7 @@ export function ProyectosView({
           </div>
 
           <div className="overflow-x-auto">
-            <div className="min-w-[1380px]">
+            <div className="min-w-[1200px]">
               <div className={TABLE_HEADER_ROW}>
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="size-7 shrink-0" aria-hidden />
@@ -634,10 +632,6 @@ export function ProyectosView({
                         : "—"}
                     </p>
 
-                    <p className={cn(TABLE_CELL, TABLE_BODY_TEXT, "tabular-nums")}>
-                      {formatBillingLastCharge(project.lastCharge)}
-                    </p>
-
                     <button
                       type="button"
                       disabled={isPending}
@@ -645,13 +639,13 @@ export function ProyectosView({
                       className={cn(
                         TABLE_CELL,
                         "text-left text-sm leading-5 tabular-nums transition-colors hover:text-[#ff7433] disabled:opacity-50",
-                        project.receivableUsd > 0
+                        project.porCobrarUsd > 0
                           ? "font-medium text-[#c2410c]"
                           : "text-[#696e77]",
                       )}
                       title="Ver facturación"
                     >
-                      {formatBillingDebtUsd(project.receivableUsd)}
+                      {formatBillingDebtUsd(project.porCobrarUsd)}
                     </button>
 
                     <button
