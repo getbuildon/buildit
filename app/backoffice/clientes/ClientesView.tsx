@@ -21,7 +21,7 @@ type ClientesViewProps = {
 }
 
 const TABLE_GRID =
-  "grid w-full grid-cols-[minmax(220px,1.25fr)_minmax(140px,1fr)_88px_minmax(200px,1.35fr)_minmax(160px,1fr)_minmax(128px,auto)_minmax(108px,auto)]"
+  "grid w-full grid-cols-[minmax(220px,1.25fr)_minmax(140px,1fr)_minmax(108px,auto)_88px_minmax(200px,1.35fr)_minmax(160px,1fr)_minmax(128px,auto)_minmax(108px,auto)]"
 
 const TABLE_CELL = "min-w-0 px-3"
 const TABLE_HEADER_CELL = "text-xs font-medium leading-4 text-[#777b84]"
@@ -55,6 +55,10 @@ function buildClientesQueryString(options: { page?: number; q?: string }) {
   return query ? `?${query}` : ""
 }
 
+function formatCollaborationProjectCount(count: number): string {
+  return count === 1 ? "1 proyecto" : `${count} proyectos`
+}
+
 function ClienteRow({ client }: { client: BackofficeClienteRow }) {
   return (
     <>
@@ -86,6 +90,14 @@ function ClienteRow({ client }: { client: BackofficeClienteRow }) {
 
       <div className={cn(TABLE_CELL, "min-w-0 pt-0.5")}>
         <p className={TABLE_BODY_EMPHASIS}>{client.companyName}</p>
+      </div>
+
+      <div className={cn(TABLE_CELL, "pt-0.5")}>
+        <p className={TABLE_BODY_TEXT}>
+          {client.owner
+            ? formatCollaborationProjectCount(client.collaborationProjectCount)
+            : "—"}
+        </p>
       </div>
 
       <div className={cn(TABLE_CELL, "pt-0.5 text-right")}>
@@ -278,13 +290,14 @@ export function ClientesView({ result, initialSearch }: ClientesViewProps) {
           </div>
 
           <div className="overflow-x-auto">
-            <div className="min-w-[1080px]">
+            <div className="min-w-[1188px]">
               <div className={TABLE_HEADER_ROW}>
                 <div className={cn(TABLE_CELL, "flex min-w-0 items-center gap-3")}>
                   <span className="size-7 shrink-0" aria-hidden />
                   <p className={TABLE_HEADER_CELL}>Cliente</p>
                 </div>
                 <p className={cn(TABLE_CELL, TABLE_HEADER_CELL)}>Empresa</p>
+                <p className={cn(TABLE_CELL, TABLE_HEADER_CELL)}>Colaboración</p>
                 <p className={cn(TABLE_CELL, TABLE_HEADER_CELL, "text-right")}>
                   Proyectos
                 </p>
