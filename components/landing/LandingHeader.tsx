@@ -3,8 +3,12 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Menu, X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
+import {
+  AnimatedCollapsible,
+  ANIMATED_COLLAPSE_DURATION_MS,
+} from "@/components/ui/animated-collapsible"
 import { cn } from "@/lib/utils"
 
 const NAV_LINKS = [
@@ -19,15 +23,29 @@ export function LandingHeader() {
 
   const closeMenu = () => setMenuOpen(false)
 
+  useEffect(() => {
+    if (!menuOpen) return
+
+    const closeOnScroll = () => setMenuOpen(false)
+
+    window.addEventListener("scroll", closeOnScroll, {
+      passive: true,
+      capture: true,
+    })
+    window.addEventListener("wheel", closeOnScroll, { passive: true })
+    window.addEventListener("touchmove", closeOnScroll, { passive: true })
+
+    return () => {
+      window.removeEventListener("scroll", closeOnScroll, { capture: true })
+      window.removeEventListener("wheel", closeOnScroll)
+      window.removeEventListener("touchmove", closeOnScroll)
+    }
+  }, [menuOpen])
+
   return (
-    <header
-      className={cn(
-        "bg-background",
-        menuOpen && "border-b border-[#eef0f2] pb-[41px]",
-      )}
-    >
-      <div className="px-6">
-        <div className="flex h-[80px] items-center justify-between">
+    <header className="sticky top-0 z-50 bg-background">
+      <div className="relative">
+        <div className="flex h-[80px] items-center justify-between px-6">
           <Link
             href="/"
             className="shrink-0"
@@ -60,8 +78,23 @@ export function LandingHeader() {
           </button>
         </div>
 
-        {menuOpen ? (
-          <div id="landing-mobile-nav" className="mt-[24px] flex flex-col gap-6">
+        <AnimatedCollapsible
+          open={menuOpen}
+          className="absolute inset-x-0 top-full z-50"
+          contentClassName="overflow-hidden"
+        >
+          <div
+            id="landing-mobile-nav"
+            className={cn(
+              "flex flex-col gap-6 border-b border-[#eef0f2] bg-background px-6 pb-[41px] pt-6 transition-[opacity,transform] ease-in-out",
+              menuOpen
+                ? "translate-y-0 opacity-100"
+                : "-translate-y-2 opacity-0",
+            )}
+            style={{
+              transitionDuration: `${ANIMATED_COLLAPSE_DURATION_MS}ms`,
+            }}
+          >
             <nav className="flex flex-col">
               {NAV_LINKS.map((link) => (
                 <Link
@@ -110,7 +143,7 @@ export function LandingHeader() {
               </div>
             </div>
           </div>
-        ) : null}
+        </AnimatedCollapsible>
       </div>
     </header>
   )
