@@ -45,11 +45,11 @@ export function LandingPricingDesktop({
           <PricingBillingToggle value={billing} onChange={onBillingChange} />
         </div>
 
-        <div className="grid grid-cols-1 gap-6 pt-12 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="mx-auto grid w-full max-w-[560px] grid-cols-1 gap-6 pt-12 xl:max-w-none xl:grid-cols-3 xl:items-start">
           {PRICING_PLANS.map((plan) => (
             <div
               key={plan.id}
-              className={cn(plan.featured && "xl:-mt-4 xl:self-start")}
+              className={cn(plan.featured && "xl:-mt-4")}
             >
               <PricingPlanCard
                 plan={plan}

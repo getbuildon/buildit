@@ -12,9 +12,9 @@ export function LandingFaqDesktop() {
 
   return (
     <div className="mx-auto max-w-[1280px] px-6 py-16 lg:px-10 lg:py-24 xl:px-20 xl:py-28">
-      <div className="grid grid-cols-1 gap-10 xl:grid-cols-[416px_minmax(0,624px)] xl:justify-between xl:gap-20">
-        <div className="pt-4">
-          <div className="flex max-w-[416px] flex-col gap-5">
+      <div className="mx-auto flex w-full max-w-[624px] flex-col gap-10 xl:max-w-none xl:flex-row xl:items-start xl:justify-between xl:gap-20">
+        <div className="shrink-0 pt-4 xl:w-[416px]">
+          <div className="flex flex-col gap-5">
             <h2 className="font-recoleta text-4xl leading-[1.05] text-[#111113] xl:text-[48px]">
               ¿Te quedaron{" "}
               <span className="text-primary">dudas?</span>
@@ -26,7 +26,7 @@ export function LandingFaqDesktop() {
           </div>
         </div>
 
-        <div className="w-full max-w-[624px] justify-self-end">
+        <div className="w-full shrink-0 xl:w-[624px]">
           {FAQ_ITEMS.map((item) => (
             <FaqAccordionItem
               key={item.id}
