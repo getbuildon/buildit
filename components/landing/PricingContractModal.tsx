@@ -19,6 +19,11 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/toast"
 import {
+  PhoneDialSelect,
+  PhoneInputShell,
+  phoneNumberInputClassName,
+} from "@/components/landing/PhoneDialSelect"
+import {
   getPlanFeaturePills,
   getPlanSurfaceSummary,
   PLAN_FEATURE_PILL_ICONS,
@@ -34,7 +39,6 @@ import {
 } from "@/lib/landing/emailInput"
 import {
   getPhoneDialOption,
-  PHONE_DIAL_OPTIONS,
   sanitizePhoneInput,
 } from "@/lib/landing/phoneInput"
 import type { BillingPeriod, PricingPlan } from "@/lib/landing/pricingPlans"
@@ -319,34 +323,13 @@ export function PricingContractModal({
               </FormField>
 
               <FormField label="Teléfono" htmlFor="contract-phone">
-                <div className="flex h-[46px] w-full items-center gap-2 rounded-[10px] border border-[#edeef0] bg-white px-4">
-                  <Select
+                <PhoneInputShell>
+                  <PhoneDialSelect
                     value={form.phoneDialCode}
                     onValueChange={(value) =>
                       updateField("phoneDialCode")(value)
                     }
-                  >
-                    <SelectTrigger
-                      aria-label="Código de país telefónico"
-                      className="h-auto w-auto shrink-0 gap-1 rounded-none border-0 border-r border-[#dee5ed] bg-transparent p-0 pr-2 shadow-none focus:ring-0 [&>svg]:size-2 [&>svg]:text-[#777b84]"
-                    >
-                      <SelectValue>
-                        <span aria-hidden className="text-base leading-none">
-                          {phoneDialOption.flag}
-                        </span>
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent align="start">
-                      {PHONE_DIAL_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <span className="flex items-center gap-2">
-                            <span aria-hidden>{option.flag}</span>
-                            <span>{option.label}</span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                   <Input
                     id="contract-phone"
                     type="tel"
@@ -359,9 +342,9 @@ export function PricingContractModal({
                       )
                     }
                     placeholder={phoneDialOption.placeholder}
-                    className="h-auto min-w-0 flex-1 border-0 bg-transparent px-0 text-base leading-[1.4] text-[#18191b] shadow-none placeholder:text-[#777b84] focus-visible:border-0 focus-visible:ring-0"
+                    className={phoneNumberInputClassName}
                   />
-                </div>
+                </PhoneInputShell>
               </FormField>
 
               <FormField label="País" required>
