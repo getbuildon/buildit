@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState, type ReactNode } from "react"
-import { PanelLeft, PanelLeftClose } from "lucide-react"
+import { PanelLeft } from "lucide-react"
 
+import { BackofficeMobileHeader } from "@/components/backoffice-shell/BackofficeMobileHeader"
 import { BackofficeSidebar } from "@/components/backoffice-shell/BackofficeSidebar"
 import { BACKOFFICE_SHELL } from "@/lib/backoffice/designTokens"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
@@ -37,13 +38,15 @@ export function BackofficeShell({ children, userProfile }: BackofficeShellProps)
 
   return (
     <div
-      className="fixed inset-0 flex overflow-hidden"
+      className="fixed inset-0 flex flex-col overflow-hidden lg:flex-row"
       style={{ backgroundColor: BACKOFFICE_SHELL.mainBg }}
       data-backoffice-shell
     >
+      <BackofficeMobileHeader userProfile={userProfile} />
+
       <aside
         className={cn(
-          "flex h-full min-h-0 shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out",
+          "hidden h-full min-h-0 shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out lg:flex",
           sidebarOpen ? "w-[220px]" : "w-0",
         )}
         aria-hidden={!sidebarOpen}
@@ -61,7 +64,7 @@ export function BackofficeShell({ children, userProfile }: BackofficeShellProps)
           <button
             type="button"
             onClick={toggleSidebar}
-            className="fixed left-4 top-4 z-30 flex size-9 items-center justify-center rounded-lg border border-[#edeef0] bg-white text-[#43484e] shadow-[0_0_5px_rgba(243,103,31,0.08)] transition-colors hover:bg-[#f4f5f6] hover:text-[#272a2d]"
+            className="fixed left-4 top-4 z-30 hidden size-9 items-center justify-center rounded-lg border border-[#edeef0] bg-white text-[#43484e] shadow-[0_0_5px_rgba(243,103,31,0.08)] transition-colors hover:bg-[#f4f5f6] hover:text-[#272a2d] lg:flex"
             aria-label="Mostrar menú"
           >
             <PanelLeft className="size-4" strokeWidth={1.75} />

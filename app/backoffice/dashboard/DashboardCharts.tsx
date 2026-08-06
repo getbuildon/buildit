@@ -286,18 +286,17 @@ export function PlanGroupsBarChart({ planGroupBreakdown }: PlanGroupsBarChartPro
   )
 }
 
-function TierAxisTick({
-  x = 0,
-  y = 0,
-  payload,
-}: {
-  x?: number
-  y?: number
+function TierAxisTick(props: {
+  x?: string | number
+  y?: string | number
   payload?: { value?: string }
 }) {
+  const x = typeof props.x === "number" ? props.x : Number(props.x ?? 0)
+  const y = typeof props.y === "number" ? props.y : Number(props.y ?? 0)
+
   return (
     <text x={x} y={y} dy={4} textAnchor="end" fill="#363a3f" fontSize={12}>
-      {payload?.value}
+      {props.payload?.value}
     </text>
   )
 }

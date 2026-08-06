@@ -1,19 +1,13 @@
 "use client"
 
 import Image from "next/image"
-import Link from "next/link"
 import { PanelLeftClose } from "lucide-react"
 import { usePathname } from "next/navigation"
 
+import { BackofficeNavLinks } from "@/components/backoffice-shell/BackofficeNavLinks"
+import { BackofficeUserFooter } from "@/components/backoffice-shell/BackofficeUserFooter"
 import { BACKOFFICE_SHELL } from "@/lib/backoffice/designTokens"
-import {
-  BACKOFFICE_NAV_ITEMS,
-  backofficeHref,
-  isBackofficeNavActive,
-} from "@/lib/backoffice/navigation"
-import { UserAvatar } from "@/components/user/UserAvatar"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
-import { cn } from "@/lib/utils"
 
 type BackofficeSidebarProps = {
   userProfile: SidebarUserProfile
@@ -64,56 +58,12 @@ export function BackofficeSidebar({
         </div>
       </div>
 
-      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2.5 pt-3">
-        {BACKOFFICE_NAV_ITEMS.map((item) => {
-          const href = backofficeHref(item.segment)
-          const active = isBackofficeNavActive(pathname, item.segment)
-          const Icon = item.icon
+      <BackofficeNavLinks
+        pathname={pathname}
+        className="min-h-0 flex-1 overflow-y-auto px-2.5 pt-3"
+      />
 
-          return (
-            <Link
-              key={item.segment}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.25 text-[13px] font-medium leading-[19.5px] transition-colors",
-                active
-                  ? "bg-[#ff7433] text-white"
-                  : "text-[#afb3ba] hover:bg-white/6 hover:text-white",
-              )}
-            >
-              <Icon className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
-              {item.label}
-            </Link>
-          )
-        })}
-      </nav>
-
-      <div
-        className="shrink-0 border-t px-2.5 pb-3.5 pt-3"
-        style={{ borderColor: BACKOFFICE_SHELL.sidebarBorder }}
-      >
-        <div className="flex items-center gap-2.25 px-2.5 py-2">
-          <UserAvatar
-            firstName={userProfile.firstName}
-            lastName={userProfile.lastName}
-            email={userProfile.email}
-            avatarUrl={userProfile.avatarUrl}
-            size={28}
-            className="border border-[rgba(255,116,51,0.4)]"
-            bgClassName="bg-[rgba(255,116,51,0.2)]"
-            textClassName="text-[10px] font-semibold leading-[15px] text-[#ff7433]"
-          />
-          <div className="min-w-0">
-            <p className="truncate text-xs font-medium leading-[1.4] text-white">
-              {userProfile.fullName}
-            </p>
-            <p className="truncate text-[10px] leading-[1.4] tracking-[-0.5px] text-[#afb3ba]">
-              {userProfile.email}
-            </p>
-          </div>
-        </div>
-      </div>
+      <BackofficeUserFooter userProfile={userProfile} />
     </div>
   )
 }
