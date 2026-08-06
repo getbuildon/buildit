@@ -75,8 +75,8 @@ export function ContactTeamModalDesktop({
   updateField,
 }: ContactTeamModalDesktopProps) {
   return (
-    <div className="flex w-full flex-col bg-[#fefcfb]">
-      <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#eef0f2] px-8 pb-5 pt-8">
+    <div className="flex max-h-[90vh] min-h-0 w-full flex-col overflow-hidden bg-[#fefcfb]">
+      <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-4 border-b border-[#eef0f2] bg-[#fefcfb] px-8 pb-5 pt-8">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <h2 className="font-recoleta text-2xl leading-[1.05] text-[#111113]">
             Agendar reunión con el equipo
@@ -97,7 +97,10 @@ export function ContactTeamModalDesktop({
         </button>
       </div>
 
-      <form onSubmit={onSubmit} className="flex flex-col px-8 py-7">
+      <form
+        onSubmit={onSubmit}
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 py-7"
+      >
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Nombre" required htmlFor="contact-first-name">

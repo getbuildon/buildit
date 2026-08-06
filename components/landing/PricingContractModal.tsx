@@ -265,7 +265,7 @@ export function PricingContractModal({
         className={cn(
           "overflow-hidden border-0 p-0 shadow-none",
           isDesktop
-            ? "flex max-h-[90vh] min-h-0 w-[calc(100%-48px)] max-w-[960px] flex-row items-stretch overflow-y-auto rounded-[4px] shadow-[0px_25px_50px_-12px_rgba(24,25,27,0.3)]"
+            ? "flex max-h-[90vh] min-h-0 w-[calc(100%-48px)] max-w-[960px] flex-row items-stretch overflow-hidden rounded-[4px] shadow-[0px_25px_50px_-12px_rgba(24,25,27,0.3)]"
             : "flex-col bg-[#fefcfb]",
         )}
       >
