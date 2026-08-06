@@ -17,14 +17,14 @@ import {
 } from "@/lib/backoffice/dashboardPeriodClient"
 import { cn } from "@/lib/utils"
 
-type DashboardPeriodFilterProps = {
-  preset: DashboardPeriodPreset
+type DashboardComparePeriodFilterProps = {
+  preset: DashboardPeriodPreset | null
   from?: string
   to?: string
-  periodLabel: string
-  comparePreset?: DashboardPeriodPreset | null
-  compareFrom?: string
-  compareTo?: string
+  periodLabel?: string
+  primaryPreset: DashboardPeriodPreset
+  primaryFrom?: string
+  primaryTo?: string
 }
 
 const PRESET_OPTIONS: { id: DashboardPeriodPreset; label: string }[] = [
@@ -48,15 +48,15 @@ function getCustomRange(from?: string, to?: string): DateRange | undefined {
   }
 }
 
-export function DashboardPeriodFilter({
+export function DashboardComparePeriodFilter({
   preset,
   from,
   to,
   periodLabel,
-  comparePreset,
-  compareFrom,
-  compareTo,
-}: DashboardPeriodFilterProps) {
+  primaryPreset,
+  primaryFrom,
+  primaryTo,
+}: DashboardComparePeriodFilterProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
@@ -64,18 +64,19 @@ export function DashboardPeriodFilter({
   const customRange = preset === "custom" ? getCustomRange(from, to) : undefined
 
   const navigate = (next: {
-    period: DashboardPeriodPreset
-    from?: string
-    to?: string
+    comparePeriod: DashboardPeriodPreset | null
+    compareFrom?: string
+    compareTo?: string
   }) => {
     const query = serializeDashboardPeriodQuery({
-      period: next.period,
-      from: next.from,
-      to: next.to,
-      comparePeriod: comparePreset ?? null,
-      compareFrom,
-      compareTo,
+      period: primaryPreset,
+      from: primaryFrom,
+      to: primaryTo,
+      comparePeriod: next.comparePeriod,
+      compareFrom: next.compareFrom,
+      compareTo: next.compareTo,
     })
+
     startTransition(() => {
       router.push(`${pathname}${query}`)
     })
@@ -83,10 +84,14 @@ export function DashboardPeriodFilter({
 
   const applyCustomRange = (range: { from: Date; to: Date }) => {
     navigate({
-      period: "custom",
-      from: formatDashboardInputDate(range.from),
-      to: formatDashboardInputDate(range.to),
+      comparePeriod: "custom",
+      compareFrom: formatDashboardInputDate(range.from),
+      compareTo: formatDashboardInputDate(range.to),
     })
+  }
+
+  const clearCompare = () => {
+    navigate({ comparePeriod: null })
   }
 
   return (
@@ -97,8 +102,12 @@ export function DashboardPeriodFilter({
       )}
     >
       <div className="min-w-0">
-        <p className="text-xs font-medium leading-4 text-[#777b84]">Período</p>
-        <p className="pt-1 text-sm leading-5 text-[#18191b]">{periodLabel}</p>
+        <p className="text-xs font-medium leading-4 text-[#777b84]">
+          Período de referencia
+        </p>
+        <p className="pt-1 text-sm leading-5 text-[#18191b]">
+          {periodLabel ?? "Seleccioná un período para comparar"}
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
@@ -109,7 +118,7 @@ export function DashboardPeriodFilter({
               key={option.id}
               type="button"
               disabled={isPending}
-              onClick={() => navigate({ period: option.id })}
+              onClick={() => navigate({ comparePeriod: option.id })}
               className={periodFilterPillClassName(selected)}
             >
               {option.label}
@@ -131,6 +140,17 @@ export function DashboardPeriodFilter({
             </button>
           }
         />
+
+        {preset ? (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={clearCompare}
+            className={periodFilterPillClassName(false)}
+          >
+            Quitar
+          </button>
+        ) : null}
       </div>
     </div>
   )

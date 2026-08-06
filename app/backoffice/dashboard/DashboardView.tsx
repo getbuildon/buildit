@@ -9,8 +9,12 @@ import {
   Wallet,
 } from "lucide-react"
 
+import type { DashboardComparison } from "@/lib/backoffice/dashboardComparison"
+import type { DashboardPeriodPreset } from "@/lib/backoffice/dashboardPeriod"
 import type { BackofficeDashboardMetrics } from "@/lib/backoffice/dashboardMetrics"
 import { DashboardPeriodFilter } from "@/app/backoffice/dashboard/DashboardPeriodFilter"
+import { DashboardComparePeriodFilter } from "@/app/backoffice/dashboard/DashboardComparePeriodFilter"
+import { DashboardCompareSection } from "@/app/backoffice/dashboard/DashboardCompareSection"
 import {
   PeriodActivityBarChart,
   PlanGroupsBarChart,
@@ -26,6 +30,11 @@ type DashboardViewProps = {
   metrics: BackofficeDashboardMetrics
   from?: string
   to?: string
+  comparison: DashboardComparison | null
+  comparePreset: DashboardPeriodPreset | null
+  compareFrom?: string
+  compareTo?: string
+  comparePeriodLabel?: string
 }
 
 function MetricCard({
@@ -114,7 +123,16 @@ function BreakdownRow({
   )
 }
 
-export function DashboardView({ metrics, from, to }: DashboardViewProps) {
+export function DashboardView({
+  metrics,
+  from,
+  to,
+  comparison,
+  comparePreset,
+  compareFrom,
+  compareTo,
+  comparePeriodLabel,
+}: DashboardViewProps) {
   const { snapshot, activity, subscriptionStatus, period } = metrics
 
   return (
@@ -136,6 +154,9 @@ export function DashboardView({ metrics, from, to }: DashboardViewProps) {
           from={from}
           to={to}
           periodLabel={period.label}
+          comparePreset={comparePreset}
+          compareFrom={compareFrom}
+          compareTo={compareTo}
         />
       </div>
 
@@ -239,6 +260,40 @@ export function DashboardView({ metrics, from, to }: DashboardViewProps) {
             )
           })}
         </div>
+      </div>
+
+      <div className="border-t border-[#edeef0] pt-8">
+        <div className="pb-4">
+          <h2 className="font-recoleta text-[22px] leading-[1.2] text-[#272a2d]">
+            Comparativa
+          </h2>
+          <p className="pt-1 text-sm leading-5 text-[#777b84]">
+            Variación del período principal respecto a otro rango de referencia.
+          </p>
+        </div>
+
+        <DashboardComparePeriodFilter
+          preset={comparePreset}
+          from={compareFrom}
+          to={compareTo}
+          periodLabel={comparePeriodLabel}
+          primaryPreset={period.preset}
+          primaryFrom={from}
+          primaryTo={to}
+        />
+
+        {comparison ? (
+          <div className="pt-4">
+            <DashboardCompareSection comparison={comparison} />
+          </div>
+        ) : (
+          <div className="mt-4 rounded-[14px] border border-dashed border-[#edeef0] bg-[#f9f9fb] px-4 py-8 text-center">
+            <p className="text-sm leading-5 text-[#777b84]">
+              Elegí un período de referencia para ver incrementos y decrementos
+              respecto a {period.label}.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -10,7 +10,21 @@ import {
   type ProjectSubscriptionSnapshot,
 } from "@/lib/backoffice/proyectosSubscriptionStatus"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
+import {
+  buildCustomPlanPriceLabel,
+  normalizeProjectSubscriptionInput,
+  resolvePlanGroupId,
+  type BackofficeProjectSubscriptionDetails,
+  type BackofficeProjectSubscriptionInput,
+  type BackofficeSubscriptionPlanOption,
+  type NormalizedProjectSubscriptionInput,
+} from "@/lib/backoffice/projectSubscriptionForm"
+
+export type { BackofficeProjectSubscriptionDetails } from "@/lib/backoffice/projectSubscriptionForm"
 import { createAdminClient } from "@/utils/supabase/admin"
+
+export type { BackofficeProjectSubscriptionInput } from "@/lib/backoffice/projectSubscriptionForm"
+export type { BackofficeSubscriptionPlanOption } from "@/lib/backoffice/projectSubscriptionForm"
 
 export type BackofficeProjectCompany = {
   id: string
@@ -43,6 +57,15 @@ export type BackofficeProjectInput = {
   location?: string
   status?: string
   totalSurfaceM2?: string
+}
+
+export type BackofficeProjectCreateInput = BackofficeProjectInput & {
+  subscription: BackofficeProjectSubscriptionInput
+}
+
+export type BackofficeProjectUpdateInput = BackofficeProjectInput & {
+  subscription?: BackofficeProjectSubscriptionInput
+  cancelSubscription?: boolean
 }
 
 export type GetBackofficeProjectsParams = {
@@ -135,6 +158,342 @@ function normalizeProjectInput(input: BackofficeProjectInput) {
       total_surface_m2: parseOptionalSurface(input.totalSurfaceM2),
     },
   }
+}
+
+function toNumber(value: number | string | null | undefined): number | null {
+  if (value == null) return null
+  const parsed = typeof value === "number" ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+type SubscriptionPlanRow = {
+  id: string
+  slug: string
+  name: string
+  surface_label: string
+  surface_max_m2: number | null
+  monthly_price_usd: number | null
+  annual_monthly_price_usd: number | null
+  price_label: string
+}
+
+async function resolveSubscriptionPlanId(
+  admin: ReturnType<typeof createAdminClient>,
+  subscription: { ok: true; data: NormalizedProjectSubscriptionInput },
+  options?: { existingCustomPlanId?: string },
+): Promise<{ ok: true; planId: string; isCustomPlan: boolean } | { ok: false; error: string }> {
+  const { data } = subscription
+
+  if (data.planSlug) {
+    const { data: plan, error } = await admin
+      .from("subscription_plans")
+      .select("id")
+      .eq("slug", data.planSlug)
+      .eq("is_active", true)
+      .maybeSingle()
+
+    if (error) return { ok: false, error: error.message }
+    if (!plan) return { ok: false, error: "No encontramos el plan seleccionado." }
+
+    return { ok: true, planId: plan.id as string, isCustomPlan: false }
+  }
+
+  if (!data.customPlan) {
+    return { ok: false, error: "No pudimos resolver el plan de la subscripción." }
+  }
+
+  const customPlanPayload = {
+    name: data.customPlan.name,
+    surface_max_m2: data.customPlan.surfaceMaxM2,
+    surface_label: data.customPlan.surfaceLabel,
+    price_label: buildCustomPlanPriceLabel(
+      data.customPlan.monthlyPriceUsd,
+      data.customPlan.annualMonthlyPriceUsd,
+    ),
+    monthly_price_usd: data.customPlan.monthlyPriceUsd,
+    annual_monthly_price_usd: data.customPlan.annualMonthlyPriceUsd,
+  }
+
+  const existingCustomPlanId = options?.existingCustomPlanId?.trim()
+
+  if (existingCustomPlanId) {
+    const { data: existingPlan, error: existingPlanError } = await admin
+      .from("subscription_plans")
+      .select("id, slug")
+      .eq("id", existingCustomPlanId)
+      .maybeSingle()
+
+    if (existingPlanError) return { ok: false, error: existingPlanError.message }
+
+    if (!existingPlan || !(existingPlan.slug as string).startsWith("custom-")) {
+      return { ok: false, error: "No encontramos el plan personalizado a actualizar." }
+    }
+
+    const { error: updatePlanError } = await admin
+      .from("subscription_plans")
+      .update(customPlanPayload)
+      .eq("id", existingCustomPlanId)
+
+    if (updatePlanError) {
+      return { ok: false, error: updatePlanError.message }
+    }
+
+    return { ok: true, planId: existingCustomPlanId, isCustomPlan: true }
+  }
+
+  const slug = `custom-${crypto.randomUUID()}`
+
+  const { data: createdPlan, error: createPlanError } = await admin
+    .from("subscription_plans")
+    .insert({
+      slug,
+      ...customPlanPayload,
+      max_admins: 1,
+      max_supervisors: 2,
+      max_operators: 15,
+      max_clients: 20,
+      billing_interval: null,
+      sort_order: 999,
+      is_active: true,
+    })
+    .select("id")
+    .single()
+
+  if (createPlanError || !createdPlan) {
+    return {
+      ok: false,
+      error: createPlanError?.message ?? "No pudimos crear el plan personalizado.",
+    }
+  }
+
+  return { ok: true, planId: createdPlan.id as string, isCustomPlan: true }
+}
+
+async function createProjectSubscription(
+  admin: ReturnType<typeof createAdminClient>,
+  projectId: string,
+  subscriptionInput: BackofficeProjectSubscriptionInput,
+): Promise<BackofficeProjectActionResult> {
+  const normalizedSubscription = normalizeProjectSubscriptionInput(subscriptionInput)
+  if (!normalizedSubscription.ok) return normalizedSubscription
+
+  const planResult = await resolveSubscriptionPlanId(admin, normalizedSubscription)
+  if (!planResult.ok) return planResult
+
+  const { data } = normalizedSubscription
+
+  const { error } = await admin.from("project_subscriptions").insert({
+    project_id: projectId,
+    plan_id: planResult.planId,
+    status: "active",
+    started_at: data.startedAt.toISOString(),
+    renews_at: data.renewsAt.toISOString(),
+    billing_interval: data.billingInterval,
+    billing_note: null,
+    payment_method_label: "Pendiente",
+    card_last4: "0000",
+  })
+
+  if (error) {
+    if (planResult.isCustomPlan) {
+      await admin.from("subscription_plans").delete().eq("id", planResult.planId)
+    }
+    return { ok: false, error: error.message }
+  }
+
+  return { ok: true }
+}
+
+async function upsertProjectSubscription(
+  admin: ReturnType<typeof createAdminClient>,
+  projectId: string,
+  subscriptionInput: BackofficeProjectSubscriptionInput,
+  options?: { existingSubscriptionId?: string },
+): Promise<BackofficeProjectActionResult> {
+  const normalizedSubscription = normalizeProjectSubscriptionInput(subscriptionInput)
+  if (!normalizedSubscription.ok) return normalizedSubscription
+
+  const planResult = await resolveSubscriptionPlanId(admin, normalizedSubscription, {
+    existingCustomPlanId:
+      subscriptionInput.planGroupId === "custom"
+        ? subscriptionInput.existingPlanId
+        : undefined,
+  })
+  if (!planResult.ok) return planResult
+
+  const { data } = normalizedSubscription
+  const payload = {
+    plan_id: planResult.planId,
+    billing_interval: data.billingInterval,
+    started_at: data.startedAt.toISOString(),
+    renews_at: data.renewsAt.toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+
+  if (options?.existingSubscriptionId) {
+    const { error } = await admin
+      .from("project_subscriptions")
+      .update(payload)
+      .eq("id", options.existingSubscriptionId)
+
+    if (error) {
+      return { ok: false, error: error.message }
+    }
+
+    return { ok: true }
+  }
+
+  const { error } = await admin.from("project_subscriptions").insert({
+    project_id: projectId,
+    status: "active",
+    billing_note: null,
+    payment_method_label: "Pendiente",
+    card_last4: "0000",
+    ...payload,
+  })
+
+  if (error) {
+    if (planResult.isCustomPlan && !subscriptionInput.existingPlanId) {
+      await admin.from("subscription_plans").delete().eq("id", planResult.planId)
+    }
+    return { ok: false, error: error.message }
+  }
+
+  return { ok: true }
+}
+
+async function cancelProjectSubscriptionByProjectId(
+  admin: ReturnType<typeof createAdminClient>,
+  projectId: string,
+): Promise<BackofficeProjectActionResult> {
+  const { data: subscription, error: subscriptionError } = await admin
+    .from("project_subscriptions")
+    .select("id, status")
+    .eq("project_id", projectId)
+    .maybeSingle()
+
+  if (subscriptionError) {
+    return { ok: false, error: subscriptionError.message }
+  }
+
+  if (!subscription) {
+    return { ok: false, error: "Este proyecto no tiene subscripción." }
+  }
+
+  if (subscription.status === "cancelled") {
+    return { ok: false, error: "La subscripción ya está cancelada." }
+  }
+
+  const { error } = await admin
+    .from("project_subscriptions")
+    .update({
+      status: "cancelled",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", subscription.id)
+
+  if (error) {
+    return { ok: false, error: error.message }
+  }
+
+  return { ok: true }
+}
+
+function mapSubscriptionPlanRow(plan: SubscriptionPlanRow): BackofficeSubscriptionPlanOption & {
+  isCustom: boolean
+} {
+  return {
+    id: plan.id,
+    slug: plan.slug,
+    name: plan.name,
+    surfaceLabel: plan.surface_label,
+    surfaceMaxM2: toNumber(plan.surface_max_m2),
+    monthlyPriceUsd: toNumber(plan.monthly_price_usd),
+    annualMonthlyPriceUsd: toNumber(plan.annual_monthly_price_usd),
+    priceLabel: plan.price_label,
+    groupId: resolvePlanGroupId(plan.slug),
+    isCustom: plan.slug.startsWith("custom-"),
+  }
+}
+
+export async function getBackofficeProjectSubscription(
+  projectId: string,
+): Promise<BackofficeProjectSubscriptionDetails | null> {
+  await requireBackofficeUser()
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
+    .from("project_subscriptions")
+    .select(
+      `
+      id,
+      status,
+      billing_interval,
+      started_at,
+      renews_at,
+      plan:subscription_plans (
+        id,
+        slug,
+        name,
+        surface_label,
+        surface_max_m2,
+        monthly_price_usd,
+        annual_monthly_price_usd,
+        price_label
+      )
+    `,
+    )
+    .eq("project_id", projectId)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) return null
+
+  const planRow = firstRelation(
+    data.plan as SubscriptionPlanRow | SubscriptionPlanRow[] | null,
+  )
+  if (!planRow) return null
+
+  const billingInterval = data.billing_interval === "annual" ? "annual" : "monthly"
+
+  return {
+    subscriptionId: data.id as string,
+    status: data.status as BackofficeProjectSubscriptionDetails["status"],
+    billingInterval,
+    startedAt: data.started_at as string,
+    renewsAt: (data.renews_at as string | null) ?? null,
+    plan: mapSubscriptionPlanRow(planRow),
+  }
+}
+
+export async function listBackofficeSubscriptionPlans(): Promise<
+  BackofficeSubscriptionPlanOption[]
+> {
+  await requireBackofficeUser()
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
+    .from("subscription_plans")
+    .select(
+      "id, slug, name, surface_label, surface_max_m2, monthly_price_usd, annual_monthly_price_usd, price_label",
+    )
+    .eq("is_active", true)
+    .not("slug", "like", "custom-%")
+    .order("sort_order", { ascending: true })
+
+  if (error) throw new Error(error.message)
+
+  return ((data ?? []) as SubscriptionPlanRow[]).map((plan) => ({
+    id: plan.id,
+    slug: plan.slug,
+    name: plan.name,
+    surfaceLabel: plan.surface_label,
+    surfaceMaxM2: toNumber(plan.surface_max_m2),
+    monthlyPriceUsd: toNumber(plan.monthly_price_usd),
+    annualMonthlyPriceUsd: toNumber(plan.annual_monthly_price_usd),
+    priceLabel: plan.price_label,
+    groupId: resolvePlanGroupId(plan.slug),
+  }))
 }
 
 async function getCompanyIdsMatchingSearch(
@@ -568,7 +927,7 @@ export async function searchBackofficeProjectCompanyCandidates(
 }
 
 export async function createBackofficeProject(
-  input: BackofficeProjectInput,
+  input: BackofficeProjectCreateInput,
 ): Promise<BackofficeProjectActionResult> {
   await requireBackofficeUser()
   const admin = createAdminClient()
@@ -624,13 +983,24 @@ export async function createBackofficeProject(
     }
   }
 
+  const subscriptionResult = await createProjectSubscription(
+    admin,
+    created.id,
+    input.subscription,
+  )
+
+  if (!subscriptionResult.ok) {
+    await admin.from("projects").delete().eq("id", created.id)
+    return subscriptionResult
+  }
+
   revalidatePath("/backoffice/proyectos")
   return { ok: true }
 }
 
 export async function updateBackofficeProject(
   projectId: string,
-  input: BackofficeProjectInput,
+  input: BackofficeProjectUpdateInput,
 ): Promise<BackofficeProjectActionResult> {
   await requireBackofficeUser()
   const admin = createAdminClient()
@@ -673,6 +1043,39 @@ export async function updateBackofficeProject(
 
   if (error) {
     return { ok: false, error: error.message }
+  }
+
+  if (input.cancelSubscription) {
+    const cancelResult = await cancelProjectSubscriptionByProjectId(admin, projectId)
+    if (!cancelResult.ok) return cancelResult
+  } else if (input.subscription) {
+    const { data: existingSubscriptionRow, error: subscriptionLookupError } = await admin
+      .from("project_subscriptions")
+      .select("id, status")
+      .eq("project_id", projectId)
+      .maybeSingle()
+
+    if (subscriptionLookupError) {
+      return { ok: false, error: subscriptionLookupError.message }
+    }
+
+    if (existingSubscriptionRow?.status === "cancelled") {
+      return {
+        ok: false,
+        error: "La subscripción está cancelada. No se puede modificar.",
+      }
+    }
+
+    const subscriptionResult = await upsertProjectSubscription(
+      admin,
+      projectId,
+      input.subscription,
+      existingSubscriptionRow
+        ? { existingSubscriptionId: existingSubscriptionRow.id as string }
+        : undefined,
+    )
+
+    if (!subscriptionResult.ok) return subscriptionResult
   }
 
   revalidatePath("/backoffice/proyectos")
@@ -743,35 +1146,8 @@ export async function cancelBackofficeProjectSubscription(
     return { ok: false, error: "No encontramos ese proyecto." }
   }
 
-  const { data: subscription, error: subscriptionError } = await admin
-    .from("project_subscriptions")
-    .select("id, status")
-    .eq("project_id", projectId)
-    .maybeSingle()
-
-  if (subscriptionError) {
-    return { ok: false, error: subscriptionError.message }
-  }
-
-  if (!subscription) {
-    return { ok: false, error: "Este proyecto no tiene una subscripción activa." }
-  }
-
-  if (subscription.status === "cancelled") {
-    return { ok: false, error: "La subscripción ya está cancelada." }
-  }
-
-  const { error } = await admin
-    .from("project_subscriptions")
-    .update({
-      status: "cancelled",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", subscription.id)
-
-  if (error) {
-    return { ok: false, error: error.message }
-  }
+  const result = await cancelProjectSubscriptionByProjectId(admin, projectId)
+  if (!result.ok) return result
 
   revalidatePath("/backoffice/proyectos")
   return { ok: true }

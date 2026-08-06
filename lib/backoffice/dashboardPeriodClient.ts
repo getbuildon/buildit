@@ -70,6 +70,9 @@ export function serializeDashboardPeriodQuery(options: {
   period: DashboardPeriodPreset
   from?: string
   to?: string
+  comparePeriod?: DashboardPeriodPreset | null
+  compareFrom?: string
+  compareTo?: string
 }): string {
   const params = new URLSearchParams()
   params.set("period", options.period)
@@ -77,6 +80,19 @@ export function serializeDashboardPeriodQuery(options: {
   if (options.period === "custom" && options.from && options.to) {
     params.set("from", options.from)
     params.set("to", options.to)
+  }
+
+  if (options.comparePeriod) {
+    params.set("comparePeriod", options.comparePeriod)
+
+    if (
+      options.comparePeriod === "custom" &&
+      options.compareFrom &&
+      options.compareTo
+    ) {
+      params.set("compareFrom", options.compareFrom)
+      params.set("compareTo", options.compareTo)
+    }
   }
 
   const query = params.toString()
