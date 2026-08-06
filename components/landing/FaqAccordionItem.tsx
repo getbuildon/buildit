@@ -10,13 +10,17 @@ type FaqAccordionItemProps = {
   item: FaqItem
   open: boolean
   onToggle: () => void
+  variant?: "mobile" | "desktop"
 }
 
 export function FaqAccordionItem({
   item,
   open,
   onToggle,
+  variant = "mobile",
 }: FaqAccordionItemProps) {
+  const isDesktop = variant === "desktop"
+
   return (
     <div className="border-b border-[#eef0f2]">
       <button
@@ -25,7 +29,12 @@ export function FaqAccordionItem({
         onClick={onToggle}
         className="flex w-full items-center justify-between gap-4 py-5 text-left"
       >
-        <span className="font-recoleta text-lg leading-[1.05] text-[#18191b]">
+        <span
+          className={cn(
+            "font-recoleta leading-[1.05] text-[#18191b]",
+            isDesktop ? "text-2xl" : "text-lg",
+          )}
+        >
           {item.question}
         </span>
 
@@ -50,7 +59,10 @@ export function FaqAccordionItem({
       <AnimatedCollapsible open={open}>
         <p
           className={cn(
-            "pb-5 text-lg leading-[1.2] tracking-[0.36px] text-[#43484e]",
+            "pb-5 text-[#43484e]",
+            isDesktop
+              ? "text-xl leading-[1.4]"
+              : "text-lg leading-[1.2] tracking-[0.36px]",
           )}
         >
           {item.answer}

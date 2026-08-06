@@ -1,13 +1,12 @@
 import Image from "next/image"
 import Link from "next/link"
 
-import { LandingFooterDesktop } from "@/components/landing/LandingFooterDesktop"
 import { LANDING_FOOTER_LINKS } from "@/lib/landing/footerLinks"
 
-function LandingFooterMobile() {
+export function LandingFooterDesktop() {
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-10 px-4 pb-4 pt-8">
-      <div className="flex items-start gap-10">
+    <div className="mx-auto flex max-w-[1280px] items-center justify-between px-20 py-8">
+      <div className="flex items-center gap-10">
         <div className="relative size-20 shrink-0">
           <Image
             src="/landing/footer/iso-logo.svg"
@@ -18,7 +17,7 @@ function LandingFooterMobile() {
           />
         </div>
 
-        <div className="flex flex-1 flex-col gap-3 pt-2">
+        <div className="flex items-center gap-6">
           {LANDING_FOOTER_LINKS.map((link) => (
             <Link
               key={link.id}
@@ -26,7 +25,7 @@ function LandingFooterMobile() {
               {...(link.external
                 ? { target: "_blank", rel: "noopener noreferrer" }
                 : {})}
-              className="inline-flex w-fit items-center gap-1 text-base leading-[1.4] text-[#5a6169]"
+              className="inline-flex items-center gap-1 text-base leading-[1.4] text-[#5a6169]"
             >
               {link.label}
               <Image
@@ -42,25 +41,9 @@ function LandingFooterMobile() {
         </div>
       </div>
 
-      <div className="w-full border-t border-[#edeef0] py-3">
-        <p className="text-sm leading-[1.4] text-[#696e77]">
-          © 2026 BuildOn. Todos los derechos reservados.
-        </p>
-      </div>
+      <p className="w-[360px] shrink-0 text-right text-sm leading-[1.4] text-[#696e77]">
+        © 2026 BuildOn. Todos los derechos reservados.
+      </p>
     </div>
-  )
-}
-
-export function LandingFooter() {
-  return (
-    <footer className="border-t border-[rgba(175,179,186,0.5)] bg-[#fefcfb]">
-      <div className="lg:hidden">
-        <LandingFooterMobile />
-      </div>
-
-      <div className="hidden lg:block">
-        <LandingFooterDesktop />
-      </div>
-    </footer>
   )
 }
