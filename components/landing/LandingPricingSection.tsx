@@ -13,12 +13,12 @@ export function LandingPricingSection() {
   return (
     <section id="planes" className="scroll-mt-[80px] bg-[#fefcfb]">
       <div className="lg:hidden">
-        <div className="px-6 pb-6 pt-10 text-center">
-          <h2 className="font-recoleta text-2xl leading-[1.05] text-[#272a2d]">
+        <div className="px-6 pb-6 pt-10 text-center md:px-10 md:pt-14">
+          <h2 className="mx-auto max-w-[560px] font-recoleta text-2xl leading-[1.05] text-[#272a2d] md:text-3xl">
             Planes que se adaptan a cada{" "}
             <span className="text-primary">proyecto.</span>
           </h2>
-          <p className="mx-auto max-w-[342px] pt-3 text-sm leading-[1.4] text-[#111113]">
+          <p className="mx-auto max-w-[480px] pt-3 text-sm leading-[1.4] text-[#111113] md:text-base">
             Desde obras pequeñas hasta operaciones multiobra, BuildOn escala con
             tu equipo y tu forma de trabajar.
           </p>

@@ -9,8 +9,8 @@ function LandingDemoMobile() {
   const { openContactModal } = useLandingActions()
 
   return (
-    <div className="mx-auto max-w-[1280px] px-6 py-10">
-      <div className="overflow-hidden rounded-[4px] bg-[#212225] shadow-[0px_48px_120px_0px_rgba(0,0,0,0.2)]">
+    <div className="mx-auto max-w-[1280px] px-6 py-10 md:px-10 md:py-14">
+      <div className="mx-auto max-w-[560px] overflow-hidden rounded-[4px] bg-[#212225] shadow-[0px_48px_120px_0px_rgba(0,0,0,0.2)]">
         <div className="flex flex-col gap-8 px-6 pb-8 pt-6">
           <div>
             <h2 className="font-recoleta text-[36px] leading-[1.05] text-white">

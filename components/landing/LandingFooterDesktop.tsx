@@ -5,8 +5,8 @@ import { LANDING_FOOTER_LINKS } from "@/lib/landing/footerLinks"
 
 export function LandingFooterDesktop() {
   return (
-    <div className="mx-auto flex max-w-[1280px] items-center justify-between px-20 py-8">
-      <div className="flex items-center gap-10">
+    <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-6 py-8 lg:flex-row lg:items-center lg:justify-between lg:px-10 xl:px-20">
+      <div className="flex min-w-0 flex-wrap items-center gap-6 lg:gap-10">
         <div className="relative size-20 shrink-0">
           <Image
             src="/landing/footer/iso-logo.svg"
@@ -41,7 +41,7 @@ export function LandingFooterDesktop() {
         </div>
       </div>
 
-      <p className="w-[360px] shrink-0 text-right text-sm leading-[1.4] text-[#696e77]">
+      <p className="shrink-0 text-sm leading-[1.4] text-[#696e77] lg:text-right xl:w-[360px]">
         © 2026 BuildOn. Todos los derechos reservados.
       </p>
     </div>

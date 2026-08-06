@@ -22,13 +22,13 @@ export function LandingHeroMobile() {
           <div className="absolute inset-0 bg-[rgba(33,34,37,0.8)]" />
         </div>
 
-        <div className="relative z-10 min-h-[474px] px-6 pb-20 pt-10 text-center">
-          <h1 className="font-recoleta text-[36px] leading-[1.05] text-white">
+        <div className="relative z-10 min-h-[474px] px-6 pb-20 pt-10 text-center md:px-10">
+          <h1 className="mx-auto max-w-[560px] font-recoleta text-[36px] leading-[1.05] text-white md:text-[42px]">
             La forma más simple de controlar y comunicar el{" "}
             <span className="text-primary">avance de obra</span>
           </h1>
 
-          <p className="mx-auto max-w-[342px] pt-6 text-lg leading-[1.2] tracking-[0.36px] text-white">
+          <p className="mx-auto max-w-[480px] pt-6 text-lg leading-[1.2] tracking-[0.36px] text-white md:text-xl">
             Gestioná tus proyectos de construcción con total visibilidad.
             Monitoreá avances, coordiná equipos y mantené informados a tus
             clientes desde un solo lugar.
@@ -64,19 +64,19 @@ export function LandingHeroMobile() {
         <div className="relative z-0 h-[181px] bg-[#f3671f]" />
       </div>
 
-      <div className="pointer-events-none absolute left-1/2 top-[426px] z-20 w-[calc(100%-32px)] max-w-[357px] -translate-x-1/2 px-[10px]">
+      <div className="pointer-events-none absolute left-1/2 top-[426px] z-20 w-[calc(100%-32px)] max-w-[480px] -translate-x-1/2 px-[10px] md:max-w-[560px]">
         <Image
           src="/landing/hero/dashboard.png"
           alt="Panel de BuildOn mostrando el avance de obra de un proyecto"
           width={715}
           height={414}
           priority
-          className="h-[207px] w-full object-cover object-top shadow-[0px_15.651px_39.127px_0px_rgba(0,0,0,0.4)]"
-          sizes="(max-width: 390px) 92vw, 357px"
+          className="h-[207px] w-full object-cover object-top shadow-[0px_15.651px_39.127px_0px_rgba(0,0,0,0.4)] md:h-[240px]"
+          sizes="(max-width: 768px) 92vw, 560px"
         />
       </div>
 
-      <div className="pointer-events-none absolute right-[11%] top-[506px] z-30 h-[140px] w-[133px]">
+      <div className="pointer-events-none absolute right-[8%] top-[506px] z-30 h-[140px] w-[133px] md:right-[12%] md:h-[160px] md:w-[152px]">
         <Image
           src="/landing/hero/phone.png"
           alt="Vista mobile de BuildOn"

@@ -29,13 +29,13 @@ export function LandingPricingDesktop({
 
   return (
     <>
-      <div className="mx-auto max-w-[1280px] px-20 py-28">
+      <div className="mx-auto max-w-[1280px] px-6 py-16 lg:px-10 lg:py-24 xl:px-20 xl:py-28">
         <div className="mx-auto max-w-[672px] text-center">
-          <h2 className="font-recoleta text-[48px] leading-[1.05] text-[#18191b]">
+          <h2 className="font-recoleta text-4xl leading-[1.05] text-[#18191b] xl:text-[48px]">
             Planes que se adaptan a cada{" "}
             <span className="text-primary">proyecto</span>.
           </h2>
-          <p className="pt-5 text-xl leading-[1.4] text-[#43484e]">
+          <p className="pt-5 text-lg leading-[1.4] text-[#43484e] xl:text-xl">
             Desde obras pequeñas hasta operaciones multiobra, BuildOn escala con
             tu equipo y tu forma de trabajar.
           </p>
@@ -45,11 +45,11 @@ export function LandingPricingDesktop({
           <PricingBillingToggle value={billing} onChange={onBillingChange} />
         </div>
 
-        <div className="grid grid-cols-3 gap-6 pt-12">
+        <div className="grid grid-cols-1 gap-6 pt-12 lg:grid-cols-2 xl:grid-cols-3">
           {PRICING_PLANS.map((plan) => (
             <div
               key={plan.id}
-              className={cn(plan.featured && "-mt-4 self-start")}
+              className={cn(plan.featured && "xl:-mt-4 xl:self-start")}
             >
               <PricingPlanCard
                 plan={plan}

@@ -187,7 +187,7 @@ export function LandingSolutionsStack() {
       <LandingHeroMobile />
 
       <div className="w-full bg-[#272a2d]">
-        <div className="relative z-10 mx-auto w-full max-w-[390px] pt-10">
+        <div className="relative z-10 mx-auto w-full max-w-[390px] px-6 pt-10 md:max-w-[480px]">
         <LandingSolutionsHeader />
 
         <div className="mt-[52px] flex justify-center">

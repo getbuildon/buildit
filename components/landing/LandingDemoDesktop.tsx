@@ -8,10 +8,10 @@ export function LandingDemoDesktop() {
   const { openContactModal } = useLandingActions()
 
   return (
-    <div className="mx-auto max-w-[1280px] px-20 py-20">
+    <div className="mx-auto max-w-[1280px] px-6 py-12 lg:px-10 lg:py-16 xl:px-20 xl:py-20">
       <div className="overflow-hidden rounded-[4px] bg-[#212225] shadow-[0px_48px_120px_0px_rgba(0,0,0,0.2)]">
-        <div className="grid min-h-[429.5px] grid-cols-2">
-          <div className="flex flex-col justify-center gap-8 py-14 pl-14 pr-20">
+        <div className="grid min-h-[429.5px] grid-cols-1 lg:grid-cols-2">
+          <div className="flex flex-col justify-center gap-8 px-6 py-10 lg:px-10 lg:py-14 xl:pl-14 xl:pr-20">
             <div>
               <h2 className="font-recoleta text-[36px] leading-[1.05] text-white">
                 ¿Necesitás ayuda para{" "}

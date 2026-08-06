@@ -25,13 +25,13 @@ export function LandingHeroDesktop() {
           <div className="absolute inset-0 bg-[rgba(33,34,37,0.8)]" />
         </div>
 
-        <div className="relative z-10 mx-auto flex h-[752px] max-w-[1440px] flex-col items-center px-6 pb-12 pt-32 text-center lg:px-20 xl:px-[300px]">
-          <h1 className="max-w-[840px] font-recoleta text-[64px] leading-[1.05] text-white">
+        <div className="relative z-10 mx-auto flex h-[752px] max-w-[1440px] flex-col items-center px-6 pb-12 pt-24 text-center lg:px-10 lg:pt-28 xl:px-20 xl:pt-32 2xl:px-[300px]">
+          <h1 className="max-w-[840px] font-recoleta text-4xl leading-[1.05] text-white lg:text-5xl xl:text-[64px]">
             La forma más simple de controlar y comunicar el{" "}
             <span className="text-primary">avance de obra</span>
           </h1>
 
-          <p className="max-w-[576px] pt-6 text-xl leading-[1.4] text-white">
+          <p className="max-w-[576px] pt-6 text-lg leading-[1.4] text-white xl:text-xl">
             Gestioná tus proyectos de construcción con total visibilidad.
             Monitoreá avances, coordiná equipos y mantené informados a tus
             clientes desde un solo lugar.
@@ -67,7 +67,7 @@ export function LandingHeroDesktop() {
         <div className="relative z-0 h-[642px] bg-[#f3671f]" />
 
         <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-full max-w-[1440px]">
-          <div className="absolute left-1/2 top-[606px] z-20 w-[calc(100%-64px)] max-w-[1160px] -translate-x-1/2 px-8">
+          <div className="absolute left-1/2 top-[606px] z-20 w-[calc(100%-48px)] max-w-[1160px] -translate-x-1/2 px-4 lg:w-[calc(100%-64px)] lg:px-8">
             <Image
               src="/landing/hero/desktop/dashboard-main.png"
               alt="Panel de BuildOn mostrando el avance de obra de un proyecto"
@@ -79,7 +79,7 @@ export function LandingHeroDesktop() {
             />
           </div>
 
-          <div className="absolute left-[4.8%] top-[801px] z-30 w-[20.6%] min-w-[220px] max-w-[297px]">
+          <div className="absolute left-[4.8%] top-[801px] z-30 hidden w-[20.6%] min-w-[180px] max-w-[297px] lg:block">
             <Image
               src="/landing/hero/desktop/task-panel.png"
               alt=""
@@ -90,7 +90,7 @@ export function LandingHeroDesktop() {
             />
           </div>
 
-          <div className="absolute right-[4.8%] top-[816px] z-30 w-[27.6%] min-w-[280px] max-w-[398px]">
+          <div className="absolute right-[4.8%] top-[816px] z-30 hidden w-[27.6%] min-w-[220px] max-w-[398px] xl:block">
             <Image
               src="/landing/hero/desktop/phone-card.png"
               alt="Certificación de tareas en BuildOn"
@@ -101,7 +101,7 @@ export function LandingHeroDesktop() {
             />
           </div>
 
-          <div className="absolute left-1/2 top-[1195px] z-30 w-[39.7%] min-w-[420px] max-w-[571px] -translate-x-1/2">
+          <div className="absolute left-1/2 top-[1195px] z-30 hidden w-[39.7%] min-w-[320px] max-w-[571px] -translate-x-1/2 xl:block">
             <Image
               src="/landing/hero/desktop/unit-bar.png"
               alt="Detalle de unidad con progreso en BuildOn"

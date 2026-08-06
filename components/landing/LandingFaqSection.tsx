@@ -12,10 +12,10 @@ function LandingFaqMobile() {
   )
 
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-6 py-14">
+    <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-6 py-14 md:px-10 md:py-16">
       <div className="pt-4">
-        <div className="flex flex-col gap-5">
-          <h2 className="font-recoleta text-[36px] leading-[1.05] text-[#111113]">
+        <div className="mx-auto flex max-w-[560px] flex-col gap-5">
+          <h2 className="font-recoleta text-[36px] leading-[1.05] text-[#111113] md:text-[40px]">
             ¿Te quedaron <span className="text-primary">dudas?</span>
           </h2>
           <p className="text-lg leading-[1.2] tracking-[0.36px] text-[#272a2d]">

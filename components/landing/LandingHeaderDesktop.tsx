@@ -12,8 +12,8 @@ export function LandingHeaderDesktop() {
   const { openContactModal, scrollToPlans } = useLandingActions()
 
   return (
-    <div className="mx-auto flex max-w-[1280px] items-center justify-between px-20 py-4">
-      <div className="flex items-center gap-10">
+    <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-6 py-4 lg:px-10 xl:px-20">
+      <div className="flex min-w-0 items-center gap-6 lg:gap-10">
         <Link href="/" aria-label="BuildOn — inicio">
           <Image
             src="/landing/logo-build-on.svg"
@@ -25,7 +25,7 @@ export function LandingHeaderDesktop() {
           />
         </Link>
 
-        <nav className="flex items-center gap-8">
+        <nav className="flex items-center gap-4 xl:gap-8">
           {LANDING_HEADER_NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -41,7 +41,7 @@ export function LandingHeaderDesktop() {
         </nav>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 lg:gap-3">
         <Link
           href="/login"
           className="inline-flex items-center gap-1 rounded-[14px] px-3 py-2.5 text-sm leading-[1.4] text-[#272a2d] transition-colors hover:bg-[#fff6f1]"

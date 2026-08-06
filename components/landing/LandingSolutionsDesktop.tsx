@@ -17,9 +17,7 @@ import {
   DESKTOP_CARDS_TO_CONTROLS_PX,
   DESKTOP_CONTENT_WIDTH_PX,
   DESKTOP_CONTROLS_BOTTOM_PX,
-  DESKTOP_HEADER_GAP_PX,
   DESKTOP_HEADER_TO_CARDS_PX,
-  DESKTOP_HEADING_WIDTH_PX,
   DESKTOP_SECTION_TOP_PX,
   DESKTOP_STACK_LEFT_PADDING_PX,
   DESKTOP_TRACK_WIDTH_PX,
@@ -131,27 +129,15 @@ export function LandingSolutionsDesktop() {
       />
 
       <div
-        className="relative z-10 mx-auto max-w-[1280px] px-20"
+        className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 xl:px-20"
         style={{ paddingTop: DESKTOP_SECTION_TOP_PX }}
       >
-        <div
-          className="flex items-end"
-          style={{
-            width: DESKTOP_CONTENT_WIDTH_PX,
-            gap: DESKTOP_HEADER_GAP_PX,
-          }}
-        >
-          <h2
-            className="font-recoleta text-[48px] leading-[1.05] text-[#fefcfb]"
-            style={{ width: DESKTOP_HEADING_WIDTH_PX }}
-          >
+        <div className="flex max-w-full flex-col gap-6 xl:flex-row xl:items-end xl:gap-[180px]">
+          <h2 className="max-w-[470px] shrink-0 font-recoleta text-4xl leading-[1.05] text-[#fefcfb] xl:text-[48px]">
             Todo el avance de obra. En un{" "}
             <span className="text-primary">solo lugar</span>.
           </h2>
-          <p
-            className="pt-5 text-lg leading-[1.2] tracking-[0.36px] text-[#afb3ba]"
-            style={{ width: DESKTOP_HEADING_WIDTH_PX }}
-          >
+          <p className="max-w-[470px] pt-5 text-lg leading-[1.2] tracking-[0.36px] text-[#afb3ba] xl:pt-0">
             Con BuildOn conectás cada etapa del proyecto, desde la carga en campo
             hasta la visualización para clientes.
           </p>

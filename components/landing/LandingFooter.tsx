@@ -6,7 +6,7 @@ import { LANDING_FOOTER_LINKS } from "@/lib/landing/footerLinks"
 
 function LandingFooterMobile() {
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-10 px-4 pb-4 pt-8">
+    <div className="mx-auto flex max-w-[1280px] flex-col gap-10 px-6 pb-4 pt-8 md:px-10">
       <div className="flex items-start gap-10">
         <div className="relative size-20 shrink-0">
           <Image

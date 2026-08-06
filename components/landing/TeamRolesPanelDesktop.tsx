@@ -12,7 +12,7 @@ export function TeamRolesPanelDesktop() {
         Los cupos de cada plan se reparten entre estos tres tipos de usuario.
       </p>
 
-      <div className="grid grid-cols-3 gap-8 pt-8">
+      <div className="grid grid-cols-1 gap-8 pt-8 xl:grid-cols-3">
         {TEAM_ROLES.map((role) => (
           <div key={role.title}>
             <div className="grid size-10 place-items-center rounded-[14px] bg-[#fff5ef]">

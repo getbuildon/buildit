@@ -4,7 +4,7 @@ import { TEAM_ROLES } from "@/lib/landing/pricingPlans"
 
 export function TeamRolesPanel() {
   return (
-    <div className="bg-white px-6 pb-14 pt-10">
+    <div className="bg-white px-6 pb-14 pt-10 md:px-10">
       <div className="flex flex-col gap-2">
         <h3 className="font-recoleta text-2xl leading-[1.05] text-[#18191b]">
           ¿Quién es quién en tu equipo?
