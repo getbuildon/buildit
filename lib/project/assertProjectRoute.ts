@@ -1,14 +1,17 @@
 "use server"
 
-import { createClient } from "@/utils/supabase/server"
+import { notFound } from "next/navigation"
+
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
+import { isReservedProjectRouteSegment } from "@/lib/project/reservedRouteSegments"
+import { createClient } from "@/utils/supabase/server"
 
 export async function assertProjectRoute(projectId: string) {
   const user = await requireAuthenticatedUser()
 
   const id = projectId.trim()
-  if (!id) {
-    throw new Error("Invalid project route")
+  if (!id || isReservedProjectRouteSegment(id)) {
+    notFound()
   }
 
   const supabase = await createClient()
@@ -21,7 +24,7 @@ export async function assertProjectRoute(projectId: string) {
     .maybeSingle()
 
   if (projectError || !project) {
-    throw new Error("Project not found")
+    notFound()
   }
 
   // Acceso por membresía explícita al proyecto
@@ -49,5 +52,5 @@ export async function assertProjectRoute(projectId: string) {
     if (companyAccess) return { projectId: id }
   }
 
-  throw new Error("Access denied")
+  notFound()
 }
