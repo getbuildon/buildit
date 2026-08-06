@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { resolvePendingAuthSetupPath } from "@/lib/auth/pendingAuthSetup"
 import { readPublicSupabaseConfigFromEnv } from "@/lib/auth/publicSupabaseConfig"
 import { createClient } from "@/utils/supabase/server"
 
@@ -22,15 +23,22 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      const pendingSetupPath = resolvePendingAuthSetupPath(user?.user_metadata)
+      const destination = pendingSetupPath ?? next
+
       const forwardedHost = request.headers.get("x-forwarded-host")
       const isLocalEnv = process.env.NODE_ENV === "development"
       if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`)
+        return NextResponse.redirect(`${origin}${destination}`)
       }
       if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
+        return NextResponse.redirect(`https://${forwardedHost}${destination}`)
       }
-      return NextResponse.redirect(`${origin}${next}`)
+      return NextResponse.redirect(`${origin}${destination}`)
     }
   }
 

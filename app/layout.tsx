@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import localFont from "next/font/local"
 import { Google_Sans_Flex } from "next/font/google"
 import { AuthHashCallbackHandler } from "@/components/auth/AuthHashCallbackHandler"
-import { PendingPasswordSetupGuard } from "@/components/auth/PendingPasswordSetupGuard"
+import { PendingAuthSetupGuard } from "@/components/auth/PendingAuthSetupGuard"
 import { SupabaseConfigMissing } from "@/components/auth/SupabaseConfigMissing"
 import { ToastProvider } from "@/components/ui/toast"
 import { AuthProvider } from "@/context/AuthContextSupabase"
@@ -74,7 +74,7 @@ export default function RootLayout({
         {supabasePublicConfig ? (
           <AuthProvider supabasePublicConfig={supabasePublicConfig}>
             <AuthHashCallbackHandler />
-            <PendingPasswordSetupGuard />
+            <PendingAuthSetupGuard />
             <ToastProvider>{children}</ToastProvider>
           </AuthProvider>
         ) : (

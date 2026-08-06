@@ -4,24 +4,12 @@ import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 
 import { RECOVERY_PASSWORD_NEXT } from "@/lib/auth/clientAuth"
-import { REGISTER_CONFIRM_PATH } from "@/lib/auth/registerConfirmPath"
+import { resolvePendingAuthSetupPath } from "@/lib/auth/pendingAuthSetup"
 import { createClient } from "@/utils/supabase/client"
 
 function parseHashParams(hash: string): URLSearchParams {
   const trimmed = hash.startsWith("#") ? hash.slice(1) : hash
   return new URLSearchParams(trimmed)
-}
-
-function destinationForAuthHashType(type: string | null): string {
-  if (type === "invite") {
-    return REGISTER_CONFIRM_PATH
-  }
-
-  if (type === "recovery") {
-    return RECOVERY_PASSWORD_NEXT
-  }
-
-  return "/home"
 }
 
 export function AuthHashCallbackHandler() {
@@ -44,7 +32,6 @@ export function AuthHashCallbackHandler() {
 
     const supabase = createClient()
     const type = params.get("type")
-    const destination = destinationForAuthHashType(type)
 
     void (async () => {
       const { error } = await supabase.auth.setSession({
@@ -56,6 +43,17 @@ export function AuthHashCallbackHandler() {
         handledRef.current = false
         router.replace("/login?error=hash_callback")
         return
+      }
+
+      let destination = "/home"
+
+      if (type === "recovery") {
+        destination = RECOVERY_PASSWORD_NEXT
+      } else {
+        destination =
+          resolvePendingAuthSetupPath(
+            (await supabase.auth.getUser()).data.user?.user_metadata,
+          ) ?? "/home"
       }
 
       router.replace(destination)

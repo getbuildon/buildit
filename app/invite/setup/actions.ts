@@ -91,7 +91,10 @@ export async function completeInvitationSetup(
   const supabase = await createClient()
   const admin = createAdminClient()
 
-  const { error: passwordError } = await supabase.auth.updateUser({ password: trimmed })
+  const { error: passwordError } = await supabase.auth.updateUser({
+    password: trimmed,
+    data: { invitation_id: null },
+  })
   if (passwordError) {
     return { ok: false, error: passwordError.message }
   }

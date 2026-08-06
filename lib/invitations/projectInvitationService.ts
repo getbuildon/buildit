@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createHash, randomBytes } from "crypto"
 import { PROJECT_ROLE_SLUG } from "@/lib/projects/catalogSlugs"
+import { buildInviteSetupPath } from "@/lib/auth/pendingAuthSetup"
 import { getSiteOrigin } from "@/lib/invitations/siteOrigin"
 
 const INVITE_EXPIRY_DAYS = 7
@@ -12,9 +13,7 @@ export type ExistingProfile = {
   last_name: string
 }
 
-export function buildInviteSetupPath(invitationId: string): string {
-  return `/invite/setup?invitation=${encodeURIComponent(invitationId)}`
-}
+export { buildInviteSetupPath }
 
 export function hashInvitationToken(token: string): string {
   return createHash("sha256").update(token).digest("hex")
