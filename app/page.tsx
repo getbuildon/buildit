@@ -5,7 +5,7 @@ import { LandingSolutionsSection } from "@/components/landing/LandingSolutionsSe
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="landing-page min-h-screen overflow-x-hidden bg-background text-foreground">
       <LandingHeader />
       <div className="hidden lg:block">
         <LandingHero />

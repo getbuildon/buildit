@@ -134,3 +134,8 @@ html:has([data-project-shell]) body {
   overflow: hidden;
   overscroll-behavior: none;
 }
+
+.landing-page .pin-spacer {
+  width: 100% !important;
+  max-width: 100%;
+}
