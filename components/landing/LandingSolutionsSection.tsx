@@ -22,6 +22,8 @@ export function LandingSolutionsSection() {
           <SolutionSlideCard slide={SOLUTION_SLIDES[0]} />
         </div>
       </div>
+
+      <div className="h-[44px] bg-[#272a2d]" aria-hidden />
     </section>
   )
 }
