@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ChevronDown, LogOut, UserCircle } from "lucide-react"
 
 import { UserAvatar } from "@/components/user/UserAvatar"
+import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import { useAuth } from "@/context/AuthContextSupabase"
 import { BACKOFFICE_SHELL } from "@/lib/backoffice/designTokens"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
@@ -21,6 +22,7 @@ export function BackofficeUserFooter({
 }: BackofficeUserFooterProps) {
   const { logOut } = useAuth()
   const router = useRouter()
+  const { navigate } = useAppRouteNavigation()
   const [isOpen, setIsOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -106,7 +108,7 @@ export function BackofficeUserFooter({
             role="menuitem"
             onClick={() => {
               setIsOpen(false)
-              router.push("/perfil")
+              navigate("/perfil")
             }}
             className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm leading-5 text-[#edeef0] transition-colors hover:bg-white/6"
           >

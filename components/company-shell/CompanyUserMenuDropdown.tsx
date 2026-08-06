@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { LogOut, User } from "lucide-react"
+import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import { useAuth } from "@/context/AuthContextSupabase"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
@@ -17,6 +18,7 @@ export function CompanyUserMenuDropdown({
   userProfile,
 }: CompanyUserMenuDropdownProps) {
   const router = useRouter()
+  const { navigate } = useAppRouteNavigation()
   const { user, logOut } = useAuth()
   const ref = useRef<HTMLDivElement>(null)
 
@@ -90,7 +92,7 @@ export function CompanyUserMenuDropdown({
           role="menuitem"
           onClick={() => {
             onClose()
-            router.push("/perfil")
+            navigate("/perfil")
           }}
           className="mx-1 flex w-[calc(100%-8px)] items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-[#314158] transition-colors hover:bg-[#f1f5f9]"
         >

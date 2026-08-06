@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronDown, LogOut, UserCircle } from "lucide-react"
 import { UserAvatar } from "@/components/user/UserAvatar"
+import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import { useAuth } from "@/context/AuthContextSupabase"
 import { cn } from "@/lib/utils"
 
@@ -24,6 +25,7 @@ export function UserMenu({
 }: UserMenuProps) {
   const { user, logOut } = useAuth()
   const router = useRouter()
+  const { navigate } = useAppRouteNavigation()
   const [isOpen, setIsOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -118,7 +120,7 @@ export function UserMenu({
             <button
               onClick={() => {
                 setIsOpen(false)
-                router.push(perfilHref)
+                navigate(perfilHref)
               }}
               style={{
                 display: "flex",

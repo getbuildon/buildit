@@ -11,8 +11,8 @@ import {
   ProfileMenuProfileIcon,
 } from "@/components/project-shell/ProjectProfileMenuIcons"
 import { ProjectNavLinks } from "@/components/project-shell/ProjectNavLinks"
-import { useProjectNavigation } from "@/components/project-shell/ProjectNavigationContext"
 import { SidebarSwitchProjectButton } from "@/components/project-shell/SidebarSwitchProjectButton"
+import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import {
   AnimatedCollapsible,
@@ -35,7 +35,7 @@ export function ProjectMobileHeader({
 }: ProjectMobileHeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { navigate } = useProjectNavigation()
+  const { navigate } = useAppRouteNavigation()
   const { logOut } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)

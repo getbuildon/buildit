@@ -14,6 +14,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { BackofficeShellSkeleton } from "@/components/backoffice-shell/BackofficeShellSkeleton"
 import { CompanyWorkspaceSkeleton } from "@/components/company-shell/CompanyWorkspaceSkeleton"
 import { HomePageSkeleton } from "@/components/home/HomePageSkeleton"
+import { PerfilPageSkeleton } from "@/components/profile/PerfilPageSkeleton"
 import { ProjectWorkspaceSkeleton } from "@/components/project-shell/ProjectWorkspaceSkeleton"
 import {
   getAppRouteLoadingType,
@@ -84,6 +85,8 @@ export function AppRouteLoadingProvider({ children }: { children: ReactNode }) {
             <BackofficeShellSkeleton />
           ) : loadingType === "company" ? (
             <CompanyWorkspaceSkeleton />
+          ) : loadingType === "perfil" ? (
+            <PerfilPageSkeleton />
           ) : (
             <ProjectWorkspaceSkeleton />
           )}

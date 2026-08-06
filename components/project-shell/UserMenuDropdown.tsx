@@ -7,7 +7,7 @@ import {
   ProfileMenuLogoutIcon,
   ProfileMenuProfileIcon,
 } from "@/components/project-shell/ProjectProfileMenuIcons"
-import { useProjectNavigation } from "@/components/project-shell/ProjectNavigationContext"
+import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import { useAuth } from "@/context/AuthContextSupabase"
 import { projectHref } from "@/lib/project/routes"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
@@ -29,7 +29,7 @@ export function UserMenuDropdown({
   anchorRef,
 }: UserMenuDropdownProps) {
   const router = useRouter()
-  const { navigate } = useProjectNavigation()
+  const { navigate: navigateAppRoute } = useAppRouteNavigation()
   const { user, logOut } = useAuth()
   const ref = useRef<HTMLDivElement>(null)
 
@@ -100,7 +100,7 @@ export function UserMenuDropdown({
         role="menuitem"
         onClick={() => {
           onClose()
-          navigate(projectHref(projectId, "perfil"))
+          navigateAppRoute(projectHref(projectId, "perfil"))
         }}
         className={cn(
           "flex h-9 w-full items-center gap-2 px-4 text-left",
