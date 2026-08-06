@@ -129,7 +129,7 @@ export function CreateProjectStructureStep({
       className="flex w-full flex-col gap-4"
       style={{ maxWidth: STRUCTURE_STEP_LAYOUT.contentMaxWidth }}
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex flex-col gap-2">
           <p className="text-[14px] font-normal leading-5 text-[#272a2d]">
             Cantidad de pisos
@@ -148,7 +148,7 @@ export function CreateProjectStructureStep({
           variant="brand"
           size="brand"
           onClick={addFloor}
-          className="text-[14px] font-normal leading-5"
+          className="w-full text-[14px] font-normal leading-5 sm:w-auto"
         >
           <Plus className="size-4" aria-hidden />
           Agregar piso
@@ -277,9 +277,9 @@ function StructureFloorCard({
       }}
     >
       <div
-        className="flex w-full items-center gap-2.5"
-        style={{ maxWidth: STRUCTURE_STEP_LAYOUT.floorCardInnerWidth }}
+        className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:gap-2.5"
       >
+        <div className="grid grid-cols-1 gap-2.5 sm:flex sm:min-w-0 sm:flex-1 sm:items-center sm:gap-2.5">
         <CreateProjectFormField
           label="Nombre del Piso"
           htmlFor={`floor-name-${floor.id}`}
@@ -332,8 +332,9 @@ function StructureFloorCard({
             style={structureFloorInputStyle}
           />
         </CreateProjectFormField>
+        </div>
 
-        <div className="flex shrink-0 items-center gap-4 px-6">
+        <div className="flex shrink-0 items-center gap-4 sm:px-6">
           <button
             type="button"
             onClick={onAddUnit}
@@ -407,8 +408,8 @@ function StructureUnitRow({
         minHeight: STRUCTURE_STEP_LAYOUT.unitRowMinHeight,
       }}
     >
-      <div className="flex w-full items-center justify-between">
-        <div className="flex items-end gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-end gap-2">
           <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.type)}>
             <span className={structureLabelClassName} style={structureMutedLabelStyle}>
               Tipo

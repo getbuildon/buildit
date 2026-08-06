@@ -48,8 +48,7 @@ const clientInputClassName =
   "h-[44px] w-full min-w-0 rounded-[10px] border bg-white px-4 py-3 text-[14px] font-normal leading-[1.4] text-[#0a0a0a] shadow-none placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:ring-0"
 const clientInputStyle = { borderColor: "#afb3ba" } as const
 
-const CLIENT_ROW_CLASS =
-  "flex items-center gap-4 border-b border-[#edeef0] p-4 last:border-b-0"
+const CLIENT_ROW_CLASSNAME = "border-b border-[#edeef0] p-4 last:border-b-0"
 
 /** Figma Orange Soft — solo en cards blancas con borde redondeado. */
 const CLIENTES_CARD_SHADOW = "0 0 5px rgba(243, 103, 31, 0.08)"
@@ -206,12 +205,12 @@ function EditClientDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         overlayClassName={FORM_MODAL_DIALOG.overlay}
-        className={FORM_MODAL_DIALOG.content}
+        className={cn(FORM_MODAL_DIALOG.content, "max-w-[calc(100vw-32px)]")}
         showCloseButton={false}
       >
-        <div className={FORM_MODAL_DIALOG.body}>
+        <div className={cn(FORM_MODAL_DIALOG.body, "px-4 py-6 sm:px-[33px] sm:py-[41px]")}>
           <div className={FORM_MODAL_DIALOG.header}>
-            <DialogTitle className={FORM_MODAL_DIALOG.title}>
+            <DialogTitle className={cn(FORM_MODAL_DIALOG.title, "text-[20px] sm:text-[24px]")}>
               Editar cliente
             </DialogTitle>
             <DialogDescription className={FORM_MODAL_DIALOG.description}>
@@ -353,7 +352,7 @@ function EditClientDialog({
             ) : null}
           </div>
 
-          <div className={FORM_MODAL_DIALOG.actions}>
+          <div className={cn(FORM_MODAL_DIALOG.actions, "flex-col-reverse sm:flex-row")}>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
@@ -507,15 +506,15 @@ function UnitMultiSelect({
 
 function UnitsSummary({ units }: { units: ProjectClient["units"] }) {
   if (units.length === 0) {
-    return <div className="h-11 w-[200px] shrink-0" aria-hidden />
+    return <div className="hidden h-11 md:block md:w-[200px] md:shrink-0" aria-hidden />
   }
 
   return (
-    <div className="flex h-11 w-[200px] shrink-0 items-center justify-end gap-3">
+    <div className="flex min-w-0 flex-wrap items-center gap-2 md:h-11 md:w-[200px] md:shrink-0 md:justify-end md:gap-3">
       <span className="whitespace-nowrap text-[14px] font-medium leading-[1.4] text-[#314158]">
         {units.length} unidad{units.length === 1 ? "" : "es"}
       </span>
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {units.map((unit) => (
           <span
             key={unit.id}
@@ -565,50 +564,64 @@ function ClientRow({
   onEdit: () => void
   onRemove: () => void
 }) {
+  const actions = (
+    <>
+      <RowActionButton
+        label={`Editar a ${client.firstName} ${client.lastName}`}
+        disabled={!canManage}
+        onClick={onEdit}
+      >
+        <SquarePen className="size-4" aria-hidden />
+      </RowActionButton>
+      <RowActionButton
+        label={`Eliminar a ${client.firstName} ${client.lastName}`}
+        disabled={!canManage}
+        onClick={onRemove}
+      >
+        <Trash2 className="size-4" aria-hidden />
+      </RowActionButton>
+    </>
+  )
+
   return (
-    <div className={CLIENT_ROW_CLASS}>
-      <UserAvatar
-        firstName={client.firstName}
-        lastName={client.lastName}
-        email={client.email}
-        avatarUrl={client.avatarUrl}
-      />
+    <div className={CLIENT_ROW_CLASSNAME}>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <UserAvatar
+            firstName={client.firstName}
+            lastName={client.lastName}
+            email={client.email}
+            avatarUrl={client.avatarUrl}
+            className="shrink-0"
+          />
 
-      <div className="flex w-[428px] min-w-0 shrink-0 flex-col gap-1">
-        <h3 className="truncate text-[14px] font-medium leading-[1.4] text-[#1d293d]">
-          {client.firstName} {client.lastName}
-        </h3>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="flex w-[180px] min-w-0 items-center gap-1.5 text-[14px] leading-[1.4] text-[#43484e]">
-            <Mail className="size-3 shrink-0" aria-hidden />
-            <span className="truncate">{client.email}</span>
-          </span>
-          {client.phone ? (
-            <span className="flex items-center gap-1.5 text-[14px] leading-[1.4] text-[#43484e]">
-              <Phone className="size-3 shrink-0" aria-hidden />
-              {client.phone}
-            </span>
-          ) : null}
+          <div className="min-w-0 flex-1 md:w-[428px] md:shrink-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-[14px] font-medium leading-[1.4] text-[#1d293d]">
+                  {client.firstName} {client.lastName}
+                </h3>
+                <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                  <span className="flex min-w-0 items-center gap-1.5 text-[14px] leading-[1.4] text-[#43484e]">
+                    <Mail className="size-3 shrink-0" aria-hidden />
+                    <span className="truncate">{client.email}</span>
+                  </span>
+                  {client.phone ? (
+                    <span className="flex items-center gap-1.5 text-[14px] leading-[1.4] text-[#43484e]">
+                      <Phone className="size-3 shrink-0" aria-hidden />
+                      {client.phone}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 md:hidden">{actions}</div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-12">
-        <UnitsSummary units={client.units} />
-        <div className="flex shrink-0 items-center gap-2">
-          <RowActionButton
-            label={`Editar a ${client.firstName} ${client.lastName}`}
-            disabled={!canManage}
-            onClick={onEdit}
-          >
-            <SquarePen className="size-4" aria-hidden />
-          </RowActionButton>
-          <RowActionButton
-            label={`Eliminar a ${client.firstName} ${client.lastName}`}
-            disabled={!canManage}
-            onClick={onRemove}
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </RowActionButton>
+        <div className="flex items-center justify-between gap-3 border-t border-[#edeef0] pt-3 md:ml-auto md:min-w-0 md:flex-1 md:justify-end md:border-0 md:pt-0 md:gap-12">
+          <UnitsSummary units={client.units} />
+          <div className="hidden shrink-0 items-center gap-2 md:flex">{actions}</div>
         </div>
       </div>
     </div>
@@ -626,55 +639,69 @@ function PendingClientRow({
   onEdit: () => void
   onRevoke: () => void
 }) {
+  const actions = (
+    <>
+      <RowActionButton
+        label={`Editar invitación de ${invitation.firstName} ${invitation.lastName}`}
+        disabled={!canManage}
+        onClick={onEdit}
+      >
+        <SquarePen className="size-4" aria-hidden />
+      </RowActionButton>
+      <RowActionButton
+        label={`Revocar invitación de ${invitation.firstName} ${invitation.lastName}`}
+        disabled={!canManage}
+        onClick={onRevoke}
+      >
+        <Trash2 className="size-4" aria-hidden />
+      </RowActionButton>
+    </>
+  )
+
   return (
-    <div className={CLIENT_ROW_CLASS}>
-      <UserAvatar
-        firstName={invitation.firstName}
-        lastName={invitation.lastName}
-        email={invitation.email}
-      />
+    <div className={CLIENT_ROW_CLASSNAME}>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <UserAvatar
+            firstName={invitation.firstName}
+            lastName={invitation.lastName}
+            email={invitation.email}
+            className="shrink-0"
+          />
 
-      <div className="flex w-[428px] min-w-0 shrink-0 flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <h3 className="truncate text-[14px] font-medium leading-[1.4] text-[#1d293d]">
-            {invitation.firstName} {invitation.lastName}
-          </h3>
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#fef9c3] px-2 py-0.5 text-[10px] font-medium leading-[10px] text-[#854d0e]">
-            <Clock className="size-2.5" aria-hidden />
-            Pendiente
-          </span>
+          <div className="min-w-0 flex-1 md:w-[428px] md:shrink-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="truncate text-[14px] font-medium leading-[1.4] text-[#1d293d]">
+                    {invitation.firstName} {invitation.lastName}
+                  </h3>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#fef9c3] px-2 py-0.5 text-[10px] font-medium leading-[10px] text-[#854d0e]">
+                    <Clock className="size-2.5" aria-hidden />
+                    Pendiente
+                  </span>
+                </div>
+                <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                  <span className="flex min-w-0 items-center gap-1.5 text-[14px] leading-[1.4] text-[#43484e]">
+                    <Mail className="size-3 shrink-0" aria-hidden />
+                    <span className="truncate">{invitation.email}</span>
+                  </span>
+                  {invitation.phone ? (
+                    <span className="flex items-center gap-1.5 text-[14px] leading-[1.4] text-[#43484e]">
+                      <Phone className="size-3 shrink-0" aria-hidden />
+                      {invitation.phone}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 md:hidden">{actions}</div>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="flex w-[180px] min-w-0 items-center gap-1.5 text-[14px] leading-[1.4] text-[#43484e]">
-            <Mail className="size-3 shrink-0" aria-hidden />
-            <span className="truncate">{invitation.email}</span>
-          </span>
-          {invitation.phone ? (
-            <span className="flex items-center gap-1.5 text-[14px] leading-[1.4] text-[#43484e]">
-              <Phone className="size-3 shrink-0" aria-hidden />
-              {invitation.phone}
-            </span>
-          ) : null}
-        </div>
-      </div>
 
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-12">
-        <UnitsSummary units={invitation.units} />
-        <div className="flex shrink-0 items-center gap-2">
-          <RowActionButton
-            label={`Editar invitación de ${invitation.firstName} ${invitation.lastName}`}
-            disabled={!canManage}
-            onClick={onEdit}
-          >
-            <SquarePen className="size-4" aria-hidden />
-          </RowActionButton>
-          <RowActionButton
-            label={`Revocar invitación de ${invitation.firstName} ${invitation.lastName}`}
-            disabled={!canManage}
-            onClick={onRevoke}
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </RowActionButton>
+        <div className="flex items-center justify-between gap-3 border-t border-[#edeef0] pt-3 md:ml-auto md:min-w-0 md:flex-1 md:justify-end md:border-0 md:pt-0 md:gap-12">
+          <UnitsSummary units={invitation.units} />
+          <div className="hidden shrink-0 items-center gap-2 md:flex">{actions}</div>
         </div>
       </div>
     </div>
@@ -960,16 +987,16 @@ export function ClientesView({ projectId, initialData }: Props) {
 
   return (
     <div
-      className="flex flex-col gap-8 pt-6"
+      className="flex flex-col gap-4 py-4 sm:gap-6 sm:py-6"
       style={{
         maxWidth: CLIENTES_LAYOUT.contentMaxWidth,
         width: "100%",
         margin: "0 auto",
       }}
     >
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="font-recoleta text-[28px] font-normal leading-[1.05] text-[#272a2d]">
+          <h1 className="font-recoleta text-[26px] font-normal leading-[1.05] text-[#272a2d] sm:text-[28px]">
             Clientes
           </h1>
           {seatSummary ? <ClientSeatSummarySubtitle summary={seatSummary} /> : null}
@@ -985,7 +1012,7 @@ export function ClientesView({ projectId, initialData }: Props) {
             }
           }}
           disabled={!canManageClients}
-          className="text-[14px] font-normal leading-[1.4]"
+          className="w-full text-[14px] font-normal leading-[1.4] sm:w-auto"
         >
           {showAddForm ? (
             <>
@@ -1006,7 +1033,7 @@ export function ClientesView({ projectId, initialData }: Props) {
           className="flex flex-col gap-3 rounded-[16px] border border-[#edeef0] bg-white px-4 pb-8 pt-4"
           style={{ boxShadow: CLIENTES_CARD_SHADOW }}
         >
-          <h2 className="text-[20px] font-normal leading-[1.4] text-[#272a2d]">
+          <h2 className="text-[18px] font-normal leading-[1.4] text-[#272a2d] sm:text-[20px]">
             Nuevo cliente
           </h2>
 
@@ -1063,7 +1090,7 @@ export function ClientesView({ projectId, initialData }: Props) {
               size="brand"
               onClick={() => void handleSubmitAdd()}
               disabled={isSubmitting}
-              className="h-[44px] shrink-0 px-4 text-[14px] font-normal leading-[1.4]"
+              className="h-[44px] w-full shrink-0 px-4 text-[14px] font-normal leading-[1.4] lg:w-auto"
             >
               <Plus className="size-4" aria-hidden />
               {isSubmitting ? "..." : "Agregar"}
@@ -1079,62 +1106,60 @@ export function ClientesView({ projectId, initialData }: Props) {
       {totalCount > 0 ? (
         <div className="flex flex-col gap-3">
           <div
-            className="overflow-x-auto rounded-[16px] border border-[#edeef0] bg-white"
+            className="rounded-[16px] border border-[#edeef0] bg-white"
             style={{ boxShadow: CLIENTES_CARD_SHADOW }}
           >
-            <div className="min-w-[860px]">
-              {clients.map((client) => (
-                <ClientRow
-                  key={client.userId}
-                  client={client}
-                  canManage={canManageClients}
-                  onEdit={() =>
-                    setEditingTarget({ type: "client", id: client.userId })
+            {clients.map((client) => (
+              <ClientRow
+                key={client.userId}
+                client={client}
+                canManage={canManageClients}
+                onEdit={() =>
+                  setEditingTarget({ type: "client", id: client.userId })
+                }
+                onRemove={() => {
+                  setRemovingTarget({ type: "client", id: client.userId })
+                  if (
+                    editingTarget?.type === "client" &&
+                    editingTarget.id === client.userId
+                  ) {
+                    setEditingTarget(null)
                   }
-                  onRemove={() => {
-                    setRemovingTarget({ type: "client", id: client.userId })
-                    if (
-                      editingTarget?.type === "client" &&
-                      editingTarget.id === client.userId
-                    ) {
-                      setEditingTarget(null)
-                    }
-                  }}
-                />
-              ))}
-              {pendingInvitations.map((invitation) => (
-                <PendingClientRow
-                  key={invitation.invitationId}
-                  invitation={invitation}
-                  canManage={canManageClients}
-                  onEdit={() =>
-                    setEditingTarget({
-                      type: "invitation",
-                      id: invitation.invitationId,
-                    })
+                }}
+              />
+            ))}
+            {pendingInvitations.map((invitation) => (
+              <PendingClientRow
+                key={invitation.invitationId}
+                invitation={invitation}
+                canManage={canManageClients}
+                onEdit={() =>
+                  setEditingTarget({
+                    type: "invitation",
+                    id: invitation.invitationId,
+                  })
+                }
+                onRevoke={() => {
+                  setRemovingTarget({
+                    type: "invitation",
+                    id: invitation.invitationId,
+                  })
+                  if (
+                    editingTarget?.type === "invitation" &&
+                    editingTarget.id === invitation.invitationId
+                  ) {
+                    setEditingTarget(null)
                   }
-                  onRevoke={() => {
-                    setRemovingTarget({
-                      type: "invitation",
-                      id: invitation.invitationId,
-                    })
-                    if (
-                      editingTarget?.type === "invitation" &&
-                      editingTarget.id === invitation.invitationId
-                    ) {
-                      setEditingTarget(null)
-                    }
-                  }}
-                />
-              ))}
-            </div>
+                }}
+              />
+            ))}
           </div>
 
-          <div className="flex h-8 items-center justify-between">
-            <p className="text-[12px] leading-[1.4] tracking-[-0.36px] text-[#777b84]">
+          <div className="flex flex-col items-center gap-3 sm:h-8 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-center text-[12px] leading-[1.4] tracking-[-0.36px] text-[#777b84] sm:text-left">
               Mostrando {totalCount} de {totalCount} clientes
             </p>
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center justify-center gap-1 sm:justify-start">
               <button
                 type="button"
                 disabled

@@ -51,6 +51,7 @@ import {
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { useProjectPermission } from "@/components/project-shell/ProjectAccessProvider"
 import { RolePermissionTooltip } from "@/components/ui/role-permission-tooltip"
+import { cn } from "@/lib/utils"
 import { FORM_MODAL_DIALOG, EQUIPO_LAYOUT } from "@/lib/project/designTokens"
 import {
   getProjectPermissionColumnIndex,
@@ -69,9 +70,9 @@ const formInputStyle = { borderColor: "#edeef0" } as const
 const formSelectTriggerClassName =
   "h-[44px] w-full rounded-[10px] border-[#e2e8f0] bg-white text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none focus:border-[#ff7433] focus:ring-0 data-[placeholder]:text-[#777b84]"
 
-// Figma 1244:1189 — avatar | identidad | email (300px) | acciones
-const TEAM_ROW_GRID =
-  "grid grid-cols-[40px_minmax(0,1fr)_300px_auto] items-center gap-x-4 p-4"
+// Figma 1244:1189 — avatar | identidad | email (300px) | acciones (desktop)
+const TEAM_ROW_CLASSNAME =
+  "grid grid-cols-[40px_minmax(0,1fr)_auto] gap-x-3 gap-y-2 border-b border-[#edeef0] p-4 transition-colors last:border-b-0 hover:bg-[#fefcfb] md:grid-cols-[40px_minmax(0,1fr)_300px_auto] md:items-center md:gap-x-4"
 
 type Props = {
   projectId: string
@@ -88,11 +89,13 @@ function MemberAvatar({
   size = "md",
   bgClassName,
   textClassName,
+  className,
 }: {
   member: Pick<ProjectTeamMember, "firstName" | "lastName" | "email" | "avatarUrl">
   size?: "md"
   bgClassName?: string
   textClassName?: string
+  className?: string
 }) {
   return (
     <UserAvatar
@@ -103,6 +106,7 @@ function MemberAvatar({
       size={size}
       bgClassName={bgClassName}
       textClassName={textClassName}
+      className={className}
     />
   )
 }
@@ -216,12 +220,12 @@ function EditMemberDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         overlayClassName={FORM_MODAL_DIALOG.overlay}
-        className={FORM_MODAL_DIALOG.content}
+        className={cn(FORM_MODAL_DIALOG.content, "max-w-[calc(100vw-32px)]")}
         showCloseButton={false}
       >
-        <div className={FORM_MODAL_DIALOG.body}>
+        <div className={cn(FORM_MODAL_DIALOG.body, "px-4 py-6 sm:px-[33px] sm:py-[41px]")}>
           <div className={FORM_MODAL_DIALOG.header}>
-            <DialogTitle className={FORM_MODAL_DIALOG.title}>
+            <DialogTitle className={cn(FORM_MODAL_DIALOG.title, "text-[20px] sm:text-[24px]")}>
               Editar miembro
             </DialogTitle>
             <DialogDescription className={FORM_MODAL_DIALOG.description}>
@@ -287,7 +291,7 @@ function EditMemberDialog({
             ) : null}
           </div>
 
-          <div className={FORM_MODAL_DIALOG.actions}>
+          <div className={cn(FORM_MODAL_DIALOG.actions, "flex-col-reverse sm:flex-row")}>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
@@ -366,23 +370,24 @@ function MemberRow({
   onRemove: () => void
 }) {
   return (
-    <div
-      className={`${TEAM_ROW_GRID} border-b border-[#edeef0] transition-colors last:border-b-0 hover:bg-[#fefcfb]`}
-    >
-      <MemberAvatar member={member} />
+    <div className={TEAM_ROW_CLASSNAME}>
+      <MemberAvatar
+        member={member}
+        className="row-span-2 self-start md:row-span-1 md:self-center"
+      />
 
-      <div className="flex min-w-0 flex-col gap-1">
+      <div className="col-start-2 row-start-1 flex min-w-0 flex-col gap-1">
         <div className="flex items-center gap-2">
           <h3 className="truncate text-[14px] font-medium leading-5 text-[#1d293d]">
             {member.firstName} {member.lastName}
           </h3>
           {member.isYou ? (
-            <span className="inline-flex items-center rounded-full bg-[#ff7433] px-2 py-0.5 text-[10px] font-medium leading-none tracking-[-0.5px] text-[#fefcfb]">
+            <span className="inline-flex shrink-0 items-center rounded-full bg-[#ff7433] px-2 py-0.5 text-[10px] font-medium leading-none tracking-[-0.5px] text-[#fefcfb]">
               Tú
             </span>
           ) : null}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {member.userTypeLabel ? (
             <span className="inline-flex items-center rounded-[12px] bg-[#ffeae0] px-2 py-0.5 text-[10px] font-medium leading-none tracking-[-0.5px] text-[#321a10]">
               {member.userTypeLabel}
@@ -396,9 +401,11 @@ function MemberRow({
         </div>
       </div>
 
-      <MemberEmail email={member.email} />
+      <div className="col-start-2 col-span-2 row-start-2 min-w-0 md:col-span-1 md:col-start-3 md:row-start-1">
+        <MemberEmail email={member.email} />
+      </div>
 
-      <div className="flex shrink-0 items-center justify-end gap-2">
+      <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-end gap-2 md:col-start-4">
         <RowActionButton
           label={`Editar a ${member.firstName} ${member.lastName}`}
           disabled={!canEdit}
@@ -428,24 +435,24 @@ function PendingRow({
   onRevoke: () => void
 }) {
   return (
-    <div
-      className={`${TEAM_ROW_GRID} border-b border-[#edeef0] transition-colors last:border-b-0 hover:bg-[#fefcfb]`}
-    >
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f0f1f3] text-[12px] font-semibold text-[#777b84]">
-        {getInitials(invitation.firstName, invitation.lastName)}
+    <div className={TEAM_ROW_CLASSNAME}>
+      <div className="row-span-2 self-start md:row-span-1 md:self-center">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f0f1f3] text-[12px] font-semibold text-[#777b84]">
+          {getInitials(invitation.firstName, invitation.lastName)}
+        </div>
       </div>
 
-      <div className="flex min-w-0 flex-col gap-1">
-        <div className="flex items-center gap-2">
+      <div className="col-start-2 row-start-1 flex min-w-0 flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-2">
           <h3 className="truncate text-[14px] font-medium leading-5 text-[#1d293d]">
             {invitation.firstName} {invitation.lastName}
           </h3>
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#fef9c3] px-2 py-0.5 text-[10px] font-medium leading-[10px] text-[#854d0e]">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#fef9c3] px-2 py-0.5 text-[10px] font-medium leading-[10px] text-[#854d0e]">
             <Clock className="size-2.5" aria-hidden />
             Pendiente
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {invitation.userTypeLabel ? (
             <span className="inline-flex items-center rounded-[12px] bg-[#ffeae0] px-2 py-0.5 text-[10px] font-medium leading-[10px] text-[#321a10]">
               {invitation.userTypeLabel}
@@ -459,9 +466,11 @@ function PendingRow({
         </div>
       </div>
 
-      <MemberEmail email={invitation.email} />
+      <div className="col-start-2 col-span-2 row-start-2 min-w-0 md:col-span-1 md:col-start-3 md:row-start-1">
+        <MemberEmail email={invitation.email} />
+      </div>
 
-      <div className="flex shrink-0 items-center justify-end gap-2">
+      <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-end gap-2 md:col-start-4">
         <RowActionButton
           label={`Editar invitación de ${invitation.firstName} ${invitation.lastName}`}
           disabled
@@ -695,7 +704,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
 
   return (
     <div
-      className="flex flex-col gap-8 pt-6"
+      className="flex flex-col gap-4 py-4 sm:gap-6 sm:py-6"
       style={{
         maxWidth: EQUIPO_LAYOUT.contentMaxWidth,
         width: "100%",
@@ -704,9 +713,9 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       }}
     >
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="font-recoleta text-[28px] font-normal leading-[1.05] text-[#272a2d]">
+          <h1 className="font-recoleta text-[26px] font-normal leading-[1.05] text-[#272a2d] sm:text-[28px]">
             Equipo de trabajo
           </h1>
           {seatSummary ? <TeamSeatSummarySubtitle summary={seatSummary} /> : null}
@@ -719,7 +728,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
             setFormError("")
           }}
           disabled={!canAddUsers}
-          className="text-[14px] font-normal leading-5"
+          className="w-full text-[14px] font-normal leading-5 sm:w-auto"
         >
           {showForm ? (
             <>
@@ -738,11 +747,11 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       {/* Nuevo miembro form */}
       {showForm && canAddUsers ? (
         <div
-          className="flex flex-col gap-3 rounded-[16px] border border-[#edeef0] bg-white px-6 py-4"
+          className="flex flex-col gap-3 rounded-[16px] border border-[#edeef0] bg-white px-4 py-4 sm:px-6"
           style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
         >
-          <h2 className="text-[20px] font-normal leading-7 text-[#272a2d]">Nuevo miembro</h2>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <h2 className="text-[18px] font-normal leading-7 text-[#272a2d] sm:text-[20px]">Nuevo miembro</h2>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <Input
               value={firstName}
               onChange={(e) => {
@@ -809,7 +818,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
               size="brand"
               onClick={() => void handleAddMember()}
               disabled={isSubmitting}
-              className="shrink-0 px-6 text-[14px] font-normal leading-5"
+              className="w-full shrink-0 px-6 text-[14px] font-normal leading-5 sm:w-auto"
             >
               <Plus className="size-4" aria-hidden />
               {isSubmitting ? "Invitando..." : "Agregar miembro"}
@@ -841,10 +850,9 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
 
         {/* Members list */}
         <div
-          className="overflow-x-auto rounded-[16px] border border-[#edeef0] bg-white"
+          className="rounded-[16px] border border-[#edeef0] bg-white"
           style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
         >
-          <div className="min-w-[704px]">
           {filteredMembers.length === 0 ? (
             <div className="px-4 py-8 text-center text-[14px] leading-5 text-[#777b84]">
               {searchQuery ? "Sin resultados para esa búsqueda." : "No hay miembros activos."}
@@ -866,7 +874,6 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
               />
             ))
           )}
-          </div>
         </div>
 
         <p className="text-[12px] leading-4 text-[#777b84]">
@@ -877,11 +884,10 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       {/* Pending invitations */}
       {pendingInvitations.length > 0 ? (
         <div className="flex flex-col gap-4">
-          <h2 className="text-[18px] font-normal leading-5 text-[#272a2d]">
+          <h2 className="text-[16px] font-normal leading-5 text-[#272a2d] sm:text-[18px]">
             Usuarios pendientes de activación
           </h2>
-          <div className="overflow-x-auto rounded-[16px] border border-[#edeef0] bg-white">
-            <div className="min-w-[704px]">
+          <div className="rounded-[16px] border border-[#edeef0] bg-white">
             {filteredPending.length === 0 ? (
               <div className="px-4 py-6 text-center text-[14px] leading-5 text-[#777b84]">
                 Sin resultados para esa búsqueda.
@@ -896,14 +902,13 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
                 />
               ))
             )}
-            </div>
           </div>
         </div>
       ) : null}
 
       {/* Permisos de usuarios */}
       <div
-        className="rounded-[16px] border border-[#edeef0] bg-white px-4 py-6"
+        className="rounded-[16px] border border-[#edeef0] bg-white px-4 py-4 sm:py-6"
         style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
       >
         <button
@@ -913,7 +918,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
           aria-expanded={permisosOpen}
         >
           <ShieldCheck className="size-4 shrink-0 text-[#43484e]" aria-hidden />
-          <h2 className="flex-1 text-left text-[18px] font-normal leading-5 text-[#272a2d]">
+          <h2 className="flex-1 text-left text-[16px] font-normal leading-5 text-[#272a2d] sm:text-[18px]">
             Permisos de usuarios
           </h2>
           <ChevronDown
@@ -923,8 +928,8 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
         </button>
 
         {permisosOpen ? (
-          <div className="mt-4">
-            <table className="w-full table-fixed border-collapse">
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[640px] table-fixed border-collapse">
               <colgroup>
                 <col style={{ width: EQUIPO_LAYOUT.permissionsActionColumnWidth }} />
                 <col />

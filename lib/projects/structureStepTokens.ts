@@ -70,11 +70,11 @@ export const structureUnitSelectTriggerClassName = cn(
 
 export const structureUnitSelectItemClassName = "text-[12px] leading-[1.4] tracking-[-0.36px]"
 
-/** Figma 1833:3277 — anchos fijos por columna de unidad. */
+/** Figma 1833:3277 — anchos por columna de unidad (responsive en mobile). */
 export const structureUnitFieldColumnClassName = {
-  type: "w-[169px] shrink-0",
-  compact: "w-20 shrink-0",
-  attach: "w-[120px] shrink-0",
+  type: "w-full min-w-[140px] shrink-0 basis-[calc(50%-4px)] sm:basis-auto sm:w-[169px]",
+  compact: "w-[calc(50%-4px)] min-w-[72px] shrink-0 sm:w-20",
+  attach: "w-full min-w-[100px] shrink-0 basis-full sm:basis-auto sm:w-[120px]",
 } as const
 
 export const structureAttachButtonClassName = cn(

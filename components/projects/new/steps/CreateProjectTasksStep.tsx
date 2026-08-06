@@ -596,7 +596,7 @@ export function CreateProjectTasksStep({
           size="brand"
           onClick={addGroup}
           disabled={!newGroupName.trim()}
-          className="shrink-0 text-[14px] font-normal leading-5 disabled:opacity-50"
+          className="w-full shrink-0 text-[14px] font-normal leading-5 disabled:opacity-50 sm:w-auto"
         >
           <Plus className="size-4" aria-hidden />
           Agregar grupo

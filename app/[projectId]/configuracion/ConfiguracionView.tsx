@@ -105,10 +105,10 @@ function SettingsCard({
   if (!collapsible) {
     return (
       <section
-        className="flex flex-col gap-5 rounded-[16px] border border-[#edeef0] bg-white p-6"
+        className="flex flex-col gap-4 rounded-[16px] border border-[#edeef0] bg-white p-4 sm:gap-5 sm:p-6"
         style={{ boxShadow: CONFIG_CARD_SHADOW }}
       >
-        <h2 className="text-[18px] font-normal leading-5 text-[#272a2d]">{title}</h2>
+        <h2 className="text-[16px] font-normal leading-5 text-[#272a2d] sm:text-[18px]">{title}</h2>
         {children}
       </section>
     )
@@ -116,7 +116,7 @@ function SettingsCard({
 
   return (
     <section
-      className="rounded-[16px] border border-[#edeef0] bg-white px-6 py-4"
+      className="rounded-[16px] border border-[#edeef0] bg-white px-4 py-4 sm:px-6"
       style={{ boxShadow: CONFIG_CARD_SHADOW }}
     >
       <button
@@ -125,7 +125,7 @@ function SettingsCard({
         className="flex w-full items-center gap-2"
         aria-expanded={open}
       >
-        <h2 className="flex-1 text-left text-[18px] font-normal leading-5 text-[#272a2d]">
+        <h2 className="flex-1 text-left text-[16px] font-normal leading-5 text-[#272a2d] sm:text-[18px]">
           {title}
         </h2>
         <ChevronDown
@@ -307,16 +307,16 @@ function ConfigSaveFooter({
         <section
           ref={footerRef}
           data-viewport-bottom-inset={visible ? "" : undefined}
-          className="pointer-events-auto w-full overflow-hidden rounded-t-[16px] border border-b-0 border-[#d8d9db] bg-[#edeef0] px-6 py-4 shadow-[0_-8px_24px_rgba(24,25,27,0.08)]"
+          className="pointer-events-auto w-full overflow-hidden rounded-t-[16px] border border-b-0 border-[#d8d9db] bg-[#edeef0] px-4 py-4 shadow-[0_-8px_24px_rgba(24,25,27,0.08)] sm:px-6"
         >
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             {errorMessage ? (
-              <span className="mr-auto flex items-center gap-1.5 text-[13px] leading-4 text-[#b91c1c]">
+              <span className="flex items-center gap-1.5 text-[13px] leading-4 text-[#b91c1c] sm:mr-auto">
                 <AlertCircle className="size-3.5 shrink-0" aria-hidden />
                 {errorMessage}
               </span>
             ) : (
-              <div className="mr-auto flex min-w-0 items-center gap-2.5">
+              <div className="flex min-w-0 items-center gap-2.5 sm:mr-auto">
                 <span className="size-2 shrink-0 rounded-full bg-[#696e77]" aria-hidden />
                 <div className="min-w-0">
                   <p className="text-[13px] font-medium leading-4 text-[#272a2d]">
@@ -329,21 +329,23 @@ function ConfigSaveFooter({
               </div>
             )}
 
-            <div className="flex w-full flex-wrap items-center justify-end gap-2.5 sm:w-auto sm:gap-3">
+            <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onRequestDiscard}
                 disabled={saving}
-                className="h-11 rounded-[10px] border-[#afb3ba] bg-white px-4 text-[14px] font-medium text-[#43484e] shadow-none hover:border-[#696e77] hover:bg-[#f4f5f6] hover:text-[#272a2d]"
+                className="h-11 w-full rounded-[10px] border-[#afb3ba] bg-white px-4 text-[14px] font-medium text-[#43484e] shadow-none hover:border-[#696e77] hover:bg-[#f4f5f6] hover:text-[#272a2d] sm:w-auto"
               >
                 Descartar cambios
               </Button>
               <Button
                 type="button"
+                variant="brand"
+                size="brand"
                 onClick={onSave}
                 disabled={saving}
-                className="inline-flex h-11 min-w-[168px] items-center justify-center gap-2 rounded-[10px] border border-[#43484e] bg-[#43484e] px-4 text-[14px] font-medium text-white shadow-none transition-colors hover:border-[#363a3f] hover:bg-[#363a3f] disabled:pointer-events-none disabled:opacity-50"
+                className="h-11 w-full text-[14px] font-medium sm:w-auto sm:min-w-[168px]"
               >
                 <Check className="size-4" aria-hidden />
                 {saving ? "Guardando..." : "Guardar cambios"}
@@ -660,25 +662,23 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
           maxWidth: CREATE_PROJECT_LAYOUT.contentMaxWidth,
         }}
       >
-        <div className="flex flex-col gap-5 pt-6">
+        <div className="flex flex-col gap-4 py-4 sm:gap-5 sm:pt-6">
         {/* Header */}
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex flex-col gap-0.5">
-            <h1 className="font-recoleta text-[28px] font-normal leading-tight text-[#272a2d]">
-              Configuración del Proyecto
-            </h1>
-            <p className="text-[14px] leading-5 text-[#43484e]">
-              Administra la estructura, rubros y equipo del proyecto.
-            </p>
-          </div>
+        <div className="flex flex-col gap-2">
+          <h1 className="font-recoleta text-[26px] font-normal leading-tight text-[#272a2d] sm:text-[28px]">
+            Configuración del Proyecto
+          </h1>
+          <p className="text-[14px] leading-5 text-[#43484e]">
+            Administra la estructura, rubros y equipo del proyecto.
+          </p>
         </div>
 
       {/* Información Básica */}
       <SettingsCard title="Información Básica">
         <div className="flex flex-col gap-4">
-          <div className="flex items-end gap-4">
-            <div className="flex size-20 shrink-0 items-center justify-center rounded-[10px] bg-[#ff7433]">
-              <Building2 className="size-10 text-white" aria-hidden />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-4">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-[10px] bg-[#ff7433] sm:size-20">
+              <Building2 className="size-8 text-white sm:size-10" aria-hidden />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <FieldLabel>Nombre del Proyecto *</FieldLabel>
@@ -695,7 +695,7 @@ export function ConfiguracionView({ project }: ConfiguracionViewProps) {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="flex flex-col gap-1.5">
               <FieldLabel icon={<MapPin className="size-3" aria-hidden />}>Ubicación *</FieldLabel>
               <Input

@@ -303,7 +303,7 @@ export function CreateProjectUnitTasksStep({
                                       !rubroExpanded && "-rotate-90",
                                     )}
                                   />
-                                  <span className="whitespace-nowrap text-[14px] font-medium leading-[1.4] text-[#272a2d]">
+                                  <span className="min-w-0 truncate text-[14px] font-medium leading-[1.4] text-[#272a2d]">
                                     {rubroPrefix}. {rubro.name}
                                   </span>
                                 </button>
