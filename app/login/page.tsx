@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useState } from "react"
-import { Lock, Mail } from "lucide-react"
+import { Eye, EyeOff, Lock, Mail } from "lucide-react"
 import { AuthHealthBanner } from "@/components/auth/AuthHealthBanner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,11 +17,14 @@ import {
 import {
   LOGIN_ACCENT,
   LOGIN_BG,
-  LOGIN_CARD,
   LOGIN_COLORS,
   LOGIN_GRADIENT_LEFT,
   LOGIN_TYPE,
 } from "@/lib/login/designTokens"
+import {
+  isValidEmail,
+  sanitizeEmailInput,
+} from "@/lib/landing/emailInput"
 import { cn } from "@/lib/utils"
 
 function LoginPage() {
@@ -30,6 +33,7 @@ function LoginPage() {
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -52,7 +56,7 @@ function LoginPage() {
     if (!trimmedEmail) {
       errors.email = "El correo electrónico es requerido"
       ok = false
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+    } else if (!isValidEmail(trimmedEmail)) {
       errors.email = "Ingresá un correo electrónico válido"
       ok = false
     }
@@ -97,15 +101,17 @@ function LoginPage() {
   }
 
   const inputClassName = cn(
-    "h-[46px] w-full rounded-[10px] border bg-transparent pl-10 pr-4 shadow-none",
+    "h-[46px] w-full rounded-[10px] border bg-transparent pl-10 shadow-none",
     LOGIN_TYPE.fieldInput,
     "placeholder:text-[#696E77] focus-visible:ring-0",
   )
 
+  const passwordInputClassName = cn(inputClassName, "pr-10")
+
   return (
     <div className="relative min-h-screen" style={{ backgroundColor: LOGIN_BG }}>
       <main className="grid min-h-screen lg:grid-cols-[902fr_997fr]">
-        {/* Left panel */}
+        {/* Left panel — desktop */}
         <section className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col">
           <div className="absolute inset-0">
             <Image
@@ -122,20 +128,20 @@ function LoginPage() {
             style={{ backgroundImage: LOGIN_GRADIENT_LEFT }}
           />
 
-          <div className="relative flex min-h-screen flex-col px-20 pb-20 pt-20">
-            <div className="flex flex-1 flex-col justify-center pr-[120px]">
+          <div className="relative flex min-h-screen flex-col px-12 pb-16 pt-16 xl:px-20 xl:pb-20 xl:pt-20">
+            <div className="flex flex-1 flex-col justify-center pr-8 xl:pr-[120px]">
               <Image
                 src="/logo-build-on.svg"
                 alt="BuildOn"
                 width={200}
                 height={42}
                 priority
-                className="mb-20 h-[42px] w-auto self-start"
+                className="mb-12 h-[42px] w-auto self-start xl:mb-20"
               />
 
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-5 xl:gap-6">
                 <h1
-                  className={LOGIN_TYPE.heroTitle}
+                  className="font-recoleta text-[40px] font-normal leading-[1.05] xl:text-[64px] xl:leading-[67.2px]"
                   style={{ color: LOGIN_COLORS.heroText }}
                 >
                   Seguimiento de obra claro,{" "}
@@ -143,7 +149,7 @@ function LoginPage() {
                   tiempo real.
                 </h1>
                 <p
-                  className={LOGIN_TYPE.heroBody}
+                  className="text-[17px] font-normal leading-[26px] tracking-[0.3px] xl:text-[20px] xl:leading-[28px] xl:tracking-[0.4px]"
                   style={{ color: LOGIN_COLORS.heroText }}
                 >
                   Gestiona tus proyectos de construcción con total visibilidad.
@@ -163,7 +169,7 @@ function LoginPage() {
         </section>
 
         {/* Right panel */}
-        <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
+        <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-10 sm:px-8 sm:py-12 md:px-10 md:py-14 lg:px-6 lg:py-12">
           {/* Circle decoration */}
           <Image
             src="/login/circle-decoration.svg"
@@ -171,35 +177,46 @@ function LoginPage() {
             width={931}
             height={1011}
             aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 hidden w-[931px] max-w-none -translate-x-1/2 -translate-y-1/2 select-none lg:block"
+            className="pointer-events-none absolute left-1/2 top-1/2 hidden w-[min(92vw,680px)] max-w-none -translate-x-1/2 -translate-y-1/2 select-none opacity-35 md:block lg:w-[931px] lg:opacity-100"
           />
 
-          <div
-            className="relative w-full"
-            style={{ maxWidth: LOGIN_CARD.maxWidth }}
-          >
+          <div className="relative mx-auto w-full max-w-[446px] sm:max-w-[480px] md:max-w-[520px] lg:max-w-[446px]">
+            {/* Tablet hero copy */}
+            <div className="mb-8 hidden text-center md:block lg:hidden">
+              <Image
+                src="/logo-build-on.svg"
+                alt="BuildOn"
+                width={200}
+                height={42}
+                className="mx-auto mb-6 h-[42px] w-auto"
+              />
+              <h1
+                className="font-recoleta text-[32px] font-normal leading-[1.1] text-white sm:text-[36px]"
+              >
+                Seguimiento de obra claro,{" "}
+                <span className="text-[#212225]">centralizado</span> y en tiempo
+                real.
+              </h1>
+              <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-white/95">
+                Gestiona tus proyectos con visibilidad total desde una sola
+                plataforma.
+              </p>
+            </div>
+
             {/* Mobile logo */}
             <Image
               src="/logo-build-on.svg"
               alt="BuildOn"
               width={200}
               height={42}
-              className="mb-6 h-[42px] w-auto lg:hidden"
+              className="mx-auto mb-6 h-[42px] w-auto md:hidden"
             />
 
             {/* Card */}
-            <div
-              className="w-full rounded-2xl bg-white shadow-[0_20px_50px_rgba(0,0,0,0.12)]"
-              style={{
-                paddingLeft: LOGIN_CARD.paddingX,
-                paddingRight: LOGIN_CARD.paddingX,
-                paddingTop: LOGIN_CARD.paddingTop,
-                paddingBottom: LOGIN_CARD.paddingBottom,
-              }}
-            >
-              <div className="flex flex-col gap-6">
+            <div className="w-full rounded-2xl bg-white px-6 py-10 shadow-[0_20px_50px_rgba(0,0,0,0.12)] sm:px-8 sm:py-12 md:px-10 md:py-14 lg:px-8 lg:py-14">
+              <div className="flex flex-col gap-5 sm:gap-6">
                 <h2
-                  className={LOGIN_TYPE.cardTitle}
+                  className="font-recoleta text-[24px] font-normal leading-[1.15] sm:text-[26px] md:text-[28px] md:leading-[29.4px]"
                   style={{ color: LOGIN_COLORS.title }}
                 >
                   Inicia sesión en tu cuenta
@@ -239,13 +256,16 @@ function LoginPage() {
                         id="email"
                         name="email"
                         type="email"
+                        inputMode="email"
                         autoComplete="email"
+                        spellCheck={false}
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => setEmail(sanitizeEmailInput(e.target.value))}
                         placeholder="tu@ejemplo.com"
                         aria-invalid={Boolean(fieldErrors.email)}
                         className={cn(
                           inputClassName,
+                          "pr-4",
                           fieldErrors.email && "border-red-400",
                         )}
                         style={{
@@ -279,14 +299,14 @@ function LoginPage() {
                       <Input
                         id="password"
                         name="password"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         autoComplete="current-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
                         aria-invalid={Boolean(fieldErrors.password)}
                         className={cn(
-                          inputClassName,
+                          passwordInputClassName,
                           fieldErrors.password && "border-red-400",
                         )}
                         style={{
@@ -297,6 +317,20 @@ function LoginPage() {
                           color: LOGIN_COLORS.title,
                         }}
                       />
+                      <button
+                        type="button"
+                        className="absolute top-[15px] right-3 text-[#696E77]"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        aria-label={
+                          showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                        }
+                      >
+                        {showPassword ? (
+                          <EyeOff className="size-4" aria-hidden />
+                        ) : (
+                          <Eye className="size-4" aria-hidden />
+                        )}
+                      </button>
                     </div>
                     {fieldErrors.password ? (
                       <p className="text-sm text-red-600">

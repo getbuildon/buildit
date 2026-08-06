@@ -15,6 +15,10 @@ import {
   updatePasswordClient,
 } from "@/lib/auth/clientAuth"
 import {
+  isValidEmail,
+  sanitizeEmailInput,
+} from "@/lib/landing/emailInput"
+import {
   LOGIN_COLORS,
   LOGIN_TYPE,
 } from "@/lib/login/designTokens"
@@ -122,7 +126,7 @@ function RecoveryPasswordPage() {
       setFieldError("El correo electrónico es requerido")
       return false
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    if (!isValidEmail(trimmed)) {
       setFieldError("Ingresá un correo electrónico válido")
       return false
     }
@@ -473,14 +477,16 @@ function RecoveryPasswordPage() {
                 id="recovery-email"
                 name="email"
                 type="email"
+                inputMode="email"
                 autoComplete="email"
+                spellCheck={false}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(sanitizeEmailInput(e.target.value))}
                 placeholder="tu@ejemplo.com"
                 aria-invalid={Boolean(fieldError)}
                 className={cn(
                   inputClassName,
-                  "placeholder:text-[rgba(10,10,10,0.5)]",
+                  "pr-4 placeholder:text-[rgba(10,10,10,0.5)]",
                   fieldError && "border-red-400",
                 )}
                 style={{
