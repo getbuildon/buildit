@@ -163,3 +163,6 @@ vite.config.ts.timestamp-*
 
 # Cursor
 .cursor
+
+# Supabase email templates con logo embebido (generadas desde supabase/templates/*.html)
+supabase/templates/generated/
