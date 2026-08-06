@@ -78,35 +78,47 @@ function formatDaysLabel(days: number, isUrgent: boolean): string {
   return `${days} días`
 }
 
+function formatDaysLabelShort(days: number, isUrgent: boolean): string {
+  if (isUrgent) return `${days}d urg.`
+  return days === 1 ? "1d" : `${days}d`
+}
+
 function getUrgencyBadge(task: CertificacionTask) {
   if (task.status === "certified") {
     return {
       className: CERTIFICADA_BADGE.className,
       icon: ShieldCheck,
       label: "Certificada",
+      shortLabel: "Cert.",
     }
   }
 
   if (task.isUrgent) {
+    const label = formatDaysLabel(task.daysPending, true)
     return {
       className: "bg-[#feebec] text-[#ce2c31]",
       icon: Clock,
-      label: formatDaysLabel(task.daysPending, true),
+      label,
+      shortLabel: formatDaysLabelShort(task.daysPending, true),
     }
   }
 
   if (task.daysPending >= 4) {
+    const label = formatDaysLabel(task.daysPending, false)
     return {
       className: "bg-[#fefbe9] text-[#ab6400]",
       icon: Clock,
-      label: formatDaysLabel(task.daysPending, false),
+      label,
+      shortLabel: formatDaysLabelShort(task.daysPending, false),
     }
   }
 
+  const label = formatDaysLabel(task.daysPending, false)
   return {
     className: "bg-[#edeef0] text-[#43484e]",
     icon: Clock,
-    label: formatDaysLabel(task.daysPending, false),
+    label,
+    shortLabel: formatDaysLabelShort(task.daysPending, false),
   }
 }
 
@@ -139,7 +151,7 @@ function StatCard({
 }) {
   return (
     <div
-      className="flex flex-1 items-center gap-4 rounded-[12px] border border-[#edeef0] bg-white px-4 py-[17px]"
+      className="flex flex-1 flex-col gap-3 rounded-[12px] border border-[#edeef0] bg-white px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-4 sm:py-[17px]"
       style={{ boxShadow: CERTIFICACIONES_SHADOW.card }}
     >
       <div className="flex items-center gap-3">
@@ -238,17 +250,18 @@ function TaskCard({
   const isCertified = task.status === "certified"
 
   return (
-    <div className="rounded-[12px] border border-[#edeef0] bg-white p-[13px]">
-      <div className="flex items-center gap-3">
-        {showCheckbox ? (
-          <CertificacionCheckbox
-            checked={checked}
-            onCheckedChange={onCheckedChange}
-            ariaLabel={`Seleccionar ${task.taskName}`}
-          />
-        ) : null}
+    <div className="rounded-[12px] border border-[#edeef0] bg-white p-3 sm:p-[13px]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          {showCheckbox ? (
+            <CertificacionCheckbox
+              checked={checked}
+              onCheckedChange={onCheckedChange}
+              ariaLabel={`Seleccionar ${task.taskName}`}
+            />
+          ) : null}
 
-        <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -308,9 +321,17 @@ function TaskCard({
               </div>
             ) : null}
           </div>
+          </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div
+          className={cn(
+            "flex items-center gap-2",
+            isCertified
+              ? "w-full min-w-0 sm:w-auto sm:shrink-0"
+              : "shrink-0 justify-end sm:justify-start",
+          )}
+        >
           {isCertified ? (
             <CertifierBlock
               name={task.certifiedByName ?? task.authorName}
@@ -321,20 +342,21 @@ function TaskCard({
             <>
               <span
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-[12px] px-2 py-1",
+                  "inline-flex shrink-0 items-center gap-1 rounded-[12px] px-2 py-1",
                   CERTIFICACIONES_TYPE.badge,
                   urgency.className,
                 )}
               >
-                <urgency.icon className="size-3" aria-hidden />
-                {urgency.label}
+                <urgency.icon className="size-3 shrink-0" aria-hidden />
+                <span className="sm:hidden">{urgency.shortLabel}</span>
+                <span className="hidden sm:inline">{urgency.label}</span>
               </span>
               {canCertify ? (
                 <button
                   type="button"
                   onClick={onCertify}
                   disabled={isCertifying}
-                  className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#ff7433] px-3 py-1.5 disabled:opacity-50"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] bg-[#ff7433] px-3 py-1.5 disabled:opacity-50"
                 >
                   <BadgeCheck className="size-3 text-white" aria-hidden />
                   <span className={CERTIFICACIONES_TYPE.certificarBtn}>Certificar</span>
@@ -345,7 +367,7 @@ function TaskCard({
           <button
             type="button"
             onClick={onView}
-            className="inline-flex size-8 items-center justify-center rounded-[10px] bg-[#edeef0] text-[#43484e] transition-colors hover:bg-[#e2e4e8]"
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[#edeef0] text-[#43484e] transition-colors hover:bg-[#e2e4e8]"
             aria-label={`Ver detalle de ${task.taskName}`}
           >
             <Eye className="size-4" aria-hidden />
@@ -577,7 +599,7 @@ export function CertificacionesView({ projectId, initialData }: Props) {
   const showCheckbox = statusFilter === "pending" && canCertify
 
   return (
-    <div className="flex flex-col gap-8 px-24 py-6">
+    <div className="flex flex-col gap-4 py-4 sm:gap-6 sm:py-6">
       <div className="flex flex-col gap-2">
         <h1 className={CERTIFICACIONES_TYPE.pageTitle}>Certificación de Tareas</h1>
         <p className={CERTIFICACIONES_TYPE.pageSubtitle}>{subtitle}</p>
@@ -585,7 +607,7 @@ export function CertificacionesView({ projectId, initialData }: Props) {
 
       <div className="flex flex-col gap-4">
         {statusFilter === "pending" ? (
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <StatCard
               icon={ListTodo}
               iconClassName="bg-[#e6f4fe]"
@@ -668,7 +690,7 @@ export function CertificacionesView({ projectId, initialData }: Props) {
 
             <div className="flex flex-col gap-4">
               {statusFilter === "pending" ? (
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <label className="flex cursor-pointer items-center gap-2">
                     <CertificacionCheckbox
                       checked={allFilteredSelected}
@@ -685,7 +707,7 @@ export function CertificacionesView({ projectId, initialData }: Props) {
                       type="button"
                       onClick={() => openListCertify(selectedPendingEntryIds)}
                       disabled={isCertifying}
-                      className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#ff7433] px-3 py-1.5 disabled:opacity-50"
+                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-[10px] bg-[#ff7433] px-3 py-1.5 disabled:opacity-50 sm:w-auto"
                     >
                       <BadgeCheck className="size-3 text-white" aria-hidden />
                       <span className={CERTIFICACIONES_TYPE.certificarBtn}>
@@ -731,14 +753,14 @@ export function CertificacionesView({ projectId, initialData }: Props) {
           </div>
 
           {filteredTasks.length > 0 ? (
-            <div className="flex h-8 items-center justify-between">
-              <p className={CERTIFICACIONES_TYPE.footer}>
+            <div className="flex flex-col items-center gap-3 sm:h-8 sm:flex-row sm:items-center sm:justify-between">
+              <p className={cn(CERTIFICACIONES_TYPE.footer, "text-center sm:text-left")}>
                 Mostrando {paginatedTasks.length} de {filteredTasks.length} tarea
                 {filteredTasks.length === 1 ? "" : "s"}
               </p>
 
               {totalPages > 1 ? (
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center justify-center gap-1 sm:justify-start">
                   <button
                     type="button"
                     onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}

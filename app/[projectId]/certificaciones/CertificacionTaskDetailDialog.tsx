@@ -465,8 +465,8 @@ export function CertificacionTaskDetailDialog({
           overlayClassName={CERTIFICACION_MODAL.overlay}
           className={CERTIFICACION_MODAL.content}
         >
-          <div className={cn("border-b px-6 py-4", CERTIFICACION_MODAL.headerBorder)}>
-            <div className="flex items-center justify-between gap-4">
+          <div className={cn("border-b px-4 py-4 sm:px-6", CERTIFICACION_MODAL.headerBorder)}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="min-w-0 flex-1">
                 <DialogTitle className={CERTIFICACION_MODAL.title}>
                   {detail?.taskName ?? "Detalle de tarea"}
@@ -490,7 +490,11 @@ export function CertificacionTaskDetailDialog({
               </div>
 
               {mode === "view" && detail && canEditTasks ? (
-                <button type="button" onClick={handleStartEdit} className={CERTIFICACION_MODAL.editBtn}>
+                <button
+                  type="button"
+                  onClick={handleStartEdit}
+                  className={cn(CERTIFICACION_MODAL.editBtn, "self-start")}
+                >
                   <Pencil className="size-4 shrink-0" aria-hidden />
                   Editar Estado
                 </button>
@@ -498,7 +502,7 @@ export function CertificacionTaskDetailDialog({
             </div>
           </div>
 
-          <div className="flex max-h-[calc(90vh-180px)] flex-col overflow-y-auto p-6">
+          <div className="flex max-h-[calc(90vh-180px)] flex-col overflow-y-auto p-4 sm:p-6">
             {loading ? (
               <div className="flex min-h-[240px] items-center justify-center">
                 <Spinner className="size-6" />
@@ -552,7 +556,7 @@ export function CertificacionTaskDetailDialog({
                   </Field>
                 ) : null}
 
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <p className={CERTIFICACION_MODAL.label}>Fecha y hora del último registro</p>
                     <div className="flex flex-col gap-0.5">
@@ -624,7 +628,7 @@ export function CertificacionTaskDetailDialog({
                   </p>
                   <div className="flex flex-col gap-2">
                     <p className={CERTIFICACION_MODAL.label}>Nuevo Estado</p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                       {STATUS_BUTTON_STYLES.map((option) => {
                         const isActive = draftStatus === option.status
                         return (
@@ -680,9 +684,8 @@ export function CertificacionTaskDetailDialog({
 
           <div
             className={cn(
-              "flex gap-3 border-t px-6 pt-4 pb-6",
+              "flex flex-col gap-3 border-t px-4 pt-4 pb-5 sm:flex-row sm:px-6 sm:pb-6",
               CERTIFICACION_MODAL.footerBorder,
-              showCertifyButton ? "flex-row" : "flex-col",
             )}
           >
             {mode === "view" ? (
@@ -690,10 +693,7 @@ export function CertificacionTaskDetailDialog({
                 <button
                   type="button"
                   onClick={() => handleOpenChange(false)}
-                  className={cn(
-                    CERTIFICACION_MODAL.closeBtn,
-                    !showCertifyButton && "w-full",
-                  )}
+                  className={CERTIFICACION_MODAL.closeBtn}
                 >
                   Cerrar
                 </button>

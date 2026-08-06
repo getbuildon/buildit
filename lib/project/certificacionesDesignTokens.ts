@@ -35,9 +35,11 @@ export const CERTIFICACIONES_SHADOW = {
 } as const
 
 export const CERTIFICACIONES_TYPE = {
-  pageTitle: "font-recoleta text-[28px] font-normal leading-[1.05] text-[#272a2d]",
+  pageTitle:
+    "font-recoleta text-[26px] font-normal leading-[1.05] text-[#272a2d] sm:text-[28px] lg:text-[36px]",
   pageSubtitle: "text-[14px] font-normal leading-[1.4] text-[#43484e]",
-  statNumber: "font-recoleta text-[28px] font-normal leading-[1.05] text-[#111113] tabular-nums",
+  statNumber:
+    "font-recoleta text-[24px] font-normal leading-[1.05] text-[#111113] tabular-nums sm:text-[28px]",
   statLabel: "text-[14px] font-normal leading-[1.4] text-[#212225]",
   filterLabel: "text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#777b84]",
   taskTitle: "text-[14px] font-normal leading-[1.4] text-[#111113]",
@@ -57,8 +59,8 @@ export const CERTIFICACIONES_TYPE = {
 
 /** Figma node 1956:7519 — filtros de certificaciones */
 export const CERTIFICACIONES_FILTERS = {
-  row: "flex w-full items-center gap-2",
-  field: "flex min-w-0 flex-1 flex-col gap-1.5",
+  row: "grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:gap-2",
+  field: "flex min-w-0 flex-col gap-1.5 md:flex-1",
   label: "block h-4 text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#777b84]",
   datePicker:
     "h-10 gap-2 px-3 py-[9px] text-[14px] font-medium leading-5 tracking-[-0.15px] text-[#777b84]",
@@ -68,7 +70,7 @@ export const CERTIFICACIONES_FILTERS = {
     "flex h-10 w-full items-center rounded-[10px] border border-[#edeef0] bg-[#edeef0] p-1",
   toggleButton: "flex h-full flex-1 items-center justify-center rounded-[8px]",
   mainCard:
-    "flex flex-col gap-6 rounded-[14px] border border-[#edeef0] bg-white px-[25px] pb-[25px] pt-[25px]",
+    "flex flex-col gap-4 rounded-[14px] border border-[#edeef0] bg-white px-4 pb-4 pt-4 sm:gap-6 sm:px-[25px] sm:pb-[25px] sm:pt-[25px]",
 } as const
 
 /** Figma node 1743:5542 — modal detalle de tarea en certificaciones */
@@ -100,10 +102,10 @@ export const CERTIFICACION_MODAL = {
 /** Figma node 1745:2499 — confirmación de certificación */
 export const CERTIFICACION_CONFIRM = {
   content:
-    "z-[60] w-full max-w-[680px] gap-6 rounded-[16px] border border-[#e2e8f0] px-[33px] py-[41px] shadow-[0_0_5px_rgba(243,103,31,0.08)]",
+    "z-[60] w-[calc(100vw-32px)] max-w-[680px] gap-6 rounded-[16px] border border-[#e2e8f0] px-4 py-6 shadow-[0_0_5px_rgba(243,103,31,0.08)] sm:px-[33px] sm:py-[41px]",
   overlay: "z-[60] bg-[rgba(17,17,19,0.6)] backdrop-blur-[5px]",
-  title: "font-recoleta text-[24px] font-normal leading-[1.05] text-[#18191b]",
-  description: "pt-2 text-[16px] font-normal leading-[1.4] text-[#18191b]",
+  title: "font-recoleta text-[20px] font-normal leading-[1.05] text-[#18191b] sm:text-[24px]",
+  description: "pt-2 text-[14px] font-normal leading-[1.4] text-[#18191b] sm:text-[16px]",
   summaryCard: "flex flex-col gap-1 rounded-[10px] bg-[#fff6f1] p-3",
   summaryTitle: "text-[16px] font-medium leading-[1.4] text-[#272a2d]",
   summaryMeta: "text-[14px] font-normal leading-[1.4] text-[#5a6169]",
@@ -138,7 +140,7 @@ export const CERTIFICADA_BADGE = {
 /** Figma node 1956:7601 — bloque certificador en tareas certificadas */
 export const CERTIFICACIONES_CERTIFIER = {
   block:
-    "flex w-[160px] shrink-0 items-center gap-2 rounded-[10px] bg-[#f4faff] p-2",
+    "flex min-w-0 flex-1 items-center gap-2 rounded-[10px] bg-[#f4faff] p-2 sm:w-[160px] sm:flex-none",
   content: "flex min-w-0 flex-1 flex-col items-start leading-[1.4] text-[#113264]",
   name: "w-full text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#113264]",
   date: "w-full text-[10px] font-normal leading-[1.4] tracking-[-0.5px] text-[#113264]",

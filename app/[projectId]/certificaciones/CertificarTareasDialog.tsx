@@ -94,7 +94,7 @@ export function CertificarTareasDialog({
 
           {error ? <p className="text-[14px] leading-[1.4] text-[#641723]">{error}</p> : null}
 
-          <div className="flex gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row">
             <AlertDialogCancel disabled={isCertifying} className={CERTIFICACION_CONFIRM.cancelBtn}>
               Cancelar
             </AlertDialogCancel>
