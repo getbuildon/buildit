@@ -2,7 +2,13 @@
 
 import gsap from "gsap"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useCallback, useLayoutEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react"
 
 import { SolutionSlideCardDesktop } from "@/components/landing/SolutionSlideCardDesktop"
 import {
@@ -13,17 +19,50 @@ import {
   DESKTOP_HEADER_TO_CARDS_PX,
   DESKTOP_HEADING_WIDTH_PX,
   DESKTOP_SECTION_HEIGHT_PX,
+  DESKTOP_STACK_LEFT_PADDING_PX,
   DESKTOP_TRACK_WIDTH_PX,
   getDesktopCardTarget,
+  getDesktopCardZIndex,
 } from "@/lib/landing/solutionDesktopSlider"
 import { SOLUTION_SLIDES } from "@/lib/landing/solutionSlides"
 import { cn } from "@/lib/utils"
 
 const SLIDE_COUNT = SOLUTION_SLIDES.length
 
+function useSliderViewportWidth(
+  viewportRef: RefObject<HTMLDivElement | null>,
+) {
+  const [viewportWidth, setViewportWidth] = useState(DESKTOP_CONTENT_WIDTH_PX)
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    const update = () => {
+      const left = viewport.getBoundingClientRect().left
+      setViewportWidth(window.innerWidth - left)
+    }
+
+    update()
+
+    const observer = new ResizeObserver(update)
+    observer.observe(viewport)
+    window.addEventListener("resize", update)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener("resize", update)
+    }
+  }, [viewportRef])
+
+  return viewportWidth
+}
+
 export function LandingSolutionsDesktop() {
   const [activeIndex, setActiveIndex] = useState(0)
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
+  const sliderViewportRef = useRef<HTMLDivElement>(null)
+  const sliderViewportWidth = useSliderViewportWidth(sliderViewportRef)
   const prefersReducedMotionRef = useRef(false)
   const isFirstRenderRef = useRef(true)
 
@@ -38,8 +77,8 @@ export function LandingSolutionsDesktop() {
 
         gsap.to(card, {
           x: target.x,
+          scale: target.scale,
           opacity: target.opacity,
-          zIndex: target.zIndex,
           duration,
           ease: "power3.out",
           overwrite: true,
@@ -63,8 +102,9 @@ export function LandingSolutionsDesktop() {
       const target = getDesktopCardTarget(index, 0)
       gsap.set(card, {
         x: target.x,
+        scale: target.scale,
         opacity: target.opacity,
-        zIndex: target.zIndex,
+        transformOrigin: "left center",
         force3D: true,
       })
       card.style.pointerEvents = target.pointerEvents
@@ -118,8 +158,13 @@ export function LandingSolutionsDesktop() {
 
         <div style={{ paddingTop: DESKTOP_HEADER_TO_CARDS_PX }}>
           <div
+            ref={sliderViewportRef}
             className="overflow-hidden"
-            style={{ width: DESKTOP_CONTENT_WIDTH_PX }}
+            style={{
+              width: sliderViewportWidth + DESKTOP_STACK_LEFT_PADDING_PX,
+              marginLeft: -DESKTOP_STACK_LEFT_PADDING_PX,
+              paddingLeft: DESKTOP_STACK_LEFT_PADDING_PX,
+            }}
           >
             <div
               className="relative"
@@ -134,9 +179,13 @@ export function LandingSolutionsDesktop() {
                   ref={(node) => {
                     cardRefs.current[index] = node
                   }}
-                  className="absolute left-0 top-0 will-change-transform"
+                  className="absolute left-0 top-0 origin-left will-change-transform"
+                  style={{ zIndex: getDesktopCardZIndex(index) }}
                 >
-                  <SolutionSlideCardDesktop slide={slide} />
+                  <SolutionSlideCardDesktop
+                    slide={slide}
+                    stacked={index < activeIndex}
+                  />
                 </div>
               ))}
             </div>

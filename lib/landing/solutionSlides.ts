@@ -6,9 +6,12 @@ export type SolutionSlide = {
   screenSrc: string
   screenWidth: number
   screenHeight: number
+  desktopBgSrc: string
   desktopScreenSrc: string
   desktopScreenWidth: number
   desktopScreenHeight: number
+  /** Figma: card 01 uses py-64; cards 02–04 use centered layout */
+  desktopScreenLayout: "padded" | "centered"
 }
 
 export const SOLUTION_SLIDES: SolutionSlide[] = [
@@ -21,9 +24,11 @@ export const SOLUTION_SLIDES: SolutionSlide[] = [
     screenSrc: "/landing/solutions/card-01-screen.png",
     screenWidth: 311,
     screenHeight: 261,
+    desktopBgSrc: "/landing/solutions/desktop/card-01-bg.png",
     desktopScreenSrc: "/landing/solutions/desktop/card-01-screen.png",
     desktopScreenWidth: 749,
     desktopScreenHeight: 630,
+    desktopScreenLayout: "padded",
   },
   {
     number: "02",
@@ -34,9 +39,11 @@ export const SOLUTION_SLIDES: SolutionSlide[] = [
     screenSrc: "/landing/solutions/card-02-screen.png",
     screenWidth: 311,
     screenHeight: 261,
+    desktopBgSrc: "/landing/solutions/desktop/card-02-bg.png",
     desktopScreenSrc: "/landing/solutions/desktop/card-02-screen.png",
     desktopScreenWidth: 497,
     desktopScreenHeight: 440,
+    desktopScreenLayout: "centered",
   },
   {
     number: "03",
@@ -47,9 +54,11 @@ export const SOLUTION_SLIDES: SolutionSlide[] = [
     screenSrc: "/landing/solutions/card-03-screen.png",
     screenWidth: 311,
     screenHeight: 261,
+    desktopBgSrc: "/landing/solutions/desktop/card-03-bg.png",
     desktopScreenSrc: "/landing/solutions/desktop/card-03-screen.png",
     desktopScreenWidth: 810,
     desktopScreenHeight: 786,
+    desktopScreenLayout: "centered",
   },
   {
     number: "04",
@@ -60,8 +69,10 @@ export const SOLUTION_SLIDES: SolutionSlide[] = [
     screenSrc: "/landing/solutions/card-04-screen.png",
     screenWidth: 311,
     screenHeight: 261,
+    desktopBgSrc: "/landing/solutions/desktop/card-04-bg.png",
     desktopScreenSrc: "/landing/solutions/desktop/card-04-screen.png",
     desktopScreenWidth: 617,
     desktopScreenHeight: 603,
+    desktopScreenLayout: "centered",
   },
 ]

@@ -5,15 +5,23 @@ import {
   DESKTOP_CARD_HEIGHT_PX,
   DESKTOP_CARD_WIDTH_PX,
 } from "@/lib/landing/solutionDesktopSlider"
+import { cn } from "@/lib/utils"
 
 type SolutionSlideCardDesktopProps = {
   slide: SolutionSlide
+  stacked?: boolean
 }
 
-export function SolutionSlideCardDesktop({ slide }: SolutionSlideCardDesktopProps) {
+export function SolutionSlideCardDesktop({
+  slide,
+  stacked = false,
+}: SolutionSlideCardDesktopProps) {
   return (
     <article
-      className="flex shrink-0 flex-col overflow-hidden rounded-[4px] border border-[#363a3f] bg-[#edeef0]"
+      className={cn(
+        "box-border flex shrink-0 flex-col overflow-hidden rounded-[4px] border border-[#363a3f] bg-[#edeef0] p-px",
+        stacked && "shadow-[0_0_0_1px_rgba(54,58,63,0.35)]",
+      )}
       style={{
         width: DESKTOP_CARD_WIDTH_PX,
         height: DESKTOP_CARD_HEIGHT_PX,
@@ -35,20 +43,31 @@ export function SolutionSlideCardDesktop({ slide }: SolutionSlideCardDesktopProp
 
       <div className="relative min-h-0 flex-1 overflow-hidden rounded-tl-[40px] rounded-tr-[40px]">
         <Image
-          src={slide.bgSrc}
+          src={slide.desktopBgSrc}
           alt=""
           fill
           aria-hidden
-          className="object-cover"
+          className="rounded-tl-[40px] rounded-tr-[40px] object-cover"
           sizes="900px"
         />
-        <div className="relative flex h-full items-center justify-center py-16">
+        <div
+          className={cn(
+            "relative flex h-full flex-col items-center overflow-hidden rounded-tl-[40px] rounded-tr-[40px]",
+            slide.desktopScreenLayout === "padded"
+              ? "py-[64px]"
+              : "justify-center",
+          )}
+        >
           <Image
             src={slide.desktopScreenSrc}
             alt={`Captura de pantalla: ${slide.title}`}
             width={slide.desktopScreenWidth}
             height={slide.desktopScreenHeight}
-            className="max-h-full max-w-[calc(100%-64px)] object-contain"
+            className="shrink-0 object-cover"
+            style={{
+              width: slide.desktopScreenWidth,
+              height: slide.desktopScreenHeight,
+            }}
             sizes="900px"
           />
         </div>
