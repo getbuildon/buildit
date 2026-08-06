@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils"
 type PricingPlanCardProps = {
   plan: PricingPlan
   billing: BillingPeriod
+  onCtaClick?: (surfaceTierId: string) => void
 }
 
 function TeamIcon({ index, dark }: { index: number; dark: boolean }) {
@@ -55,7 +56,11 @@ function BulletIcon({ index, dark }: { index: number; dark: boolean }) {
   return <div className={wrapperClass}>{icon}</div>
 }
 
-export function PricingPlanCard({ plan, billing }: PricingPlanCardProps) {
+export function PricingPlanCard({
+  plan,
+  billing,
+  onCtaClick,
+}: PricingPlanCardProps) {
   const [surfaceTierId, setSurfaceTierId] = useState(
     () => getDefaultSurfaceTierId(plan) ?? "",
   )
@@ -222,6 +227,7 @@ export function PricingPlanCard({ plan, billing }: PricingPlanCardProps) {
       <div className="pt-8">
         <button
           type="button"
+          onClick={() => onCtaClick?.(surfaceTierId)}
           className={cn(
             "flex h-[52px] w-full items-center justify-center rounded-[10px] px-6 py-3.5 text-base font-medium leading-[1.4]",
             plan.ctaVariant === "outline" &&
