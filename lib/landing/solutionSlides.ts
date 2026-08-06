@@ -6,6 +6,9 @@ export type SolutionSlide = {
   screenSrc: string
   screenWidth: number
   screenHeight: number
+  desktopScreenSrc: string
+  desktopScreenWidth: number
+  desktopScreenHeight: number
 }
 
 export const SOLUTION_SLIDES: SolutionSlide[] = [
@@ -18,6 +21,9 @@ export const SOLUTION_SLIDES: SolutionSlide[] = [
     screenSrc: "/landing/solutions/card-01-screen.png",
     screenWidth: 311,
     screenHeight: 261,
+    desktopScreenSrc: "/landing/solutions/desktop/card-01-screen.png",
+    desktopScreenWidth: 749,
+    desktopScreenHeight: 630,
   },
   {
     number: "02",
@@ -28,6 +34,9 @@ export const SOLUTION_SLIDES: SolutionSlide[] = [
     screenSrc: "/landing/solutions/card-02-screen.png",
     screenWidth: 311,
     screenHeight: 261,
+    desktopScreenSrc: "/landing/solutions/desktop/card-02-screen.png",
+    desktopScreenWidth: 497,
+    desktopScreenHeight: 440,
   },
   {
     number: "03",
@@ -38,6 +47,9 @@ export const SOLUTION_SLIDES: SolutionSlide[] = [
     screenSrc: "/landing/solutions/card-03-screen.png",
     screenWidth: 311,
     screenHeight: 261,
+    desktopScreenSrc: "/landing/solutions/desktop/card-03-screen.png",
+    desktopScreenWidth: 810,
+    desktopScreenHeight: 786,
   },
   {
     number: "04",
@@ -48,5 +60,8 @@ export const SOLUTION_SLIDES: SolutionSlide[] = [
     screenSrc: "/landing/solutions/card-04-screen.png",
     screenWidth: 311,
     screenHeight: 261,
+    desktopScreenSrc: "/landing/solutions/desktop/card-04-screen.png",
+    desktopScreenWidth: 617,
+    desktopScreenHeight: 603,
   },
 ]
