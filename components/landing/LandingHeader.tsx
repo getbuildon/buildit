@@ -27,7 +27,7 @@ export function LandingHeader() {
       )}
     >
       <div className="px-6">
-        <div className="flex items-center justify-between py-2">
+        <div className="flex h-[80px] items-center justify-between">
           <Link
             href="/"
             className="shrink-0"
@@ -61,7 +61,7 @@ export function LandingHeader() {
         </div>
 
         {menuOpen ? (
-          <div id="landing-mobile-nav" className="mt-6 flex flex-col gap-6">
+          <div id="landing-mobile-nav" className="mt-[24px] flex flex-col gap-6">
             <nav className="flex flex-col">
               {NAV_LINKS.map((link) => (
                 <Link
