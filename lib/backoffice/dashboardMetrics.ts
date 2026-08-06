@@ -2,10 +2,15 @@ import { BACKOFFICE_PLAN_FILTER_GROUPS } from "@/lib/backoffice/proyectosFilters
 import { getPlanGroupLabel } from "@/lib/backoffice/clientesBilling"
 import {
   aggregateClienteBilling,
-  getSubscriptionMonthlyUsd,
   type ClienteProjectSnapshot,
   type ClienteProjectSubscription,
 } from "@/lib/backoffice/clientesBilling"
+import {
+  buildOverdueDebtByProject,
+  computeDashboardBillingSnapshot,
+  type DashboardBillingLedgerEntry,
+  type DashboardProjectBillingContext,
+} from "@/lib/backoffice/dashboardBilling"
 import type { DashboardPeriod } from "@/lib/backoffice/dashboardPeriod"
 import { isWithinPeriod } from "@/lib/backoffice/dashboardPeriod"
 import type { BackofficeProjectStatusKind } from "@/lib/backoffice/proyectosQuery"
@@ -33,7 +38,9 @@ export type BackofficeDashboardSnapshotMetrics = {
   totalProjects: number
   activeSubscriptions: number
   payingCompanies: number
-  mrrUsd: number
+  chargesUsd: number
+  collectedUsd: number
+  receivableUsd: number
   debtUsd: number
   companiesWithDebt: number
 }
@@ -87,13 +94,13 @@ function getSubscriptionSnapshotAt(
 
   return {
     status,
-    renewsAt: record.subscription.renewsAt,
   }
 }
 
 export function getProjectDisplayStatusAt(
   record: DashboardSubscriptionRecord,
   asOf: Date,
+  overdueDebtByProject: Map<string, number>,
 ): BackofficeProjectStatusKind | null {
   const snapshot = getSubscriptionSnapshotAt(record, asOf)
 
@@ -109,11 +116,9 @@ export function getProjectDisplayStatusAt(
     return "disabled"
   }
 
-  return resolveBackofficeProjectSubscriptionStatus(
-    record.projectStatus,
-    snapshot,
-    asOf,
-  )
+  return resolveBackofficeProjectSubscriptionStatus(record.projectStatus, snapshot, {
+    overdueDebtUsd: overdueDebtByProject.get(record.projectId) ?? 0,
+  })
 }
 
 function subscriptionExistedAt(
@@ -178,6 +183,7 @@ export function buildDashboardMetrics(options: {
   totalCompanies: number
   newCompanies: number
   records: DashboardSubscriptionRecord[]
+  billingEntries: DashboardBillingLedgerEntry[]
 }): BackofficeDashboardMetrics {
   const asOf = options.period.end
   const snapshots: ClienteProjectSnapshot[] = []
@@ -188,10 +194,24 @@ export function buildDashboardMetrics(options: {
     disabled: 0,
   }
 
-  const debtByCompany = new Map<string, number>()
+  const projectBillingContexts = new Map<string, DashboardProjectBillingContext>()
+
+  for (const record of options.records) {
+    if (record.subscription) {
+      projectBillingContexts.set(record.projectId, {
+        companyId: record.companyId,
+        billingInterval: record.subscription.billingInterval,
+      })
+    }
+  }
+
+  const overdueDebtByProject = buildOverdueDebtByProject(
+    options.billingEntries,
+    projectBillingContexts,
+    asOf,
+  )
+
   let activeSubscriptions = 0
-  let mrrUsd = 0
-  let debtUsd = 0
   let newProjects = 0
   let newSubscriptions = 0
   let cancelledSubscriptions = 0
@@ -215,10 +235,16 @@ export function buildDashboardMetrics(options: {
       cancelledSubscriptions += 1
     }
 
-    const displayStatus = getProjectDisplayStatusAt(record, asOf)
+    const displayStatus = getProjectDisplayStatusAt(
+      record,
+      asOf,
+      overdueDebtByProject,
+    )
     if (!displayStatus) continue
 
     subscriptionStatus[displayStatus] += 1
+
+    const overdueDebtUsd = overdueDebtByProject.get(record.projectId) ?? 0
 
     snapshots.push({
       projectStatus: record.projectStatus,
@@ -236,31 +262,30 @@ export function buildDashboardMetrics(options: {
             annualMonthlyPriceUsd: record.subscription.annualMonthlyPriceUsd,
           }
         : null,
+      overdueDebtUsd,
     })
 
     if (displayStatus === "active" && record.subscription) {
       activeSubscriptions += 1
-      mrrUsd += getSubscriptionMonthlyUsd(record.subscription)
-    }
-
-    if (displayStatus === "expired" && record.subscription) {
-      const monthlyUsd = getSubscriptionMonthlyUsd(record.subscription)
-      debtUsd += monthlyUsd
-      debtByCompany.set(
-        record.companyId,
-        (debtByCompany.get(record.companyId) ?? 0) + monthlyUsd,
-      )
     }
   }
 
-  const billing = aggregateClienteBilling(snapshots)
+  const billingSnapshot = computeDashboardBillingSnapshot(
+    options.billingEntries,
+    projectBillingContexts,
+    options.period,
+  )
   const { planGroupBreakdown, planTierBreakdown } = buildPlanBreakdowns(
     options.records,
     asOf,
   )
   const payingCompanies = new Set(
     options.records
-      .filter((record) => getProjectDisplayStatusAt(record, asOf) === "active")
+      .filter(
+        (record) =>
+          getProjectDisplayStatusAt(record, asOf, overdueDebtByProject) ===
+          "active",
+      )
       .map((record) => record.companyId),
   ).size
 
@@ -273,10 +298,11 @@ export function buildDashboardMetrics(options: {
       totalProjects: snapshots.length,
       activeSubscriptions,
       payingCompanies,
-      mrrUsd,
-      debtUsd,
-      companiesWithDebt: [...debtByCompany.values()].filter((value) => value > 0)
-        .length,
+      chargesUsd: billingSnapshot.chargesUsd,
+      collectedUsd: billingSnapshot.collectedUsd,
+      receivableUsd: billingSnapshot.receivableUsd,
+      debtUsd: billingSnapshot.debtUsd,
+      companiesWithDebt: billingSnapshot.companiesWithDebt,
     },
     activity: {
       newUsers: options.newUsers,
@@ -287,7 +313,7 @@ export function buildDashboardMetrics(options: {
       cancelledSubscriptions,
     },
     subscriptionStatus,
-    planBreakdown: billing.planBreakdown,
+    planBreakdown: aggregateClienteBilling(snapshots).planBreakdown,
     planGroupBreakdown,
     planTierBreakdown,
   }

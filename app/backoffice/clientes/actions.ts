@@ -5,6 +5,7 @@ import {
   aggregateClienteBilling,
   type ClienteBillingSummary,
 } from "@/lib/backoffice/clientesBilling"
+import { buildOverdueDebtByProject } from "@/lib/backoffice/dashboardBilling"
 import { BACKOFFICE_CLIENTES_PAGE_SIZE } from "@/lib/backoffice/clientesQuery"
 import { createAdminClient } from "@/utils/supabase/admin"
 
@@ -354,6 +355,41 @@ export async function getBackofficeClientes(
     allProjectIds,
   )
 
+  const { data: billingRows, error: billingError } =
+    allProjectIds.length > 0
+      ? await admin
+          .from("subscription_billing_entries")
+          .select("project_id, amount_usd, effective_at")
+          .in("project_id", allProjectIds)
+      : { data: [], error: null }
+
+  if (billingError) throw new Error(billingError.message)
+
+  const projectBillingContexts = new Map<
+    string,
+    { billingInterval: "monthly" | "annual" }
+  >()
+
+  for (const [projectId, subscriptionRow] of subscriptionsByProject) {
+    projectBillingContexts.set(projectId, {
+      billingInterval:
+        subscriptionRow.billing_interval === "annual" ? "annual" : "monthly",
+    })
+  }
+
+  const billingEntries = (billingRows ?? []).map((row) => ({
+    projectId: row.project_id as string,
+    companyId: "",
+    amountUsd: Number(row.amount_usd),
+    effectiveAt: row.effective_at as string,
+  }))
+
+  const overdueDebtByProject = buildOverdueDebtByProject(
+    billingEntries,
+    projectBillingContexts,
+    new Date(),
+  )
+
   const clients = rows.map((company) => {
     const projects = projectsByCompany.get(company.id) ?? []
 
@@ -364,6 +400,7 @@ export async function getBackofficeClientes(
 
         return {
           projectStatus: project.status,
+          overdueDebtUsd: overdueDebtByProject.get(project.id) ?? 0,
           subscription: subscriptionRow
             ? {
                 status: subscriptionRow.status,

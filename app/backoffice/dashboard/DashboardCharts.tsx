@@ -17,6 +17,7 @@ import type { BackofficeProjectStatusKind } from "@/lib/backoffice/proyectosQuer
 import type {
   BackofficeDashboardActivityMetrics,
   DashboardPlanGroupBreakdown,
+  DashboardPlanTierBreakdown,
 } from "@/lib/backoffice/dashboardMetrics"
 import { cn } from "@/lib/utils"
 
@@ -273,6 +274,112 @@ export function PlanGroupsBarChart({ planGroupBreakdown }: PlanGroupsBarChartPro
               />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(244,245,246,0.6)" }} />
               <Bar dataKey="value" radius={[0, 8, 8, 0]} maxBarSize={28}>
+                {data.map((item) => (
+                  <Cell key={item.name} fill={item.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </ChartCard>
+  )
+}
+
+function TierAxisTick({
+  x = 0,
+  y = 0,
+  payload,
+}: {
+  x?: number
+  y?: number
+  payload?: { value?: string }
+}) {
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" fill="#363a3f" fontSize={12}>
+      {payload?.value}
+    </text>
+  )
+}
+
+type PlanTiersBarChartProps = {
+  planTierBreakdown: DashboardPlanTierBreakdown[]
+}
+
+export function PlanTiersBarChart({ planTierBreakdown }: PlanTiersBarChartProps) {
+  const groupColorById = new Map<string, string>()
+  let groupColorIndex = 0
+
+  for (const tier of planTierBreakdown) {
+    if (!groupColorById.has(tier.groupId)) {
+      groupColorById.set(
+        tier.groupId,
+        PLAN_GROUP_COLORS[groupColorIndex % PLAN_GROUP_COLORS.length],
+      )
+      groupColorIndex += 1
+    }
+  }
+
+  const data = planTierBreakdown.map((tier) => ({
+    name: tier.tierLabel.replace(" m²", "\u00A0m²"),
+    groupLabel: tier.groupLabel,
+    value: tier.count,
+    color: groupColorById.get(tier.groupId) ?? PLAN_GROUP_COLORS[0],
+  }))
+
+  const total = data.reduce((sum, item) => sum + item.value, 0)
+  const chartHeight = Math.max(220, data.length * 36)
+
+  return (
+    <ChartCard
+      title="Distribución por tier"
+      description="Subscripciones al cierre, por superficie"
+    >
+      {total === 0 ? (
+        <ChartEmptyState message="No hay subscripciones con plan asignado." />
+      ) : (
+        <div className="w-full" style={{ height: chartHeight }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              layout="vertical"
+              data={data}
+              margin={{ top: 0, right: 12, left: 4, bottom: 0 }}
+            >
+              <XAxis
+                type="number"
+                allowDecimals={false}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "#777b84", fontSize: 12 }}
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={84}
+                axisLine={false}
+                tickLine={false}
+                tick={TierAxisTick}
+              />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null
+                  const entry = payload[0]?.payload as (typeof data)[number] | undefined
+                  if (!entry) return null
+
+                  return (
+                    <div className="rounded-lg border border-[#edeef0] bg-white px-3 py-2 shadow-[0_4px_16px_rgba(24,25,27,0.08)]">
+                      <p className="text-xs font-medium leading-4 text-[#777b84]">
+                        {entry.groupLabel} · {entry.name}
+                      </p>
+                      <p className="pt-0.5 text-sm font-semibold tabular-nums text-[#18191b]">
+                        {entry.value}
+                      </p>
+                    </div>
+                  )
+                }}
+                cursor={{ fill: "rgba(244,245,246,0.6)" }}
+              />
+              <Bar dataKey="value" radius={[0, 8, 8, 0]} maxBarSize={24}>
                 {data.map((item) => (
                   <Cell key={item.name} fill={item.color} />
                 ))}

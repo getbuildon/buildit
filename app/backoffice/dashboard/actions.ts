@@ -6,6 +6,7 @@ import {
   type BackofficeDashboardMetrics,
   type DashboardSubscriptionRecord,
 } from "@/lib/backoffice/dashboardMetrics"
+import type { DashboardBillingLedgerEntry } from "@/lib/backoffice/dashboardBilling"
 import {
   isOnOrBeforePeriodEnd,
   resolveDashboardPeriod,
@@ -218,6 +219,45 @@ async function getProjectSubscriptionRecords(
   })
 }
 
+async function getBillingLedgerEntriesForDashboard(
+  admin: ReturnType<typeof createAdminClient>,
+  periodEndIso: string,
+): Promise<DashboardBillingLedgerEntry[]> {
+  const { data, error } = await admin
+    .from("subscription_billing_entries")
+    .select(
+      `
+      project_id,
+      amount_usd,
+      effective_at,
+      project:projects (
+        company_id
+      )
+    `,
+    )
+    .lte("effective_at", periodEndIso)
+
+  if (error) throw new Error(error.message)
+
+  const entries: DashboardBillingLedgerEntry[] = []
+
+  for (const row of data ?? []) {
+    const project = firstRelation(
+      row.project as { company_id: string } | { company_id: string }[] | null,
+    )
+    if (!project?.company_id) continue
+
+    entries.push({
+      projectId: row.project_id as string,
+      companyId: project.company_id,
+      amountUsd: Number(row.amount_usd),
+      effectiveAt: row.effective_at as string,
+    })
+  }
+
+  return entries
+}
+
 export async function getBackofficeDashboardMetrics(
   params: GetBackofficeDashboardParams = {},
 ): Promise<BackofficeDashboardMetrics> {
@@ -238,6 +278,7 @@ export async function getBackofficeDashboardMetrics(
     newCompanies,
     confirmedCounts,
     records,
+    billingEntries,
   ] = await Promise.all([
     countProfilesCreatedBefore(admin, period.endIso),
     countProfilesCreatedInPeriod(admin, period.startIso, period.endIso),
@@ -245,6 +286,7 @@ export async function getBackofficeDashboardMetrics(
     countCompaniesCreatedInPeriod(admin, period.startIso, period.endIso),
     getConfirmedUserCounts(period.end, period.start),
     getProjectSubscriptionRecords(admin, period.endIso),
+    getBillingLedgerEntriesForDashboard(admin, period.endIso),
   ])
 
   return buildDashboardMetrics({
@@ -258,6 +300,7 @@ export async function getBackofficeDashboardMetrics(
     records: records.filter((record) =>
       isOnOrBeforePeriodEnd(record.createdAt, period),
     ),
+    billingEntries,
   })
 }
 

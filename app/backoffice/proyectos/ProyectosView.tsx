@@ -20,6 +20,7 @@ import {
   NuevoProyectoButton,
   ProyectoFormDialog,
 } from "@/app/backoffice/proyectos/ProyectoFormDialog"
+import { ProjectBillingDialog } from "@/app/backoffice/proyectos/ProjectBillingDialog"
 import {
   ProyectosAppliedFilters,
   ProyectosFiltersButton,
@@ -35,6 +36,12 @@ import {
   serializeBackofficeProyectosPlanSlugFilters,
   serializeBackofficeProyectosStatusFilters,
 } from "@/lib/backoffice/proyectosQuery"
+import {
+  formatBillingDebtUsd,
+  formatBillingLastCharge,
+  formatBillingUsd,
+} from "@/lib/backoffice/subscriptionBilling"
+import { formatBillingIntervalLabel } from "@/lib/backoffice/projectSubscriptionForm"
 import { getBackofficeStatusFilterLabel } from "@/lib/backoffice/proyectosFilters"
 import { cn } from "@/lib/utils"
 
@@ -46,7 +53,7 @@ type ProyectosViewProps = {
 }
 
 const TABLE_GRID =
-  "grid grid-cols-[minmax(160px,1fr)_minmax(140px,1fr)_minmax(140px,1fr)_100px_120px_72px_minmax(112px,auto)_56px] items-start"
+  "grid grid-cols-[minmax(160px,1fr)_minmax(140px,1fr)_minmax(140px,1fr)_100px_minmax(180px,1fr)_minmax(112px,0.8fr)_minmax(180px,1fr)_minmax(108px,0.8fr)_minmax(96px,auto)_72px_minmax(112px,auto)_56px] items-start"
 
 const TABLE_CELL = "min-w-0 px-3"
 const TABLE_HEADER_CELL = "text-xs font-medium leading-4 text-[#777b84]"
@@ -71,6 +78,10 @@ const TABLE_HEADERS = [
   "Ubicación",
   "Superficie",
   "Plan",
+  "Importe",
+  "Último cargo",
+  "Por cobrar",
+  "Deuda",
   "Miembros",
   "Alta",
 ] as const
@@ -158,10 +169,12 @@ function ProjectRowActions({
   project,
   disabled,
   onEdit,
+  onBilling,
 }: {
   project: BackofficeProjectRow
   disabled?: boolean
   onEdit: () => void
+  onBilling: () => void
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -242,6 +255,18 @@ function ProjectRowActions({
             </button>
             <button
               type="button"
+              disabled={isActionPending}
+              onClick={() => {
+                setActionError(null)
+                setOpen(false)
+                onBilling()
+              }}
+              className="flex h-9 w-full items-center rounded-md px-3 text-left text-sm text-[#363a3f] transition-colors hover:bg-[#f4f5f6] disabled:opacity-50"
+            >
+              Facturación
+            </button>
+            <button
+              type="button"
               disabled={isActionPending || !canCancelSubscription}
               onClick={() => {
                 setActionError(null)
@@ -275,7 +300,7 @@ function ProjectRowActions({
         open={cancelSubscriptionOpen}
         onOpenChange={setCancelSubscriptionOpen}
         title="Cancelar subscripción"
-        description={`¿Cancelar la subscripción de ${project.name}? El proyecto pasará a estado Deshabilitado.`}
+        description={`¿Cancelar la subscripción de ${project.name}? El proyecto pasará a estado Cancelado.`}
         confirmLabel="Cancelar subscripción"
         loading={isCancellingSubscription}
         loadingLabel="Cancelando..."
@@ -369,6 +394,10 @@ export function ProyectosView({
   const [editingProject, setEditingProject] = useState<BackofficeProjectRow | null>(
     null,
   )
+  const [billingProject, setBillingProject] = useState<BackofficeProjectRow | null>(
+    null,
+  )
+  const [billingOpen, setBillingOpen] = useState(false)
 
   const filtersValue: ProyectosFiltersValue = {
     planSlugs: initialPlanSlugs,
@@ -464,6 +493,11 @@ export function ProyectosView({
     setFormOpen(true)
   }
 
+  const openBilling = (project: BackofficeProjectRow) => {
+    setBillingProject(project)
+    setBillingOpen(true)
+  }
+
   return (
     <div className="min-w-0 px-6 py-10 lg:px-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -477,6 +511,15 @@ export function ProyectosView({
         open={formOpen}
         onOpenChange={setFormOpen}
         project={editingProject}
+      />
+
+      <ProjectBillingDialog
+        project={billingProject}
+        open={billingOpen}
+        onOpenChange={(open) => {
+          setBillingOpen(open)
+          if (!open) setBillingProject(null)
+        }}
       />
 
       <ProyectosFiltersDialog
@@ -527,7 +570,7 @@ export function ProyectosView({
           </div>
 
           <div className="overflow-x-auto">
-            <div className="min-w-[980px]">
+            <div className="min-w-[1380px]">
               <div className={TABLE_HEADER_ROW}>
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="size-7 shrink-0" aria-hidden />
@@ -574,9 +617,58 @@ export function ProyectosView({
                       {formatSurface(project.totalSurfaceM2)}
                     </p>
 
-                    <p className={cn(TABLE_CELL, TABLE_BODY_TEXT)}>
-                      {project.planName ?? "Sin plan"}
+                    <div className={cn(TABLE_CELL, "min-w-0")}>
+                      <p className={TABLE_BODY_TEXT}>
+                        {project.planLabel ?? project.planName ?? "Sin plan"}
+                      </p>
+                      {formatBillingIntervalLabel(project.billingInterval) ? (
+                        <p className="pt-0.5 text-xs leading-4 text-[#777b84]">
+                          {formatBillingIntervalLabel(project.billingInterval)}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <p className={cn(TABLE_CELL, TABLE_BODY_TEXT, "tabular-nums")}>
+                      {project.amountUsd && project.amountUsd > 0
+                        ? `${formatBillingUsd(project.amountUsd)} / mes`
+                        : "—"}
                     </p>
+
+                    <p className={cn(TABLE_CELL, TABLE_BODY_TEXT, "tabular-nums")}>
+                      {formatBillingLastCharge(project.lastCharge)}
+                    </p>
+
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => openBilling(project)}
+                      className={cn(
+                        TABLE_CELL,
+                        "text-left text-sm leading-5 tabular-nums transition-colors hover:text-[#ff7433] disabled:opacity-50",
+                        project.receivableUsd > 0
+                          ? "font-medium text-[#c2410c]"
+                          : "text-[#696e77]",
+                      )}
+                      title="Ver facturación"
+                    >
+                      {formatBillingDebtUsd(project.receivableUsd)}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => openBilling(project)}
+                      className={cn(
+                        TABLE_CELL,
+                        "text-left text-sm leading-5 tabular-nums transition-colors hover:text-[#ff7433] disabled:opacity-50",
+                        project.debtUsd > 0
+                          ? "font-medium text-[#dc3e42]"
+                          : "text-[#696e77]",
+                      )}
+                      title="Ver facturación"
+                    >
+                      {formatBillingDebtUsd(project.debtUsd)}
+                    </button>
 
                     <p className={cn(TABLE_CELL, TABLE_BODY_TEXT, "tabular-nums")}>
                       {project.memberCount}
@@ -590,6 +682,7 @@ export function ProyectosView({
                       project={project}
                       disabled={isPending}
                       onEdit={() => openEdit(project)}
+                      onBilling={() => openBilling(project)}
                     />
                   </div>
                 ))

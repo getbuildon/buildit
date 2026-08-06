@@ -10,6 +10,7 @@ import type {
 } from "@/lib/backoffice/projectSubscriptionForm"
 import { formatPlanPricePreview } from "@/lib/backoffice/projectSubscriptionForm"
 import { BACKOFFICE_PLAN_FILTER_GROUPS } from "@/lib/backoffice/proyectosFilters"
+import { SubscriptionProrationPreviewCard } from "@/app/backoffice/proyectos/SubscriptionProrationPreviewCard"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -57,6 +58,7 @@ type ProjectSubscriptionFormFieldsProps = {
   plans: BackofficeSubscriptionPlanOption[]
   onChange: (value: ProjectSubscriptionFormValue) => void
   mode?: "create" | "edit"
+  projectId?: string
   subscriptionStatus?: "active" | "cancelled" | "past_due" | null
   disabled?: boolean
   onCancelSubscription?: () => void
@@ -68,6 +70,7 @@ export function ProjectSubscriptionFormFields({
   plans,
   onChange,
   mode = "create",
+  projectId,
   subscriptionStatus = null,
   disabled = false,
   onCancelSubscription,
@@ -331,7 +334,7 @@ export function ProjectSubscriptionFormFields({
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="project-billing-start" className={LABEL_CLASSNAME}>
-            Inicio de facturación
+            {mode === "edit" ? "Inicio del período actual" : "Inicio de facturación"}
           </Label>
           <DatePicker
             id="project-billing-start"
@@ -357,6 +360,13 @@ export function ProjectSubscriptionFormFields({
             {formatPlanPricePreview(selectedCatalogPlan, value.billingInterval)}
           </span>
         </p>
+      ) : null}
+
+      {mode === "edit" && projectId && isEditable ? (
+        <SubscriptionProrationPreviewCard
+          projectId={projectId}
+          value={value}
+        />
       ) : null}
 
       {mode === "edit" &&

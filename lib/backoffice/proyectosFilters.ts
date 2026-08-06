@@ -45,7 +45,7 @@ export const BACKOFFICE_PROJECT_STATUS_FILTER_OPTIONS = [
   { id: "active", label: "Activo" },
   { id: "inactive", label: "Inactivo" },
   { id: "expired", label: "Vencido" },
-  { id: "disabled", label: "Deshabilitado" },
+  { id: "disabled", label: "Cancelado" },
 ] as const
 
 export function getBackofficePlanFilterLabel(slug: string): string {

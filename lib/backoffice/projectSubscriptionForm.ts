@@ -3,6 +3,7 @@ import { addMonths, addYears } from "date-fns"
 import { BACKOFFICE_PLAN_FILTER_GROUPS } from "@/lib/backoffice/proyectosFilters"
 import { startOfArgentinaDay } from "@/lib/backoffice/dashboardPeriod"
 import { formatDashboardInputDate } from "@/lib/backoffice/dashboardPeriodClient"
+import { getCurrentPeriodStart } from "@/lib/backoffice/subscriptionProration"
 
 export type BackofficePlanGroupId =
   | "compacto"
@@ -11,6 +12,14 @@ export type BackofficePlanGroupId =
   | "custom"
 
 export type BackofficeBillingInterval = "monthly" | "annual"
+
+export function formatBillingIntervalLabel(
+  interval: BackofficeBillingInterval | null | undefined,
+): string | null {
+  if (interval === "monthly") return "Mensual"
+  if (interval === "annual") return "Anual"
+  return null
+}
 
 export type BackofficeSubscriptionPlanOption = {
   id: string
@@ -260,12 +269,16 @@ export function subscriptionFormValueFromDetails(
   const { plan } = details
   const isCustom = plan.isCustom
   const groupId = plan.groupId ?? (isCustom ? "custom" : "compacto")
-  const startedDate = new Date(details.startedAt)
+
+  const periodStart =
+    details.renewsAt != null
+      ? getCurrentPeriodStart(new Date(details.renewsAt), details.billingInterval)
+      : new Date(details.startedAt)
 
   const base: BackofficeProjectSubscriptionInput = {
     planGroupId: groupId,
     billingInterval: details.billingInterval,
-    billingStartDate: formatDashboardInputDate(startedDate),
+    billingStartDate: formatDashboardInputDate(periodStart),
   }
 
   if (isCustom || groupId === "custom") {

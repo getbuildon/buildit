@@ -77,16 +77,32 @@ export function buildDashboardComparison(
 
   const snapshot: MetricDelta[] = [
     buildDelta({
-      key: "mrrUsd",
-      label: "MRR al cierre",
-      primary: pSnap.mrrUsd,
-      compare: cSnap.mrrUsd,
+      key: "chargesUsd",
+      label: "Cargos emitidos",
+      primary: pSnap.chargesUsd,
+      compare: cSnap.chargesUsd,
       format: "usd",
       sentiment: "higher-is-better",
     }),
     buildDelta({
+      key: "collectedUsd",
+      label: "Cargos cobrados",
+      primary: pSnap.collectedUsd,
+      compare: cSnap.collectedUsd,
+      format: "usd",
+      sentiment: "higher-is-better",
+    }),
+    buildDelta({
+      key: "receivableUsd",
+      label: "Cargos por cobrar",
+      primary: pSnap.receivableUsd,
+      compare: cSnap.receivableUsd,
+      format: "usd",
+      sentiment: "lower-is-better",
+    }),
+    buildDelta({
       key: "debtUsd",
-      label: "Deuda estimada",
+      label: "Deuda",
       primary: pSnap.debtUsd,
       compare: cSnap.debtUsd,
       format: "usd",

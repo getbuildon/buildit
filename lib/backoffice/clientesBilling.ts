@@ -20,6 +20,8 @@ export type ClienteProjectSubscription = {
 export type ClienteProjectSnapshot = {
   projectStatus: string
   subscription: ClienteProjectSubscription | null
+  /** Cargos impagos con período vencido (ledger). */
+  overdueDebtUsd?: number
 }
 
 export type ClientePlanBreakdownItem = {
@@ -75,16 +77,18 @@ export function aggregateClienteBilling(
   let debtUsd = 0
 
   for (const project of projects) {
+    const overdueDebtUsd = project.overdueDebtUsd ?? 0
+
     const snapshot: ProjectSubscriptionSnapshot | null = project.subscription
       ? {
           status: project.subscription.status,
-          renewsAt: project.subscription.renewsAt,
         }
       : null
 
     const displayStatus = resolveBackofficeProjectSubscriptionStatus(
       project.projectStatus,
       snapshot,
+      { overdueDebtUsd },
     )
 
     statusBreakdown[displayStatus] += 1
@@ -102,9 +106,7 @@ export function aggregateClienteBilling(
       monthlyPaymentUsd += monthlyUsd
     }
 
-    if (displayStatus === "expired") {
-      debtUsd += monthlyUsd
-    }
+    debtUsd += overdueDebtUsd
   }
 
   const planBreakdown = [...planCounts.entries()]
@@ -176,7 +178,7 @@ export function formatClienteStatusBreakdown(
 
   if (breakdown.disabled > 0) {
     parts.push(
-      `${breakdown.disabled} deshabilitado${breakdown.disabled === 1 ? "" : "s"}`,
+      `${breakdown.disabled} cancelado${breakdown.disabled === 1 ? "" : "s"}`,
     )
   }
 

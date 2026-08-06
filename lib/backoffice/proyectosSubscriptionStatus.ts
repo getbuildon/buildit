@@ -2,31 +2,37 @@ import type { BackofficeProjectStatusKind } from "@/lib/backoffice/proyectosQuer
 
 export type ProjectSubscriptionSnapshot = {
   status: string
-  renewsAt: string | null
+}
+
+export type ResolveBackofficeProjectSubscriptionStatusOptions = {
+  /** Cargos impagos con período vencido (ledger). */
+  overdueDebtUsd?: number
 }
 
 export function isBackofficeSubscriptionExpired(
   subscription: ProjectSubscriptionSnapshot,
-  now = new Date(),
+  overdueDebtUsd = 0,
 ): boolean {
   if (subscription.status === "past_due") return true
   if (subscription.status === "cancelled") return false
 
-  if (!subscription.renewsAt) return false
-
-  return new Date(subscription.renewsAt) < now
+  return overdueDebtUsd > 0
 }
 
 export function resolveBackofficeProjectSubscriptionStatus(
   projectStatus: string,
   subscription: ProjectSubscriptionSnapshot | null,
-  now = new Date(),
+  options: ResolveBackofficeProjectSubscriptionStatusOptions = {},
 ): BackofficeProjectStatusKind {
+  const overdueDebtUsd = options.overdueDebtUsd ?? 0
+
   if (!subscription) return "inactive"
 
   if (subscription.status === "cancelled") return "disabled"
 
-  if (isBackofficeSubscriptionExpired(subscription, now)) return "expired"
+  if (isBackofficeSubscriptionExpired(subscription, overdueDebtUsd)) {
+    return "expired"
+  }
 
   if (projectStatus !== "active") return "inactive"
 

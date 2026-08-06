@@ -442,6 +442,7 @@ export function ProyectoFormDialog({
               ) : (
                 <ProjectSubscriptionFormFields
                   mode={isEditing ? "edit" : "create"}
+                  projectId={isEditing ? project.id : undefined}
                   value={form.subscription}
                   plans={subscriptionPlans}
                   subscriptionStatus={subscriptionDetails?.status ?? null}

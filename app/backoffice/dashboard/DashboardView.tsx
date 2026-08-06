@@ -1,11 +1,9 @@
 "use client"
 
 import {
-  Building2,
   CircleDollarSign,
-  FolderKanban,
-  TrendingUp,
-  Users,
+  HandCoins,
+  Receipt,
   Wallet,
 } from "lucide-react"
 
@@ -18,12 +16,10 @@ import { DashboardCompareSection } from "@/app/backoffice/dashboard/DashboardCom
 import {
   PeriodActivityBarChart,
   PlanGroupsBarChart,
+  PlanTiersBarChart,
   SubscriptionStatusDonutChart,
 } from "@/app/backoffice/dashboard/DashboardCharts"
 import { formatDashboardUsd } from "@/lib/backoffice/clientesBilling"
-import {
-  BACKOFFICE_PLAN_FILTER_GROUPS,
-} from "@/lib/backoffice/proyectosFilters"
 import { cn } from "@/lib/utils"
 
 type DashboardViewProps = {
@@ -82,47 +78,6 @@ function MetricCard({
   )
 }
 
-function BreakdownCard({
-  title,
-  description,
-  children,
-}: {
-  title: string
-  description?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="rounded-[14px] border border-[#edeef0] bg-white p-4 shadow-[0_0_5px_rgba(243,103,31,0.08)]">
-      <div className="border-b border-[#f4f5f6] pb-3">
-        <h2 className="text-sm font-medium leading-5 text-[#18191b]">{title}</h2>
-        {description ? (
-          <p className="pt-1 text-xs leading-4 text-[#777b84]">{description}</p>
-        ) : null}
-      </div>
-      <div className="pt-3">{children}</div>
-    </div>
-  )
-}
-
-function BreakdownRow({
-  label,
-  value,
-  valueClassName,
-}: {
-  label: string
-  value: string
-  valueClassName?: string
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 py-2">
-      <p className="text-sm leading-5 text-[#363a3f]">{label}</p>
-      <p className={cn("text-sm font-medium leading-5 tabular-nums text-[#18191b]", valueClassName)}>
-        {value}
-      </p>
-    </div>
-  )
-}
-
 export function DashboardView({
   metrics,
   from,
@@ -162,58 +117,32 @@ export function DashboardView({
 
       <div className="grid gap-4 pt-6 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          label="MRR al cierre del período"
-          value={formatDashboardUsd(snapshot.mrrUsd)}
-          hint="Ingreso mensual recurrente de subscripciones activas"
+          label="Cargos emitidos"
+          value={formatDashboardUsd(snapshot.chargesUsd)}
+          hint="Total facturado en el rango seleccionado"
           icon={CircleDollarSign}
           tone="money"
         />
         <MetricCard
-          label="Deuda estimada"
-          value={formatDashboardUsd(snapshot.debtUsd)}
-          hint={`${snapshot.companiesWithDebt} ${snapshot.companiesWithDebt === 1 ? "cliente con deuda" : "clientes con deuda"}`}
-          icon={Wallet}
-          tone="danger"
-        />
-        <MetricCard
-          label="Subscripciones activas"
-          value={String(snapshot.activeSubscriptions)}
-          hint={`${snapshot.payingCompanies} empresas pagando`}
-          icon={TrendingUp}
+          label="Cargos cobrados"
+          value={formatDashboardUsd(snapshot.collectedUsd)}
+          hint="Pagos registrados en el rango seleccionado"
+          icon={HandCoins}
           tone="success"
         />
         <MetricCard
-          label="Usuarios confirmados"
-          value={String(snapshot.confirmedUsers)}
-          hint={`${snapshot.totalUsers} usuarios registrados al cierre`}
-          icon={Users}
-        />
-      </div>
-
-      <div className="grid gap-4 pt-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Nuevos usuarios"
-          value={String(activity.newUsers)}
-          hint={`${activity.newConfirmedUsers} confirmados en el período`}
-          icon={Users}
+          label="Cargos por cobrar"
+          value={formatDashboardUsd(snapshot.receivableUsd)}
+          hint="Emitidos en el rango que aún no se cobraron"
+          icon={Receipt}
+          tone="danger"
         />
         <MetricCard
-          label="Nuevas empresas"
-          value={String(activity.newCompanies)}
-          hint={`${snapshot.totalCompanies} empresas al cierre`}
-          icon={Building2}
-        />
-        <MetricCard
-          label="Nuevos proyectos"
-          value={String(activity.newProjects)}
-          hint={`${snapshot.totalProjects} proyectos al cierre`}
-          icon={FolderKanban}
-        />
-        <MetricCard
-          label="Nuevas subscripciones"
-          value={String(activity.newSubscriptions)}
-          hint={`${activity.cancelledSubscriptions} canceladas en el período`}
-          icon={TrendingUp}
+          label="Deuda"
+          value={formatDashboardUsd(snapshot.debtUsd)}
+          hint={`Cargos impagos con período vencido · ${snapshot.companiesWithDebt} ${snapshot.companiesWithDebt === 1 ? "cliente" : "clientes"}`}
+          icon={Wallet}
+          tone="danger"
         />
       </div>
 
@@ -232,33 +161,9 @@ export function DashboardView({
           </p>
         </div>
 
-        <div className="lg:max-w-xl">
+        <div className="grid gap-4 lg:grid-cols-2">
           <PlanGroupsBarChart planGroupBreakdown={metrics.planGroupBreakdown} />
-        </div>
-
-        <div className="grid gap-4 pt-4 lg:grid-cols-3">
-          {BACKOFFICE_PLAN_FILTER_GROUPS.map((group) => {
-            const tiers = metrics.planTierBreakdown.filter(
-              (tier) => tier.groupId === group.id,
-            )
-
-            return (
-              <BreakdownCard
-                key={group.id}
-                title={group.label}
-                description="Tiers de superficie"
-              >
-                {tiers.map((tier) => (
-                  <BreakdownRow
-                    key={tier.slug}
-                    label={tier.tierLabel}
-                    value={String(tier.count)}
-                    valueClassName={tier.count > 0 ? undefined : "text-[#afb3ba]"}
-                  />
-                ))}
-              </BreakdownCard>
-            )
-          })}
+          <PlanTiersBarChart planTierBreakdown={metrics.planTierBreakdown} />
         </div>
       </div>
 
