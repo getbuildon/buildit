@@ -33,14 +33,21 @@ const TABLE_GRID =
 
 const TABLE_CELL = "min-w-0 px-3"
 const TABLE_HEADER_CELL =
-  "text-xs leading-[1.4] tracking-[-0.36px] text-[#5a6169]"
+  "text-xs font-medium leading-4 text-[#777b84]"
+const TABLE_BODY_EMPHASIS =
+  "truncate text-sm font-medium leading-5 text-[#18191b]"
+const TABLE_BODY_TEXT = "truncate text-sm leading-5 text-[#363a3f]"
+const TABLE_BODY_MUTED = "truncate text-xs leading-4 text-[#777b84]"
 
 const TABLE_HEADER_ROW = cn(
   TABLE_GRID,
   "h-[35px] shrink-0 items-center border-b border-[#f4f5f6] px-4",
 )
 
-const TABLE_BODY_ROW = cn(TABLE_GRID, "border-b border-[#edeef0] px-4 py-4 last:border-b-0")
+const TABLE_BODY_ROW = cn(
+  TABLE_GRID,
+  "items-start border-b border-[#edeef0] px-4 py-3 last:border-b-0",
+)
 
 const TABLE_HEADERS = ["Mail", "Teléfono", "Empresa", "Alta"] as const
 
@@ -82,7 +89,7 @@ function StatusBadge({ active }: { active: boolean }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium leading-[11px]",
+        "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium leading-4",
         active
           ? "border-[#acdec8] bg-[#f4fbf7] text-[#208368]"
           : "border-[#edeef0] bg-[#f4f5f6] text-[#696e77]",
@@ -90,7 +97,7 @@ function StatusBadge({ active }: { active: boolean }) {
     >
       <span
         className={cn(
-          "size-1.5 rounded-full",
+          "size-1.5 shrink-0 rounded-full",
           active ? "bg-[#208368]" : "bg-[#afb3ba]",
         )}
       />
@@ -151,7 +158,7 @@ function UserRowActions({
 
   return (
     <>
-      <div className="flex shrink-0 items-start justify-center px-2">
+      <div className="flex shrink-0 items-start justify-center px-2 pt-0.5">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <button
@@ -238,7 +245,7 @@ function FilterTabs({
             disabled={disabled}
             onClick={() => onChange(tab.id)}
             className={cn(
-              "rounded-[7px] px-2.5 py-1.5 text-xs font-medium leading-[18px] transition-colors disabled:opacity-60",
+              "rounded-[7px] px-2.5 py-1.5 text-xs font-medium leading-4 transition-colors disabled:opacity-60",
               selected
                 ? "bg-[#111113] text-white"
                 : "text-[#777b84] hover:text-[#363a3f]",
@@ -405,7 +412,7 @@ export function UsuariosView({
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Buscar por nombre, mail o empresa..."
-                className="h-[42px] w-full rounded-xl border border-[#edeef0] bg-white py-3 pl-10 pr-3 text-sm leading-[1.4] text-[#18191b] placeholder:text-[#696e77] focus-visible:border-[#ff7433] focus-visible:outline-none"
+                className="h-10 w-full rounded-xl border border-[#edeef0] bg-white py-2 pl-10 pr-3 text-sm leading-5 text-[#18191b] placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:outline-none"
               />
             </label>
           </div>
@@ -414,7 +421,7 @@ export function UsuariosView({
             <div className="min-w-[906px]">
               <div className={TABLE_HEADER_ROW}>
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="size-[30px] shrink-0" aria-hidden />
+                  <span className="size-[28px] shrink-0" aria-hidden />
                   <p className={TABLE_HEADER_CELL}>Usuario</p>
                 </div>
                 {TABLE_HEADERS.map((label) => (
@@ -432,62 +439,41 @@ export function UsuariosView({
               ) : (
                 result.users.map((user) => (
                   <div key={user.id} className={TABLE_BODY_ROW}>
-                    <div className="flex min-w-0 items-start gap-3">
+                    <div className="flex min-w-0 items-start gap-2.5">
                       <UserAvatar
                         firstName={user.firstName}
                         lastName={user.lastName}
                         email={user.email}
                         avatarUrl={user.avatarUrl}
-                        size={30}
+                        size={28}
                         bgClassName="bg-[#edeef0]"
-                        textClassName="text-[10px] font-semibold text-[#5a6169]"
+                        textClassName="text-[11px] font-semibold text-[#5a6169]"
                       />
                       <div className="min-w-0">
-                        <p className="truncate text-base font-medium leading-[1.4] text-[#18191b]">
-                          {fullName(user)}
-                        </p>
-                        <div className="pt-1.5">
+                        <p className={TABLE_BODY_EMPHASIS}>{fullName(user)}</p>
+                        <div className="pt-1">
                           <StatusBadge active={user.isActive} />
                         </div>
                       </div>
                     </div>
 
-                    <p
-                      className={cn(
-                        TABLE_CELL,
-                        "truncate text-base leading-[1.4] text-[#363a3f]",
-                      )}
-                    >
-                      {user.email}
-                    </p>
+                    <p className={cn(TABLE_CELL, TABLE_BODY_TEXT)}>{user.email}</p>
 
-                    <p
-                      className={cn(
-                        TABLE_CELL,
-                        "truncate text-sm leading-[1.4] text-[#363a3f]",
-                      )}
-                    >
+                    <p className={cn(TABLE_CELL, TABLE_BODY_TEXT)}>
                       {user.phone?.trim() || "—"}
                     </p>
 
-                    <div className={TABLE_CELL}>
-                      <p className="truncate text-base leading-[1.4] text-[#363a3f]">
-                        {primaryCompanyLabel(user)}
-                      </p>
+                    <div className={cn(TABLE_CELL, "min-w-0")}>
+                      <p className={TABLE_BODY_TEXT}>{primaryCompanyLabel(user)}</p>
                       {user.memberships.length > 0 ? (
-                        <p className="pt-0.5 text-xs leading-[1.4] tracking-[-0.36px] text-[#777b84]">
+                        <p className={cn(TABLE_BODY_MUTED, "pt-0.5")}>
                           {user.memberships.length}{" "}
                           {user.memberships.length === 1 ? "empresa" : "empresas"}
                         </p>
                       ) : null}
                     </div>
 
-                    <p
-                      className={cn(
-                        TABLE_CELL,
-                        "truncate text-xs leading-[16.5px] text-[#43484e]",
-                      )}
-                    >
+                    <p className={cn(TABLE_CELL, TABLE_BODY_TEXT, "tabular-nums")}>
                       {formatArgentinaTaskDate(user.createdAt)}
                     </p>
 
@@ -499,7 +485,7 @@ export function UsuariosView({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#f4f5f6] px-4 py-3">
-            <p className="text-xs leading-[1.4] tracking-[-0.36px] text-[#777b84]">
+            <p className="text-xs leading-4 text-[#777b84]">
               {result.totalCount === 0 ? (
                 <>0 usuarios · {result.activeCount} confirmados en total</>
               ) : (
@@ -512,7 +498,7 @@ export function UsuariosView({
             </p>
 
             {result.totalCount > 0 ? (
-              <div className="flex items-center gap-3 text-xs leading-[1.4] text-[#777b84]">
+              <div className="flex items-center gap-3 text-xs leading-4 text-[#777b84]">
                 <button
                   type="button"
                   onClick={() => navigate({ page: result.page - 1 })}
