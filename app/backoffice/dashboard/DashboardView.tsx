@@ -11,12 +11,15 @@ import {
 
 import type { BackofficeDashboardMetrics } from "@/lib/backoffice/dashboardMetrics"
 import { DashboardPeriodFilter } from "@/app/backoffice/dashboard/DashboardPeriodFilter"
+import {
+  PeriodActivityBarChart,
+  PlanGroupsBarChart,
+  SubscriptionStatusDonutChart,
+} from "@/app/backoffice/dashboard/DashboardCharts"
 import { formatDashboardUsd } from "@/lib/backoffice/clientesBilling"
 import {
   BACKOFFICE_PLAN_FILTER_GROUPS,
-  getBackofficeStatusFilterLabel,
 } from "@/lib/backoffice/proyectosFilters"
-import type { BackofficeProjectStatusKind } from "@/lib/backoffice/proyectosQuery"
 import { cn } from "@/lib/utils"
 
 type DashboardViewProps = {
@@ -111,13 +114,6 @@ function BreakdownRow({
   )
 }
 
-const STATUS_ORDER: BackofficeProjectStatusKind[] = [
-  "active",
-  "inactive",
-  "expired",
-  "disabled",
-]
-
 export function DashboardView({ metrics, from, to }: DashboardViewProps) {
   const { snapshot, activity, subscriptionStatus, period } = metrics
 
@@ -200,28 +196,9 @@ export function DashboardView({ metrics, from, to }: DashboardViewProps) {
         />
       </div>
 
-      <div className="pt-4 lg:max-w-xl">
-        <BreakdownCard
-          title="Estado de subscripciones"
-          description="Snapshot al cierre del período seleccionado"
-        >
-          {STATUS_ORDER.map((status) => (
-            <BreakdownRow
-              key={status}
-              label={getBackofficeStatusFilterLabel(status)}
-              value={String(subscriptionStatus[status])}
-              valueClassName={
-                status === "expired"
-                  ? "text-[#c2410c]"
-                  : status === "disabled"
-                    ? "text-[#dc3e42]"
-                    : status === "active"
-                      ? "text-[#208368]"
-                      : undefined
-              }
-            />
-          ))}
-        </BreakdownCard>
+      <div className="grid gap-4 pt-4 lg:grid-cols-2">
+        <SubscriptionStatusDonutChart subscriptionStatus={subscriptionStatus} />
+        <PeriodActivityBarChart activity={activity} />
       </div>
 
       <div className="border-t border-[#edeef0] pt-8">
@@ -234,23 +211,8 @@ export function DashboardView({ metrics, from, to }: DashboardViewProps) {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          {metrics.planGroupBreakdown.map((group) => (
-            <div
-              key={group.id}
-              className="rounded-[14px] border border-[#edeef0] bg-white p-4 shadow-[0_0_5px_rgba(243,103,31,0.08)]"
-            >
-              <p className="text-xs font-medium leading-4 text-[#777b84]">
-                {group.label}
-              </p>
-              <p className="pt-2 font-recoleta text-[32px] leading-none text-[#272a2d]">
-                {group.count}
-              </p>
-              <p className="pt-2 text-xs leading-4 text-[#777b84]">
-                {group.count === 1 ? "subscripción" : "subscripciones"}
-              </p>
-            </div>
-          ))}
+        <div className="lg:max-w-xl">
+          <PlanGroupsBarChart planGroupBreakdown={metrics.planGroupBreakdown} />
         </div>
 
         <div className="grid gap-4 pt-4 lg:grid-cols-3">
