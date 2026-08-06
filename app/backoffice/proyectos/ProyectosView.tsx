@@ -638,10 +638,7 @@ export function ProyectosView({
                       onClick={() => openBilling(project)}
                       className={cn(
                         TABLE_CELL,
-                        "text-left text-sm leading-5 tabular-nums transition-colors hover:text-[#ff7433] disabled:opacity-50",
-                        project.porCobrarUsd > 0
-                          ? "font-medium text-[#c2410c]"
-                          : "text-[#696e77]",
+                        "text-left text-sm leading-5 tabular-nums text-[#363a3f] transition-colors hover:text-[#ff7433] disabled:opacity-50",
                       )}
                       title="Ver facturación"
                     >
