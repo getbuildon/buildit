@@ -91,7 +91,7 @@ export function BackofficeAccessCallout() {
           type="button"
           onClick={handleClose}
           className={cn(
-            "ml-2 grid size-8 shrink-0 place-items-center rounded-lg text-white/70 transition-colors",
+            "ml-2 mr-1 grid size-8 shrink-0 place-items-center rounded-lg text-white/70 transition-colors",
             "hover:bg-white/10 hover:text-white",
           )}
           aria-label="Cerrar aviso"
