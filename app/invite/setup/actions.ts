@@ -12,6 +12,14 @@ export type InvitationSetupData = {
   projectId: string
   projectName: string
   organizationName: string
+  inviterName: string
+  roleLabel: string
+  userTypeLabel: string
+}
+
+function formatPersonName(firstName: string, lastName: string, fallback: string) {
+  const name = [firstName, lastName].filter(Boolean).join(" ").trim()
+  return name || fallback
 }
 
 export async function getInvitationSetupData(
@@ -33,6 +41,9 @@ export async function getInvitationSetupData(
       status,
       expires_at,
       project_id,
+      invited_by,
+      role:project_roles ( label ),
+      user_type:user_types ( label ),
       project:projects (
         id,
         name,
@@ -68,6 +79,17 @@ export async function getInvitationSetupData(
     ? projectRow.company[0]
     : projectRow.company
 
+  const role = invitation.role as { label: string } | { label: string }[] | null
+  const userType = invitation.user_type as { label: string } | { label: string }[] | null
+  const roleRow = Array.isArray(role) ? role[0] : role
+  const userTypeRow = Array.isArray(userType) ? userType[0] : userType
+
+  const { data: inviterProfile } = await admin
+    .from("profiles")
+    .select("first_name, last_name")
+    .eq("id", invitation.invited_by as string)
+    .maybeSingle()
+
   return {
     invitationId: invitation.id,
     firstName: invitation.first_name,
@@ -75,6 +97,13 @@ export async function getInvitationSetupData(
     projectId: projectRow.id,
     projectName: projectRow.name,
     organizationName: company?.name ?? "",
+    inviterName: formatPersonName(
+      inviterProfile?.first_name ?? "",
+      inviterProfile?.last_name ?? "",
+      "Un miembro del equipo",
+    ),
+    roleLabel: roleRow?.label ?? "miembro del equipo",
+    userTypeLabel: userTypeRow?.label ?? "colaborador",
   }
 }
 

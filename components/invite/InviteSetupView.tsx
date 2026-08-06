@@ -30,6 +30,25 @@ export function InviteSetupView({ data }: InviteSetupViewProps) {
 
   const initials = getUserInitials(data.firstName, data.lastName, "")
 
+  const invitationLead = data.organizationName ? (
+    <>
+      <span className="font-medium text-[#272a2d]">{data.inviterName}</span> te invitó a
+      colaborar en{" "}
+      <span className="font-medium text-[#272a2d]">{data.projectName}</span> de{" "}
+      <span className="font-medium text-[#272a2d]">{data.organizationName}</span> como{" "}
+      <span className="font-medium text-[#272a2d]">{data.userTypeLabel}</span>, con el rol de{" "}
+      <span className="font-medium text-[#272a2d]">{data.roleLabel}</span>.
+    </>
+  ) : (
+    <>
+      <span className="font-medium text-[#272a2d]">{data.inviterName}</span> te invitó a
+      colaborar en{" "}
+      <span className="font-medium text-[#272a2d]">{data.projectName}</span> como{" "}
+      <span className="font-medium text-[#272a2d]">{data.userTypeLabel}</span>, con el rol de{" "}
+      <span className="font-medium text-[#272a2d]">{data.roleLabel}</span>.
+    </>
+  )
+
   const validate = () => {
     const errors = { password: "", confirmPassword: "" }
     let ok = true
@@ -101,8 +120,9 @@ export function InviteSetupView({ data }: InviteSetupViewProps) {
             >
               ¡Hola {data.firstName}!
             </h1>
-            <p className="mt-3 text-[14px] leading-[1.4] text-[#43484e]">
-              Antes de empezar, necesitamos que termines de crear tu contraseña para continuar.
+            <p className="mt-3 text-[14px] leading-[1.5] text-[#43484e]">{invitationLead}</p>
+            <p className="mt-2 text-[14px] leading-[1.4] text-[#777b84]">
+              Creá tu contraseña para ingresar al proyecto.
             </p>
           </div>
 
@@ -213,18 +233,6 @@ export function InviteSetupView({ data }: InviteSetupViewProps) {
               {loading ? "Configurando…" : "Configurar contraseña"}
             </Button>
           </form>
-
-          <p className="mt-6 text-center text-[14px] leading-[1.4] text-[#43484e]">
-            Has sido invitado a colaborar en{" "}
-            <span className="font-medium text-[#272a2d]">{data.projectName}</span>
-            {data.organizationName ? (
-              <>
-                {" "}
-                de <span className="font-medium text-[#272a2d]">{data.organizationName}</span>
-              </>
-            ) : null}
-            . Una contraseña es necesaria para continuar con el ingreso.
-          </p>
         </div>
       </div>
     </div>
