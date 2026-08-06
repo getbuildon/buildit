@@ -6,7 +6,7 @@ import { UsuariosView } from "@/app/backoffice/usuarios/UsuariosView"
 import {
   BACKOFFICE_USERS_PAGE_SIZE,
   parseBackofficeUsersPage,
-  parseBackofficeUsersStatusFilter,
+  parseBackofficeUsersStatusFilters,
 } from "@/lib/backoffice/usuariosQuery"
 
 type BackofficeUsuariosPageProps = {
@@ -23,20 +23,20 @@ export default async function BackofficeUsuariosPage({
   const params = await searchParams
   const page = parseBackofficeUsersPage(params.page)
   const search = params.q?.trim() ?? ""
-  const status = parseBackofficeUsersStatusFilter(params.status)
+  const statuses = parseBackofficeUsersStatusFilters(params.status)
 
   const result: BackofficeUsersResult = await getBackofficeUsers({
     page,
     pageSize: BACKOFFICE_USERS_PAGE_SIZE,
     search,
-    status,
+    statuses,
   })
 
   return (
     <UsuariosView
       result={result}
       initialSearch={search}
-      initialStatus={status}
+      initialStatuses={statuses}
     />
   )
 }

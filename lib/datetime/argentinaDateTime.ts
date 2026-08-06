@@ -75,11 +75,45 @@ export function formatArgentinaLongDate(value: string | Date | null | undefined)
 
 /** 30 jul 2026 */
 export function formatArgentinaTaskDate(value: string | Date | null | undefined): string {
-  return formatWithOptions(value, {
+  return formatArgentinaTableDate(value)
+}
+
+/** 1 jul 2026 — tablas y listados donde debe verse la fecha completa */
+export function formatArgentinaTableDate(
+  value: string | Date | null | undefined,
+): string {
+  const date = parseArgentinaDate(value)
+  if (!date) return "—"
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: ARGENTINA_TIME_ZONE,
     day: "numeric",
-    month: "short",
+    month: "numeric",
     year: "numeric",
-  })
+  }).formatToParts(date)
+
+  const day = Number(parts.find((part) => part.type === "day")?.value)
+  const month = Number(parts.find((part) => part.type === "month")?.value)
+  const year = parts.find((part) => part.type === "year")?.value
+
+  if (!day || !month || !year) return "—"
+
+  const monthLabels = [
+    "ene",
+    "feb",
+    "mar",
+    "abr",
+    "may",
+    "jun",
+    "jul",
+    "ago",
+    "sep",
+    "oct",
+    "nov",
+    "dic",
+  ] as const
+
+  return `${day} ${monthLabels[month - 1]} ${year}`
 }
 
 /** 16:33 h */

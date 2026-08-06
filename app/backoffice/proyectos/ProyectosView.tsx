@@ -11,6 +11,7 @@ import {
 import { usePathname, useRouter } from "next/navigation"
 
 import {
+  cancelBackofficeProjectSubscription,
   deleteBackofficeProject,
   type BackofficeProjectRow,
   type BackofficeProjectsResult,
@@ -19,30 +20,41 @@ import {
   NuevoProyectoButton,
   ProyectoFormDialog,
 } from "@/app/backoffice/proyectos/ProyectoFormDialog"
+import {
+  ProyectosAppliedFilters,
+  ProyectosFiltersButton,
+  ProyectosFiltersDialog,
+  type ProyectosFiltersValue,
+} from "@/app/backoffice/proyectos/ProyectosFiltersDialog"
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { formatArgentinaTaskDate } from "@/lib/datetime/argentinaDateTime"
-import type {
-  BackofficeProjectsPlanFilter,
-  BackofficeProjectsStatusFilter,
+import { formatArgentinaTableDate } from "@/lib/datetime/argentinaDateTime"
+import type { BackofficeProjectStatusKind } from "@/lib/backoffice/proyectosQuery"
+import {
+  hasActiveProyectosFilters,
+  serializeBackofficeProyectosPlanSlugFilters,
+  serializeBackofficeProyectosStatusFilters,
 } from "@/lib/backoffice/proyectosQuery"
+import { getBackofficeStatusFilterLabel } from "@/lib/backoffice/proyectosFilters"
 import { cn } from "@/lib/utils"
 
 type ProyectosViewProps = {
   result: BackofficeProjectsResult
   initialSearch: string
-  initialPlan: BackofficeProjectsPlanFilter
-  initialStatus: BackofficeProjectsStatusFilter
+  initialPlanSlugs: string[]
+  initialStatuses: BackofficeProjectStatusKind[]
 }
 
 const TABLE_GRID =
-  "grid grid-cols-[minmax(160px,1fr)_minmax(140px,1fr)_minmax(140px,1fr)_100px_100px_120px_72px_100px_56px] items-start"
+  "grid grid-cols-[minmax(160px,1fr)_minmax(140px,1fr)_minmax(140px,1fr)_100px_120px_72px_minmax(112px,auto)_56px] items-start"
 
 const TABLE_CELL = "min-w-0 px-3"
 const TABLE_HEADER_CELL = "text-xs font-medium leading-4 text-[#777b84]"
 const TABLE_BODY_EMPHASIS =
   "truncate text-sm font-medium leading-5 text-[#18191b]"
 const TABLE_BODY_TEXT = "truncate text-sm leading-5 text-[#363a3f]"
+const TABLE_BODY_DATE =
+  "whitespace-nowrap text-sm leading-5 text-[#363a3f] tabular-nums"
 
 const TABLE_HEADER_ROW = cn(
   TABLE_GRID,
@@ -57,19 +69,52 @@ const TABLE_BODY_ROW = cn(
 const TABLE_HEADERS = [
   "Empresa",
   "Ubicación",
-  "Estado",
   "Superficie",
   "Plan",
   "Miembros",
   "Alta",
 ] as const
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Borrador",
-  active: "Activo",
-  paused: "Pausado",
-  completed: "Completado",
-  archived: "Archivado",
+const SUBSCRIPTION_STATUS_STYLES: Record<
+  BackofficeProjectStatusKind,
+  { container: string; dot: string }
+> = {
+  active: {
+    container: "border-[#acdec8] bg-[#f4fbf7] text-[#208368]",
+    dot: "bg-[#208368]",
+  },
+  inactive: {
+    container: "border-[#edeef0] bg-[#f4f5f6] text-[#696e77]",
+    dot: "bg-[#afb3ba]",
+  },
+  expired: {
+    container: "border-[#ffd0a6] bg-[#fff7ed] text-[#c2410c]",
+    dot: "bg-[#ea580c]",
+  },
+  disabled: {
+    container: "border-[#f5c2c7] bg-[#fff5f5] text-[#c92a2a]",
+    dot: "bg-[#e03131]",
+  },
+}
+
+function SubscriptionStatusBadge({
+  status,
+}: {
+  status: BackofficeProjectStatusKind
+}) {
+  const styles = SUBSCRIPTION_STATUS_STYLES[status]
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium leading-4",
+        styles.container,
+      )}
+    >
+      <span className={cn("size-1.5 shrink-0 rounded-full", styles.dot)} />
+      {getBackofficeStatusFilterLabel(status)}
+    </span>
+  )
 }
 
 function formatSurface(value: number | null): string {
@@ -77,15 +122,11 @@ function formatSurface(value: number | null): string {
   return `${new Intl.NumberFormat("es-AR").format(value)} m²`
 }
 
-function formatStatus(status: string): string {
-  return STATUS_LABELS[status] ?? status
-}
-
 function buildProyectosQueryString(options: {
   page?: number
   q?: string
-  plan?: BackofficeProjectsPlanFilter
-  status?: BackofficeProjectsStatusFilter
+  planSlugs?: string[]
+  statuses?: BackofficeProjectStatusKind[]
 }) {
   const params = new URLSearchParams()
 
@@ -97,71 +138,21 @@ function buildProyectosQueryString(options: {
     params.set("q", options.q.trim())
   }
 
-  if (options.plan && options.plan !== "all") {
-    params.set("plan", options.plan)
+  const planSlugParam = serializeBackofficeProyectosPlanSlugFilters(
+    options.planSlugs ?? [],
+  )
+  if (planSlugParam) {
+    params.set("planSlug", planSlugParam)
   }
 
-  if (options.status && options.status !== "all") {
-    params.set("status", options.status)
+  const statusParam = serializeBackofficeProyectosStatusFilters(options.statuses ?? [])
+  if (statusParam) {
+    params.set("status", statusParam)
   }
 
   const query = params.toString()
   return query ? `?${query}` : ""
 }
-
-function FilterTabs<T extends string>({
-  value,
-  onChange,
-  disabled,
-  tabs,
-  ariaLabel,
-}: {
-  value: T
-  onChange: (value: T) => void
-  disabled?: boolean
-  tabs: { id: T; label: string }[]
-  ariaLabel: string
-}) {
-  return (
-    <div className="flex items-center gap-1.5" role="tablist" aria-label={ariaLabel}>
-      {tabs.map((tab) => {
-        const selected = value === tab.id
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            disabled={disabled}
-            onClick={() => onChange(tab.id)}
-            className={cn(
-              "rounded-[7px] px-2.5 py-1.5 text-xs font-medium leading-4 transition-colors disabled:opacity-60",
-              selected
-                ? "bg-[#111113] text-white"
-                : "text-[#777b84] hover:text-[#363a3f]",
-            )}
-          >
-            {tab.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-const PLAN_FILTER_TABS: { id: BackofficeProjectsPlanFilter; label: string }[] = [
-  { id: "all", label: "Todos" },
-  { id: "compacto", label: "Compacto" },
-  { id: "gran-escala", label: "Gran Escala" },
-  { id: "multiobra", label: "Multiobra" },
-]
-
-const STATUS_FILTER_TABS: { id: BackofficeProjectsStatusFilter; label: string }[] =
-  [
-    { id: "all", label: "Todos" },
-    { id: "active", label: "Activo" },
-    { id: "inactive", label: "Inactivo" },
-  ]
 
 function ProjectRowActions({
   project,
@@ -175,8 +166,14 @@ function ProjectRowActions({
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [cancelSubscriptionOpen, setCancelSubscriptionOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [isDeleting, startDelete] = useTransition()
+  const [isCancellingSubscription, startCancelSubscription] = useTransition()
+
+  const canCancelSubscription =
+    project.planName != null && project.subscriptionStatus !== "disabled"
+  const isActionPending = isDeleting || isCancellingSubscription
 
   const handleDelete = () => {
     setActionError(null)
@@ -195,6 +192,23 @@ function ProjectRowActions({
     })
   }
 
+  const handleCancelSubscription = () => {
+    setActionError(null)
+
+    startCancelSubscription(async () => {
+      const result = await cancelBackofficeProjectSubscription(project.id)
+
+      if (!result.ok) {
+        setActionError(result.error)
+        return
+      }
+
+      setCancelSubscriptionOpen(false)
+      setOpen(false)
+      router.refresh()
+    })
+  }
+
   return (
     <>
       <div className="flex shrink-0 items-start justify-center px-2 pt-0.5">
@@ -202,7 +216,7 @@ function ProjectRowActions({
           <PopoverTrigger asChild>
             <button
               type="button"
-              disabled={disabled || isDeleting}
+              disabled={disabled || isActionPending}
               className="grid size-8 place-items-center rounded-lg text-[#777b84] transition-colors hover:bg-[#f4f5f6] hover:text-[#363a3f] disabled:opacity-50"
               aria-label={`Acciones para ${project.name}`}
             >
@@ -212,11 +226,11 @@ function ProjectRowActions({
           <PopoverContent
             align="end"
             sideOffset={6}
-            className="w-44 border-[#edeef0] p-1 shadow-[0_0_10px_rgba(243,103,31,0.08)]"
+            className="w-52 border-[#edeef0] p-1 shadow-[0_0_10px_rgba(243,103,31,0.08)]"
           >
             <button
               type="button"
-              disabled={isDeleting}
+              disabled={isActionPending}
               onClick={() => {
                 setActionError(null)
                 setOpen(false)
@@ -228,7 +242,18 @@ function ProjectRowActions({
             </button>
             <button
               type="button"
-              disabled={isDeleting}
+              disabled={isActionPending || !canCancelSubscription}
+              onClick={() => {
+                setActionError(null)
+                setCancelSubscriptionOpen(true)
+              }}
+              className="flex h-9 w-full items-center rounded-md px-3 text-left text-sm text-[#363a3f] transition-colors hover:bg-[#f4f5f6] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancelar subscripción
+            </button>
+            <button
+              type="button"
+              disabled={isActionPending}
               onClick={() => {
                 setActionError(null)
                 setDeleteOpen(true)
@@ -245,6 +270,17 @@ function ProjectRowActions({
           </PopoverContent>
         </Popover>
       </div>
+
+      <ConfirmActionDialog
+        open={cancelSubscriptionOpen}
+        onOpenChange={setCancelSubscriptionOpen}
+        title="Cancelar subscripción"
+        description={`¿Cancelar la subscripción de ${project.name}? El proyecto pasará a estado Deshabilitado.`}
+        confirmLabel="Cancelar subscripción"
+        loading={isCancellingSubscription}
+        loadingLabel="Cancelando..."
+        onConfirm={handleCancelSubscription}
+      />
 
       <ConfirmActionDialog
         open={deleteOpen}
@@ -321,16 +357,27 @@ function ProyectosPageJump({
 export function ProyectosView({
   result,
   initialSearch,
-  initialPlan,
-  initialStatus,
+  initialPlanSlugs,
+  initialStatuses,
 }: ProyectosViewProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
   const [searchInput, setSearchInput] = useState(initialSearch)
   const [formOpen, setFormOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<BackofficeProjectRow | null>(
     null,
+  )
+
+  const filtersValue: ProyectosFiltersValue = {
+    planSlugs: initialPlanSlugs,
+    statuses: initialStatuses,
+  }
+
+  const hasActiveFilters = hasActiveProyectosFilters(
+    initialPlanSlugs,
+    initialStatuses,
   )
 
   useEffect(() => {
@@ -340,18 +387,40 @@ export function ProyectosView({
   const navigate = (options: {
     page?: number
     q?: string
-    plan?: BackofficeProjectsPlanFilter
-    status?: BackofficeProjectsStatusFilter
+    planSlugs?: string[]
+    statuses?: BackofficeProjectStatusKind[]
   }) => {
     const href = `${pathname}${buildProyectosQueryString({
       page: options.page,
       q: options.q ?? searchInput,
-      plan: options.plan ?? initialPlan,
-      status: options.status ?? initialStatus,
+      planSlugs: options.planSlugs ?? initialPlanSlugs,
+      statuses: options.statuses ?? initialStatuses,
     })}`
 
     startTransition(() => {
       router.push(href)
+    })
+  }
+
+  const applyFilters = (value: ProyectosFiltersValue) => {
+    navigate({
+      page: 1,
+      planSlugs: value.planSlugs,
+      statuses: value.statuses,
+    })
+  }
+
+  const removePlanSlug = (slug: string) => {
+    navigate({
+      page: 1,
+      planSlugs: initialPlanSlugs.filter((item) => item !== slug),
+    })
+  }
+
+  const removeStatus = (status: BackofficeProjectStatusKind) => {
+    navigate({
+      page: 1,
+      statuses: initialStatuses.filter((item) => item !== status),
     })
   }
 
@@ -364,15 +433,22 @@ export function ProyectosView({
           `${pathname}${buildProyectosQueryString({
             page: 1,
             q: searchInput,
-            plan: initialPlan,
-            status: initialStatus,
+            planSlugs: initialPlanSlugs,
+            statuses: initialStatuses,
           })}`,
         )
       })
     }, 350)
 
     return () => window.clearTimeout(timeout)
-  }, [searchInput, initialSearch, initialPlan, initialStatus, pathname, router])
+  }, [
+    searchInput,
+    initialSearch,
+    initialPlanSlugs,
+    initialStatuses,
+    pathname,
+    router,
+  ])
 
   const rangeStart =
     result.totalCount === 0 ? 0 : (result.page - 1) * result.pageSize + 1
@@ -403,6 +479,13 @@ export function ProyectosView({
         project={editingProject}
       />
 
+      <ProyectosFiltersDialog
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        value={filtersValue}
+        onApply={applyFilters}
+      />
+
       <div className="pt-6">
         <div
           className={cn(
@@ -410,25 +493,23 @@ export function ProyectosView({
             isPending && "opacity-70",
           )}
         >
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f4f5f6] px-4 py-3">
-            <div className="flex flex-wrap items-center gap-4">
-              <FilterTabs
-                value={initialPlan}
-                disabled={isPending}
-                tabs={PLAN_FILTER_TABS}
-                ariaLabel="Filtrar por tipo de plan"
-                onChange={(plan) => navigate({ page: 1, plan })}
-              />
-              <FilterTabs
-                value={initialStatus}
-                disabled={isPending}
-                tabs={STATUS_FILTER_TABS}
-                ariaLabel="Filtrar por estado"
-                onChange={(status) => navigate({ page: 1, status })}
-              />
-            </div>
+          <div className="flex flex-wrap items-center gap-3 border-b border-[#f4f5f6] px-4 py-3">
+            <ProyectosAppliedFilters
+              planSlugs={initialPlanSlugs}
+              statuses={initialStatuses}
+              disabled={isPending}
+              onRemovePlanSlug={removePlanSlug}
+              onRemoveStatus={removeStatus}
+            />
 
-            <label className="relative block w-full max-w-[300px]">
+            <div className="ml-auto flex shrink-0 items-center gap-3">
+              <ProyectosFiltersButton
+                hasActiveFilters={hasActiveFilters}
+                disabled={isPending}
+                onClick={() => setFiltersOpen(true)}
+              />
+
+              <label className="relative block w-full min-w-[220px] max-w-[300px]">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#696e77]"
                 strokeWidth={1.75}
@@ -442,10 +523,11 @@ export function ProyectosView({
                 className="h-10 w-full rounded-xl border border-[#edeef0] bg-white py-2 pl-10 pr-3 text-sm leading-5 text-[#18191b] placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:outline-none"
               />
             </label>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
-            <div className="min-w-[1080px]">
+            <div className="min-w-[980px]">
               <div className={TABLE_HEADER_ROW}>
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="size-7 shrink-0" aria-hidden />
@@ -472,6 +554,11 @@ export function ProyectosView({
                       </div>
                       <div className="min-w-0">
                         <p className={TABLE_BODY_EMPHASIS}>{project.name}</p>
+                        <div className="pt-1">
+                          <SubscriptionStatusBadge
+                            status={project.subscriptionStatus}
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -481,10 +568,6 @@ export function ProyectosView({
 
                     <p className={cn(TABLE_CELL, TABLE_BODY_TEXT)}>
                       {project.location?.trim() || "—"}
-                    </p>
-
-                    <p className={cn(TABLE_CELL, TABLE_BODY_TEXT)}>
-                      {formatStatus(project.status)}
                     </p>
 
                     <p className={cn(TABLE_CELL, TABLE_BODY_TEXT, "tabular-nums")}>
@@ -499,8 +582,8 @@ export function ProyectosView({
                       {project.memberCount}
                     </p>
 
-                    <p className={cn(TABLE_CELL, TABLE_BODY_TEXT, "tabular-nums")}>
-                      {formatArgentinaTaskDate(project.createdAt)}
+                    <p className={cn(TABLE_CELL, TABLE_BODY_DATE)}>
+                      {formatArgentinaTableDate(project.createdAt)}
                     </p>
 
                     <ProjectRowActions

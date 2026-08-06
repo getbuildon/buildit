@@ -14,22 +14,32 @@ import {
   NuevoUsuarioButton,
   NuevoUsuarioDialog,
 } from "@/app/backoffice/usuarios/NuevoUsuarioDialog"
+import {
+  UsuariosAppliedFilters,
+  UsuariosFiltersButton,
+  UsuariosFiltersDialog,
+  type UsuariosFiltersValue,
+} from "@/app/backoffice/usuarios/UsuariosFiltersDialog"
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { UserAvatar } from "@/components/user/UserAvatar"
-import { formatArgentinaTaskDate } from "@/lib/datetime/argentinaDateTime"
-import type { BackofficeUsersStatusFilter } from "@/lib/backoffice/usuariosQuery"
+import { formatArgentinaTableDate } from "@/lib/datetime/argentinaDateTime"
+import type { BackofficeUsersStatusKind } from "@/lib/backoffice/usuariosQuery"
+import {
+  hasActiveUsuariosFilters,
+  serializeBackofficeUsersStatusFilters,
+} from "@/lib/backoffice/usuariosQuery"
 import { displayNameFromEmail } from "@/lib/projects/mockProjects"
 import { cn } from "@/lib/utils"
 
 type UsuariosViewProps = {
   result: BackofficeUsersResult
   initialSearch: string
-  initialStatus: BackofficeUsersStatusFilter
+  initialStatuses: BackofficeUsersStatusKind[]
 }
 
 const TABLE_GRID =
-  "grid grid-cols-[240px_200px_140px_160px_110px_56px] items-start"
+  "grid w-full grid-cols-[minmax(200px,1.4fr)_minmax(180px,1.2fr)_minmax(120px,0.8fr)_minmax(160px,1fr)_minmax(112px,auto)_56px] items-start"
 
 const TABLE_CELL = "min-w-0 px-3"
 const TABLE_HEADER_CELL =
@@ -37,6 +47,8 @@ const TABLE_HEADER_CELL =
 const TABLE_BODY_EMPHASIS =
   "truncate text-sm font-medium leading-5 text-[#18191b]"
 const TABLE_BODY_TEXT = "truncate text-sm leading-5 text-[#363a3f]"
+const TABLE_BODY_DATE =
+  "whitespace-nowrap text-sm leading-5 text-[#363a3f] tabular-nums"
 const TABLE_BODY_MUTED = "truncate text-xs leading-4 text-[#777b84]"
 
 const TABLE_HEADER_ROW = cn(
@@ -65,7 +77,7 @@ function primaryCompanyLabel(user: BackofficeUserRow) {
 function buildUsuariosQueryString(options: {
   page?: number
   q?: string
-  status?: BackofficeUsersStatusFilter
+  statuses?: BackofficeUsersStatusKind[]
 }) {
   const params = new URLSearchParams()
 
@@ -77,8 +89,9 @@ function buildUsuariosQueryString(options: {
     params.set("q", options.q.trim())
   }
 
-  if (options.status && options.status !== "all") {
-    params.set("status", options.status)
+  const statusParam = serializeBackofficeUsersStatusFilters(options.statuses ?? [])
+  if (statusParam) {
+    params.set("status", statusParam)
   }
 
   const query = params.toString()
@@ -219,46 +232,6 @@ function UserRowActions({
   )
 }
 
-function FilterTabs({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: BackofficeUsersStatusFilter
-  onChange: (value: BackofficeUsersStatusFilter) => void
-  disabled?: boolean
-}) {
-  const tabs: { id: BackofficeUsersStatusFilter; label: string }[] = [
-    { id: "all", label: "Todos" },
-    { id: "active", label: "Activo" },
-    { id: "inactive", label: "Inactivo" },
-  ]
-
-  return (
-    <div className="flex items-center gap-1.5">
-      {tabs.map((tab) => {
-        const selected = value === tab.id
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(tab.id)}
-            className={cn(
-              "rounded-[7px] px-2.5 py-1.5 text-xs font-medium leading-4 transition-colors disabled:opacity-60",
-              selected
-                ? "bg-[#111113] text-white"
-                : "text-[#777b84] hover:text-[#363a3f]",
-            )}
-          >
-            {tab.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 function UsuariosPageJump({
   page,
   totalPages,
@@ -320,13 +293,17 @@ function UsuariosPageJump({
 export function UsuariosView({
   result,
   initialSearch,
-  initialStatus,
+  initialStatuses,
 }: UsuariosViewProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
   const [searchInput, setSearchInput] = useState(initialSearch)
   const [createUserOpen, setCreateUserOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+
+  const filtersValue: UsuariosFiltersValue = { statuses: initialStatuses }
+  const hasActiveFilters = hasActiveUsuariosFilters(initialStatuses)
 
   useEffect(() => {
     setSearchInput(initialSearch)
@@ -335,16 +312,30 @@ export function UsuariosView({
   const navigate = (options: {
     page?: number
     q?: string
-    status?: BackofficeUsersStatusFilter
+    statuses?: BackofficeUsersStatusKind[]
   }) => {
     const href = `${pathname}${buildUsuariosQueryString({
       page: options.page,
       q: options.q ?? searchInput,
-      status: options.status ?? initialStatus,
+      statuses: options.statuses ?? initialStatuses,
     })}`
 
     startTransition(() => {
       router.push(href)
+    })
+  }
+
+  const applyFilters = (value: UsuariosFiltersValue) => {
+    navigate({
+      page: 1,
+      statuses: value.statuses,
+    })
+  }
+
+  const removeStatus = (status: BackofficeUsersStatusKind) => {
+    navigate({
+      page: 1,
+      statuses: initialStatuses.filter((item) => item !== status),
     })
   }
 
@@ -357,14 +348,14 @@ export function UsuariosView({
           `${pathname}${buildUsuariosQueryString({
             page: 1,
             q: searchInput,
-            status: initialStatus,
+            statuses: initialStatuses,
           })}`,
         )
       })
     }, 350)
 
     return () => window.clearTimeout(timeout)
-  }, [searchInput, initialSearch, initialStatus, pathname, router])
+  }, [searchInput, initialSearch, initialStatuses, pathname, router])
 
   const rangeStart =
     result.totalCount === 0 ? 0 : (result.page - 1) * result.pageSize + 1
@@ -387,6 +378,13 @@ export function UsuariosView({
         onOpenChange={setCreateUserOpen}
       />
 
+      <UsuariosFiltersDialog
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        value={filtersValue}
+        onApply={applyFilters}
+      />
+
       <div className="pt-6">
         <div
           className={cn(
@@ -394,14 +392,21 @@ export function UsuariosView({
             isPending && "opacity-70",
           )}
         >
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f4f5f6] px-4 py-3">
-            <FilterTabs
-              value={initialStatus}
+          <div className="flex flex-wrap items-center gap-3 border-b border-[#f4f5f6] px-4 py-3">
+            <UsuariosAppliedFilters
+              statuses={initialStatuses}
               disabled={isPending}
-              onChange={(status) => navigate({ page: 1, status })}
+              onRemoveStatus={removeStatus}
             />
 
-            <label className="relative block w-full max-w-[300px]">
+            <div className="ml-auto flex shrink-0 items-center gap-3">
+              <UsuariosFiltersButton
+                hasActiveFilters={hasActiveFilters}
+                disabled={isPending}
+                onClick={() => setFiltersOpen(true)}
+              />
+
+              <label className="relative block w-full min-w-[220px] max-w-[300px]">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#696e77]"
                 strokeWidth={1.75}
@@ -415,10 +420,11 @@ export function UsuariosView({
                 className="h-10 w-full rounded-xl border border-[#edeef0] bg-white py-2 pl-10 pr-3 text-sm leading-5 text-[#18191b] placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:outline-none"
               />
             </label>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <div className="min-w-[906px]">
+          <div className="min-w-0">
+            <div className="w-full">
               <div className={TABLE_HEADER_ROW}>
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="size-[28px] shrink-0" aria-hidden />
@@ -473,8 +479,8 @@ export function UsuariosView({
                       ) : null}
                     </div>
 
-                    <p className={cn(TABLE_CELL, TABLE_BODY_TEXT, "tabular-nums")}>
-                      {formatArgentinaTaskDate(user.createdAt)}
+                    <p className={cn(TABLE_CELL, TABLE_BODY_DATE)}>
+                      {formatArgentinaTableDate(user.createdAt)}
                     </p>
 
                     <UserRowActions user={user} disabled={isPending} />

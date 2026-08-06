@@ -27,7 +27,7 @@ export function BackofficeSidebar({
   const pathname = usePathname()
 
   return (
-    <div className="flex h-screen w-[220px] shrink-0 flex-col bg-[#111113]">
+    <div className="flex h-full min-h-0 w-[220px] shrink-0 flex-col overflow-hidden bg-[#111113]">
       <div
         className="shrink-0 border-b px-[18px] pb-[21px] pt-5"
         style={{ borderColor: BACKOFFICE_SHELL.sidebarBorder }}
@@ -64,7 +64,7 @@ export function BackofficeSidebar({
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 px-2.5 pt-3">
+      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2.5 pt-3">
         {BACKOFFICE_NAV_ITEMS.map((item) => {
           const href = backofficeHref(item.segment)
           const active = isBackofficeNavActive(pathname, item.segment)

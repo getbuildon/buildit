@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { PanelLeft, PanelLeftClose } from "lucide-react"
 
 import { BackofficeSidebar } from "@/components/backoffice-shell/BackofficeSidebar"
@@ -16,24 +16,39 @@ type BackofficeShellProps = {
 export function BackofficeShell({ children, userProfile }: BackofficeShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
+  useEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+    const previousHtmlOverflow = html.style.overflow
+    const previousBodyOverflow = body.style.overflow
+
+    html.style.overflow = "hidden"
+    body.style.overflow = "hidden"
+
+    return () => {
+      html.style.overflow = previousHtmlOverflow
+      body.style.overflow = previousBodyOverflow
+    }
+  }, [])
+
   const toggleSidebar = () => {
     setSidebarOpen((current) => !current)
   }
 
   return (
     <div
-      className="flex min-h-screen"
+      className="fixed inset-0 flex overflow-hidden"
       style={{ backgroundColor: BACKOFFICE_SHELL.mainBg }}
       data-backoffice-shell
     >
       <aside
         className={cn(
-          "h-screen shrink-0 overflow-hidden transition-[width] duration-200 ease-out",
+          "flex h-full min-h-0 shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out",
           sidebarOpen ? "w-[220px]" : "w-0",
         )}
         aria-hidden={!sidebarOpen}
       >
-        <div className="w-[220px]">
+        <div className="h-full min-h-0 w-[220px]">
           <BackofficeSidebar
             userProfile={userProfile}
             onToggleSidebar={toggleSidebar}
@@ -41,7 +56,7 @@ export function BackofficeShell({ children, userProfile }: BackofficeShellProps)
         </div>
       </aside>
 
-      <main className="relative min-h-screen min-w-0 flex-1 overflow-y-auto">
+      <main className="relative min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain">
         {!sidebarOpen ? (
           <button
             type="button"

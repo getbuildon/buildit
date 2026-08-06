@@ -110,6 +110,33 @@
   color: #afb3ba;
 }
 
+.rdp-root.build-on-calendar-compact {
+  --rdp-nav-height: 28px;
+  --rdp-nav_button-width: 28px;
+  --rdp-nav_button-height: 28px;
+  min-width: 252px;
+}
+
+.rdp-root.build-on-calendar-compact .rdp-month {
+  row-gap: 8px;
+}
+
+.rdp-root.build-on-calendar-compact .rdp-weekday {
+  font-size: 11px;
+  padding-block: 4px 6px;
+}
+
+.rdp-root.build-on-calendar-compact .rdp-day_button {
+  font-size: 12px;
+  width: 32px;
+  height: 32px;
+}
+
+.rdp-root.build-on-calendar-compact .rdp-chevron {
+  width: 14px;
+  height: 14px;
+}
+
 .rdp-root.build-on-calendar .rdp-today:not(.rdp-selected) .rdp-day_button {
   color: #ff7433;
   font-weight: 600;

@@ -4,10 +4,11 @@ import { revalidatePath } from "next/cache"
 
 import { requireBackofficeUser } from "@/lib/auth/backofficeAccess"
 import { BACKOFFICE_PROYECTOS_PAGE_SIZE } from "@/lib/backoffice/proyectosQuery"
-import type {
-  BackofficeProjectsPlanFilter,
-  BackofficeProjectsStatusFilter,
-} from "@/lib/backoffice/proyectosQuery"
+import type { BackofficeProjectStatusKind } from "@/lib/backoffice/proyectosQuery"
+import {
+  resolveBackofficeProjectSubscriptionStatus,
+  type ProjectSubscriptionSnapshot,
+} from "@/lib/backoffice/proyectosSubscriptionStatus"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
 import { createAdminClient } from "@/utils/supabase/admin"
 
@@ -21,6 +22,7 @@ export type BackofficeProjectRow = {
   name: string
   location: string | null
   status: string
+  subscriptionStatus: BackofficeProjectStatusKind
   totalSurfaceM2: number | null
   company: BackofficeProjectCompany | null
   planName: string | null
@@ -47,8 +49,8 @@ export type GetBackofficeProjectsParams = {
   page?: number
   pageSize?: number
   search?: string
-  plan?: BackofficeProjectsPlanFilter
-  status?: BackofficeProjectsStatusFilter
+  planSlugs?: string[]
+  statuses?: BackofficeProjectStatusKind[]
 }
 
 export type BackofficeProjectsResult = {
@@ -178,53 +180,62 @@ async function getActiveMemberCountsByProject(
   return counts
 }
 
-async function getPlanNamesByProject(
+type SubscriptionRow = {
+  project_id: string
+  status: string
+  renews_at: string | null
+  plan: { name: string } | { name: string }[] | null
+}
+
+type ProjectSubscriptionInfo = {
+  planName: string | null
+  snapshot: ProjectSubscriptionSnapshot
+}
+
+async function getSubscriptionInfoByProject(
   admin: ReturnType<typeof createAdminClient>,
   projectIds: string[],
-): Promise<Map<string, string>> {
+): Promise<Map<string, ProjectSubscriptionInfo>> {
   if (projectIds.length === 0) return new Map()
 
   const { data, error } = await admin
     .from("project_subscriptions")
-    .select("project_id, plan:subscription_plans(name)")
+    .select("project_id, status, renews_at, plan:subscription_plans(name)")
     .in("project_id", projectIds)
 
   if (error) {
     throw new Error(error.message)
   }
 
-  const plansByProject = new Map<string, string>()
+  const subscriptionsByProject = new Map<string, ProjectSubscriptionInfo>()
 
-  for (const row of data ?? []) {
-    const plan = firstRelation(row.plan as { name: string } | { name: string }[] | null)
-    if (plan?.name) {
-      plansByProject.set(row.project_id as string, plan.name)
-    }
+  for (const row of (data ?? []) as SubscriptionRow[]) {
+    const plan = firstRelation(row.plan)
+    subscriptionsByProject.set(row.project_id, {
+      planName: plan?.name ?? null,
+      snapshot: {
+        status: row.status,
+        renewsAt: row.renews_at,
+      },
+    })
   }
 
-  return plansByProject
+  return subscriptionsByProject
 }
 
-async function getProjectIdsForPlanFamily(
+async function getProjectIdsForPlanSlugs(
   admin: ReturnType<typeof createAdminClient>,
-  planFamily: BackofficeProjectsPlanFilter,
-): Promise<string[] | null> {
-  if (planFamily === "all") return null
+  planSlugs: string[],
+): Promise<string[]> {
+  if (planSlugs.length === 0) return []
 
-  let plansQuery = admin.from("subscription_plans").select("id").eq("is_active", true)
+  const { data: plans, error: planError } = await admin
+    .from("subscription_plans")
+    .select("id")
+    .in("slug", planSlugs)
 
-  if (planFamily === "compacto") {
-    plansQuery = plansQuery.like("slug", "compacto-%")
-  } else if (planFamily === "gran-escala") {
-    plansQuery = plansQuery.like("slug", "gran-escala-%")
-  } else {
-    plansQuery = plansQuery.eq("slug", "multiobra")
-  }
-
-  const { data: plans, error: plansError } = await plansQuery
-
-  if (plansError) {
-    throw new Error(plansError.message)
+  if (planError) {
+    throw new Error(planError.message)
   }
 
   const planIds = (plans ?? []).map((plan) => plan.id as string)
@@ -234,7 +245,6 @@ async function getProjectIdsForPlanFamily(
     .from("project_subscriptions")
     .select("project_id")
     .in("plan_id", planIds)
-    .eq("status", "active")
 
   if (subscriptionsError) {
     throw new Error(subscriptionsError.message)
@@ -243,22 +253,152 @@ async function getProjectIdsForPlanFamily(
   return [...new Set((subscriptions ?? []).map((row) => row.project_id as string))]
 }
 
+async function getProjectIdsForStatuses(
+  admin: ReturnType<typeof createAdminClient>,
+  statuses: BackofficeProjectStatusKind[],
+): Promise<string[]> {
+  const ids = new Set<string>()
+
+  for (const status of statuses) {
+    for (const projectId of await getProjectIdsForSubscriptionStatus(admin, status)) {
+      ids.add(projectId)
+    }
+  }
+
+  return [...ids]
+}
+
+async function getProjectIdsForSubscriptionStatus(
+  admin: ReturnType<typeof createAdminClient>,
+  status: BackofficeProjectStatusKind,
+): Promise<string[]> {
+  if (status === "disabled") {
+    const { data, error } = await admin
+      .from("project_subscriptions")
+      .select("project_id")
+      .eq("status", "cancelled")
+
+    if (error) throw new Error(error.message)
+
+    return (data ?? []).map((row) => row.project_id as string)
+  }
+
+  if (status === "expired") {
+    const now = new Date().toISOString()
+
+    const [{ data: pastDue, error: pastDueError }, { data: overdue, error: overdueError }] =
+      await Promise.all([
+        admin.from("project_subscriptions").select("project_id").eq("status", "past_due"),
+        admin
+          .from("project_subscriptions")
+          .select("project_id")
+          .lt("renews_at", now)
+          .not("renews_at", "is", null)
+          .neq("status", "cancelled"),
+      ])
+
+    if (pastDueError) throw new Error(pastDueError.message)
+    if (overdueError) throw new Error(overdueError.message)
+
+    return [
+      ...new Set([
+        ...(pastDue ?? []).map((row) => row.project_id as string),
+        ...(overdue ?? []).map((row) => row.project_id as string),
+      ]),
+    ]
+  }
+
+  if (status === "active") {
+    const now = new Date().toISOString()
+
+    const [{ data: activeProjects, error: projectsError }, { data: subscriptions, error: subsError }] =
+      await Promise.all([
+        admin.from("projects").select("id").eq("status", "active"),
+        admin
+          .from("project_subscriptions")
+          .select("project_id, status, renews_at")
+          .eq("status", "active"),
+      ])
+
+    if (projectsError) throw new Error(projectsError.message)
+    if (subsError) throw new Error(subsError.message)
+
+    const activeProjectIds = new Set(
+      (activeProjects ?? []).map((row) => row.id as string),
+    )
+
+    return (subscriptions ?? [])
+      .filter((row) => {
+        const projectId = row.project_id as string
+        const renewsAt = row.renews_at as string | null
+        return (
+          activeProjectIds.has(projectId) &&
+          (renewsAt == null || renewsAt >= now)
+        )
+      })
+      .map((row) => row.project_id as string)
+  }
+
+  const [{ data: projects, error: projectsError }, { data: subscriptions, error: subsError }] =
+    await Promise.all([
+      admin.from("projects").select("id, status"),
+      admin.from("project_subscriptions").select("project_id, status, renews_at"),
+    ])
+
+  if (projectsError) throw new Error(projectsError.message)
+  if (subsError) throw new Error(subsError.message)
+
+  const subscriptionsByProject = new Map<string, ProjectSubscriptionSnapshot>()
+
+  for (const row of subscriptions ?? []) {
+    subscriptionsByProject.set(row.project_id as string, {
+      status: row.status as string,
+      renewsAt: row.renews_at as string | null,
+    })
+  }
+
+  return (projects ?? [])
+    .filter((row) =>
+      resolveBackofficeProjectSubscriptionStatus(
+        row.status as string,
+        subscriptionsByProject.get(row.id as string) ?? null,
+      ) === "inactive",
+    )
+    .map((row) => row.id as string)
+}
+
+function intersectProjectIds(
+  current: string[] | null,
+  next: string[],
+): string[] | null {
+  if (next.length === 0) return []
+  if (current === null) return next
+
+  const nextSet = new Set(next)
+  return current.filter((id) => nextSet.has(id))
+}
+
 function mapProjectRows(
   rows: ProjectRow[],
   memberCounts: Map<string, number>,
-  planNamesByProject: Map<string, string>,
+  subscriptionsByProject: Map<string, ProjectSubscriptionInfo>,
 ): BackofficeProjectRow[] {
   return rows.map((row) => {
     const company = firstRelation(row.companies)
+    const subscription = subscriptionsByProject.get(row.id)
 
     return {
       id: row.id,
       name: row.name,
       location: row.location,
       status: row.status,
+      subscriptionStatus: resolveBackofficeProjectSubscriptionStatus(
+        row.status,
+        subscription?.snapshot ?? null,
+      ),
       totalSurfaceM2: row.total_surface_m2,
       company: company ? { id: company.id, name: company.name } : null,
-      planName: planNamesByProject.get(row.id) ?? null,
+      planName: subscription?.planName ?? null,
       memberCount: memberCounts.get(row.id) ?? 0,
       createdAt: row.created_at,
     }
@@ -313,17 +453,38 @@ export async function getBackofficeProjects(
   const page = parsePage(params.page)
   const pageSize = parsePageSize(params.pageSize)
   const search = sanitizeSearchTerm(params.search ?? "")
-  const planFilter = params.plan ?? "all"
-  const statusFilter = params.status ?? "all"
+  const planSlugs = params.planSlugs ?? []
+  const statuses = params.statuses ?? []
 
-  const projectIdsForPlan = await getProjectIdsForPlanFamily(admin, planFilter)
-  if (projectIdsForPlan !== null && projectIdsForPlan.length === 0) {
-    return {
-      projects: [],
-      totalCount: 0,
-      page: 1,
-      pageSize,
-      totalPages: 1,
+  let projectIdsFilter: string[] | null = null
+
+  if (planSlugs.length > 0) {
+    projectIdsFilter = await getProjectIdsForPlanSlugs(admin, planSlugs)
+    if (projectIdsFilter.length === 0) {
+      return {
+        projects: [],
+        totalCount: 0,
+        page: 1,
+        pageSize,
+        totalPages: 1,
+      }
+    }
+  }
+
+  if (statuses.length > 0) {
+    projectIdsFilter = intersectProjectIds(
+      projectIdsFilter,
+      await getProjectIdsForStatuses(admin, statuses),
+    )
+
+    if (projectIdsFilter !== null && projectIdsFilter.length === 0) {
+      return {
+        projects: [],
+        totalCount: 0,
+        page: 1,
+        pageSize,
+        totalPages: 1,
+      }
     }
   }
 
@@ -335,14 +496,8 @@ export async function getBackofficeProjects(
     )
     .order("created_at", { ascending: false })
 
-  if (projectIdsForPlan !== null) {
-    query = query.in("id", projectIdsForPlan)
-  }
-
-  if (statusFilter === "active") {
-    query = query.eq("status", "active")
-  } else if (statusFilter === "inactive") {
-    query = query.neq("status", "active")
+  if (projectIdsFilter !== null) {
+    query = query.in("id", projectIdsFilter)
   }
 
   if (search) {
@@ -368,16 +523,16 @@ export async function getBackofficeProjects(
 
   const rows = (data ?? []) as ProjectRow[]
   const projectIds = rows.map((row) => row.id)
-  const [memberCounts, planNamesByProject] = await Promise.all([
+  const [memberCounts, subscriptionsByProject] = await Promise.all([
     getActiveMemberCountsByProject(admin, projectIds),
-    getPlanNamesByProject(admin, projectIds),
+    getSubscriptionInfoByProject(admin, projectIds),
   ])
 
   const totalCount = count ?? 0
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
 
   return {
-    projects: mapProjectRows(rows, memberCounts, planNamesByProject),
+    projects: mapProjectRows(rows, memberCounts, subscriptionsByProject),
     totalCount,
     page: Math.min(page, totalPages),
     pageSize,
@@ -561,6 +716,60 @@ export async function deleteBackofficeProject(
       }
     }
 
+    return { ok: false, error: error.message }
+  }
+
+  revalidatePath("/backoffice/proyectos")
+  return { ok: true }
+}
+
+export async function cancelBackofficeProjectSubscription(
+  projectId: string,
+): Promise<BackofficeProjectActionResult> {
+  await requireBackofficeUser()
+  const admin = createAdminClient()
+
+  const { data: existing, error: existingError } = await admin
+    .from("projects")
+    .select("id, name")
+    .eq("id", projectId)
+    .maybeSingle()
+
+  if (existingError) {
+    return { ok: false, error: existingError.message }
+  }
+
+  if (!existing) {
+    return { ok: false, error: "No encontramos ese proyecto." }
+  }
+
+  const { data: subscription, error: subscriptionError } = await admin
+    .from("project_subscriptions")
+    .select("id, status")
+    .eq("project_id", projectId)
+    .maybeSingle()
+
+  if (subscriptionError) {
+    return { ok: false, error: subscriptionError.message }
+  }
+
+  if (!subscription) {
+    return { ok: false, error: "Este proyecto no tiene una subscripción activa." }
+  }
+
+  if (subscription.status === "cancelled") {
+    return { ok: false, error: "La subscripción ya está cancelada." }
+  }
+
+  const { error } = await admin
+    .from("project_subscriptions")
+    .update({
+      status: "cancelled",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", subscription.id)
+
+  if (error) {
     return { ok: false, error: error.message }
   }
 

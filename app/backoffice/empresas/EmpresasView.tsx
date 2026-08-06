@@ -15,7 +15,7 @@ import {
 } from "@/app/backoffice/empresas/EmpresaFormDialog"
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { formatArgentinaTaskDate } from "@/lib/datetime/argentinaDateTime"
+import { formatArgentinaTableDate } from "@/lib/datetime/argentinaDateTime"
 import { cn } from "@/lib/utils"
 
 type EmpresasViewProps = {
@@ -24,13 +24,15 @@ type EmpresasViewProps = {
 }
 
 const TABLE_GRID =
-  "grid grid-cols-[minmax(160px,1fr)_minmax(160px,1fr)_minmax(140px,1fr)_100px_120px_72px_100px_56px] items-start"
+  "grid grid-cols-[minmax(160px,1fr)_minmax(160px,1fr)_minmax(140px,1fr)_100px_120px_72px_minmax(112px,auto)_56px] items-start"
 
 const TABLE_CELL = "min-w-0 px-3"
 const TABLE_HEADER_CELL = "text-xs font-medium leading-4 text-[#777b84]"
 const TABLE_BODY_EMPHASIS =
   "truncate text-sm font-medium leading-5 text-[#18191b]"
 const TABLE_BODY_TEXT = "truncate text-sm leading-5 text-[#363a3f]"
+const TABLE_BODY_DATE =
+  "whitespace-nowrap text-sm leading-5 text-[#363a3f] tabular-nums"
 
 const TABLE_HEADER_ROW = cn(
   TABLE_GRID,
@@ -376,8 +378,8 @@ export function EmpresasView({ result, initialSearch }: EmpresasViewProps) {
                       {company.memberCount}
                     </p>
 
-                    <p className={cn(TABLE_CELL, TABLE_BODY_TEXT, "tabular-nums")}>
-                      {formatArgentinaTaskDate(company.createdAt)}
+                    <p className={cn(TABLE_CELL, TABLE_BODY_DATE)}>
+                      {formatArgentinaTableDate(company.createdAt)}
                     </p>
 
                     <CompanyRowActions

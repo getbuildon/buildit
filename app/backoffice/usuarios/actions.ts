@@ -9,7 +9,8 @@ import { formatCompanyRole } from "@/lib/company/formatCompanyRole"
 import { getSiteOrigin } from "@/lib/invitations/siteOrigin"
 import { createAdminClient } from "@/utils/supabase/admin"
 
-import type { BackofficeUsersStatusFilter } from "@/lib/backoffice/usuariosQuery"
+import type { BackofficeUsersStatusKind } from "@/lib/backoffice/usuariosQuery"
+import { resolveBackofficeUsersStatusFilter } from "@/lib/backoffice/usuariosQuery"
 
 export type BackofficeUserMembership = {
   companyName: string
@@ -42,7 +43,7 @@ export type GetBackofficeUsersParams = {
   page?: number
   pageSize?: number
   search?: string
-  status?: BackofficeUsersStatusFilter
+  statuses?: BackofficeUsersStatusKind[]
 }
 
 export type BackofficeUsersResult = {
@@ -413,7 +414,7 @@ export async function getBackofficeUsers(
   const page = parsePage(params.page)
   const pageSize = parsePageSize(params.pageSize)
   const search = sanitizeSearchTerm(params.search ?? "")
-  const status = params.status ?? "all"
+  const status = resolveBackofficeUsersStatusFilter(params.statuses ?? [])
 
   const activeUserIds = await getEmailConfirmedUserIds(admin)
   const activeCount = activeUserIds.length
