@@ -47,6 +47,7 @@ import {
 } from "@/lib/landing/phoneInput"
 import type { BillingPeriod, PricingPlan } from "@/lib/landing/pricingPlans"
 import { getPlanDisplayPrice } from "@/lib/landing/pricingPlans"
+import { submitLandingLead } from "@/lib/landing/submitLandingLead"
 import { useIsDesktopViewport } from "@/lib/landing/useIsDesktopViewport"
 import { cn } from "@/lib/utils"
 
@@ -250,7 +251,27 @@ export function PricingContractModal({
 
     setIsSubmitting(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 600))
+    const result = await submitLandingLead({
+      kind: "contract",
+      firstName: form.firstName,
+      lastName: form.lastName,
+      company: form.company,
+      email: form.email,
+      phone: form.phone,
+      phoneDialCode: form.phoneDialCode,
+      country: form.country as ContractCountryCode,
+      province: form.province,
+      planId: plan.id,
+      billing,
+      surfaceTierId,
+    })
+
+    setIsSubmitting(false)
+
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
 
     toast.success("Solicitud enviada. Te contactaremos pronto.")
     handleOpenChange(false)

@@ -27,6 +27,7 @@ import {
   getPhoneDialOption,
   sanitizePhoneInput,
 } from "@/lib/landing/phoneInput"
+import { submitLandingLead } from "@/lib/landing/submitLandingLead"
 import { useIsDesktopViewport } from "@/lib/landing/useIsDesktopViewport"
 import { cn } from "@/lib/utils"
 
@@ -125,7 +126,23 @@ export function ContactTeamModal({ open, onOpenChange }: ContactTeamModalProps) 
 
     setIsSubmitting(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 600))
+    const result = await submitLandingLead({
+      kind: "contact",
+      firstName: form.firstName,
+      lastName: form.lastName,
+      company: form.company,
+      email: form.email,
+      phone: form.phone,
+      phoneDialCode: form.phoneDialCode,
+      comments: form.comments,
+    })
+
+    setIsSubmitting(false)
+
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
 
     toast.success("Solicitud enviada. Te contactaremos pronto.")
     handleOpenChange(false)
