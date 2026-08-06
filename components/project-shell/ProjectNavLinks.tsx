@@ -4,7 +4,10 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 import { useProjectAccess } from "@/components/project-shell/ProjectAccessProvider"
-import { useProjectNavigation } from "@/components/project-shell/ProjectNavigationContext"
+import {
+  matchesProjectNavHref,
+  useProjectNavigation,
+} from "@/components/project-shell/ProjectNavigationContext"
 import { ProjectNavIcon } from "@/components/project-shell/ProjectNavIcons"
 import {
   getAllowedProjectNavItems,
@@ -28,14 +31,16 @@ export function ProjectNavLinks({
 }: ProjectNavLinksProps) {
   const pathname = usePathname()
   const { permissions } = useProjectAccess()
-  const { navigate } = useProjectNavigation()
+  const { navigate, pendingHref } = useProjectNavigation()
   const navItems = getAllowedProjectNavItems(permissions)
 
   return (
     <nav className={cn("flex flex-col", className)} style={{ gap: "4px" }}>
       {navItems.map((item) => {
         const href = projectHref(projectId, item.segment || undefined)
-        const active = isProjectNavActive(pathname, projectId, item.segment)
+        const active = pendingHref
+          ? matchesProjectNavHref(pendingHref, href)
+          : isProjectNavActive(pathname, projectId, item.segment)
 
         return (
           <Link

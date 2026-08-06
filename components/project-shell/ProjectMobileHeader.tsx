@@ -11,6 +11,7 @@ import {
   ProfileMenuProfileIcon,
 } from "@/components/project-shell/ProjectProfileMenuIcons"
 import { ProjectNavLinks } from "@/components/project-shell/ProjectNavLinks"
+import { useProjectNavigation } from "@/components/project-shell/ProjectNavigationContext"
 import { SidebarSwitchProjectButton } from "@/components/project-shell/SidebarSwitchProjectButton"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import {
@@ -18,6 +19,7 @@ import {
   ANIMATED_COLLAPSE_DURATION_MS,
 } from "@/components/ui/animated-collapsible"
 import { useAuth } from "@/context/AuthContextSupabase"
+import { projectHref } from "@/lib/project/routes"
 import type { UserProjectListItem } from "@/lib/projects/types"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
 import { cn } from "@/lib/utils"
@@ -33,9 +35,11 @@ export function ProjectMobileHeader({
 }: ProjectMobileHeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const { navigate } = useProjectNavigation()
   const { logOut } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const perfilHref = projectHref(project.projectId, "perfil")
 
   const closeMenu = () => setMenuOpen(false)
 
@@ -173,8 +177,12 @@ export function ProjectMobileHeader({
             </div>
 
             <Link
-              href={`/${project.projectId}/perfil`}
-              onClick={closeMenu}
+              href={perfilHref}
+              onClick={(event) => {
+                event.preventDefault()
+                closeMenu()
+                navigate(perfilHref)
+              }}
               className={cn(
                 "flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium text-[#314158]",
                 "transition-colors hover:bg-[#f0f0f2] active:bg-[#e4e4e6]",

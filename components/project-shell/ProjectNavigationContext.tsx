@@ -13,13 +13,14 @@ import { usePathname, useRouter } from "next/navigation"
 
 type ProjectNavigationContextValue = {
   isNavigating: boolean
+  pendingHref: string | null
   navigate: (href: string) => void
 }
 
 const ProjectNavigationContext =
   createContext<ProjectNavigationContextValue | null>(null)
 
-function normalizePath(path: string) {
+export function normalizeProjectPath(path: string) {
   if (path.length > 1 && path.endsWith("/")) {
     return path.slice(0, -1)
   }
@@ -28,10 +29,14 @@ function normalizePath(path: string) {
 }
 
 function isSameProjectRoute(pathname: string, href: string) {
-  const current = normalizePath(pathname)
-  const target = normalizePath(href)
+  const current = normalizeProjectPath(pathname)
+  const target = normalizeProjectPath(href)
 
   return current === target || current.startsWith(`${target}/`)
+}
+
+export function matchesProjectNavHref(a: string, b: string) {
+  return normalizeProjectPath(a) === normalizeProjectPath(b)
 }
 
 export function ProjectNavigationProvider({ children }: { children: ReactNode }) {
@@ -63,7 +68,9 @@ export function ProjectNavigationProvider({ children }: { children: ReactNode })
   const isNavigating = pendingHref !== null
 
   return (
-    <ProjectNavigationContext.Provider value={{ isNavigating, navigate }}>
+    <ProjectNavigationContext.Provider
+      value={{ isNavigating, pendingHref, navigate }}
+    >
       {children}
     </ProjectNavigationContext.Provider>
   )

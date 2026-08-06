@@ -1,4 +1,8 @@
 import { STACK_PEEK_PX } from "@/lib/landing/solutionStackAnimation"
+import { createCubicBezierEase } from "@/lib/landing/cubicBezierEase"
+
+export const DESKTOP_SLIDE_DURATION_S = 0.68
+export const DESKTOP_SLIDE_EASE = createCubicBezierEase(0.22, 1, 0.36, 1)
 
 export const DESKTOP_SECTION_HEIGHT_PX = 996
 export const DESKTOP_CONTENT_WIDTH_PX = 1120

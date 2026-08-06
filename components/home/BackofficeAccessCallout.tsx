@@ -8,13 +8,12 @@ import { getHomeBackofficeAccess } from "@/app/home/actions"
 import { cn } from "@/lib/utils"
 
 const ENTER_DELAY_MS = 2000
-const ANIMATION_MS = 320
 
 export function BackofficeAccessCallout() {
   const [canAccess, setCanAccess] = useState<boolean | null>(null)
   const [delayElapsed, setDelayElapsed] = useState(false)
-  const [render, setRender] = useState(false)
-  const [shown, setShown] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [closing, setClosing] = useState(false)
 
   useEffect(() => {
     const delayTimer = window.setTimeout(() => {
@@ -33,38 +32,34 @@ export function BackofficeAccessCallout() {
   useEffect(() => {
     if (canAccess !== true || !delayElapsed) return
 
-    setRender(true)
-
-    const frame = window.requestAnimationFrame(() => {
-      setShown(true)
-    })
-
-    return () => {
-      window.cancelAnimationFrame(frame)
-    }
+    setMounted(true)
   }, [canAccess, delayElapsed])
 
   const handleClose = useCallback(() => {
-    setShown(false)
-
-    window.setTimeout(() => {
-      setRender(false)
-    }, ANIMATION_MS)
+    setClosing(true)
   }, [])
 
-  if (!render) return null
+  const handleAnimationEnd = useCallback(
+    (event: React.AnimationEvent<HTMLDivElement>) => {
+      if (event.currentTarget !== event.target) return
+      if (!closing) return
+
+      setMounted(false)
+    },
+    [closing],
+  )
+
+  if (!mounted) return null
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 sm:bottom-6">
       <div
         role="status"
+        onAnimationEnd={handleAnimationEnd}
         className={cn(
-          "pointer-events-auto flex w-full max-w-xl items-center rounded-xl py-3 pl-3.5 pr-2 text-sm font-medium text-white/85 transition-[transform,opacity] hover:bg-white/10 hover:text-white sm:py-3.5 sm:pl-4 sm:pr-1.5 sm:text-[15px]",
-          shown
-            ? "translate-y-0 opacity-100 ease-out"
-            : "translate-y-6 opacity-0 ease-in",
+          "pointer-events-auto flex w-full max-w-xl items-center rounded-xl py-3 pl-3.5 pr-2 text-sm font-medium text-white/85 hover:bg-white/10 hover:text-white sm:py-3.5 sm:pl-4 sm:pr-1.5 sm:text-[15px]",
+          closing ? "backoffice-callout-exit" : "backoffice-callout-enter",
         )}
-        style={{ transitionDuration: `${ANIMATION_MS}ms` }}
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <LayoutDashboard

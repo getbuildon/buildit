@@ -19,6 +19,8 @@ import {
   DESKTOP_CONTROLS_BOTTOM_PX,
   DESKTOP_HEADER_TO_CARDS_PX,
   DESKTOP_SECTION_TOP_PX,
+  DESKTOP_SLIDE_DURATION_S,
+  DESKTOP_SLIDE_EASE,
   DESKTOP_STACK_LEFT_PADDING_PX,
   DESKTOP_TRACK_WIDTH_PX,
   getDesktopCardTarget,
@@ -68,7 +70,8 @@ export function LandingSolutionsDesktop() {
 
   const applySlideState = useCallback(
     (index: number, animate: boolean) => {
-      const duration = animate && !prefersReducedMotionRef.current ? 0.55 : 0
+      const duration =
+        animate && !prefersReducedMotionRef.current ? DESKTOP_SLIDE_DURATION_S : 0
 
       cardRefs.current.forEach((card, cardIndex) => {
         if (!card) return
@@ -80,7 +83,7 @@ export function LandingSolutionsDesktop() {
           scale: target.scale,
           opacity: target.opacity,
           duration,
-          ease: "power3.out",
+          ease: DESKTOP_SLIDE_EASE,
           overwrite: true,
           onStart: () => {
             card.style.pointerEvents = target.pointerEvents
@@ -210,7 +213,7 @@ export function LandingSolutionsDesktop() {
                 aria-current={isActive ? "true" : undefined}
                 onClick={() => goToSlide(index)}
                 className={cn(
-                  "rounded-full transition-all duration-300",
+                  "rounded-full transition-[width,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
                   isActive
                     ? "h-2 w-6 bg-primary"
                     : "size-2 bg-white/25 hover:bg-white/40",
