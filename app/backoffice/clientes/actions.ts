@@ -5,9 +5,6 @@ import {
   aggregateClienteBilling,
   type ClienteBillingSummary,
 } from "@/lib/backoffice/clientesBilling"
-import {
-  getCollaborationProjectCountsByUserIds,
-} from "@/lib/backoffice/collaborationProjectCounts"
 import { BACKOFFICE_CLIENTES_PAGE_SIZE } from "@/lib/backoffice/clientesQuery"
 import { buildOverdueDebtByProject } from "@/lib/backoffice/dashboardBilling"
 import { createAdminClient } from "@/utils/supabase/admin"
@@ -25,7 +22,6 @@ export type BackofficeClienteRow = {
   companyId: string
   companyName: string
   owner: BackofficeClienteOwner | null
-  collaborationProjectCount: number
 } & ClienteBillingSummary
 
 export type GetBackofficeClientesParams = {
@@ -350,17 +346,6 @@ export async function getBackofficeClientes(
     getProjectsByCompanyIds(admin, companyIds),
   ])
 
-  const ownerUserIds = [
-    ...new Set(
-      [...ownersByCompany.values()]
-        .map((owner) => owner.userId)
-        .filter(Boolean),
-    ),
-  ]
-
-  const collaborationProjectCountsByUser =
-    await getCollaborationProjectCountsByUserIds(admin, ownerUserIds)
-
   const allProjectIds = [...projectsByCompany.values()]
     .flat()
     .map((project) => project.id)
@@ -439,9 +424,6 @@ export async function getBackofficeClientes(
       companyId: company.id,
       companyName: company.name,
       owner,
-      collaborationProjectCount: owner
-        ? (collaborationProjectCountsByUser.get(owner.userId) ?? 0)
-        : 0,
       ...billing,
     }
   })

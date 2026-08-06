@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { ProjectCard } from "@/components/projects/ProjectCard"
+import { BackofficeAccessCallout } from "@/components/home/BackofficeAccessCallout"
 import { HomePageLayout } from "@/components/home/HomePageLayout"
 import { HomePageSkeleton } from "@/components/home/HomePageSkeleton"
 import { CompanyHomeButton } from "@/components/company/CompanyHomeButton"
@@ -94,6 +95,8 @@ function HomePage() {
           <ProjectCard key={project.projectId} project={project} />
         ))}
       </div>
+
+      <BackofficeAccessCallout />
     </HomePageLayout>
   )
 }

@@ -13,7 +13,6 @@ import {
   formatClienteStatusBreakdown,
   formatClienteUsd,
 } from "@/lib/backoffice/clientesBilling"
-import { formatCollaborationProjectCount } from "@/lib/backoffice/collaborationProjectCounts"
 import { cn } from "@/lib/utils"
 
 type ClientesViewProps = {
@@ -22,24 +21,17 @@ type ClientesViewProps = {
 }
 
 const TABLE_GRID =
-  "grid w-full grid-cols-[minmax(220px,1.25fr)_minmax(140px,1fr)_minmax(108px,auto)_88px_minmax(200px,1.35fr)_minmax(160px,1fr)_minmax(128px,auto)_minmax(108px,auto)]"
+  "grid w-full grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.9fr)_92px_minmax(240px,1.4fr)_minmax(200px,1fr)_128px_108px]"
 
 const TABLE_CELL = "min-w-0 px-3"
-const TABLE_HEADER_CELL = "text-xs font-medium leading-4 text-[#777b84]"
-const TABLE_BODY_EMPHASIS =
-  "truncate text-sm font-medium leading-5 text-[#18191b]"
-const TABLE_BODY_TEXT = "text-sm leading-5 text-[#363a3f]"
-const TABLE_BODY_MUTED = "truncate text-xs leading-4 text-[#777b84]"
-
-const TABLE_HEADER_ROW = cn(
-  TABLE_GRID,
-  "h-[35px] shrink-0 items-center border-b border-[#f4f5f6] px-4",
-)
-
-const TABLE_BODY_ROW = cn(
-  TABLE_GRID,
-  "items-start border-b border-[#edeef0] px-4 py-3 last:border-b-0",
-)
+const TABLE_HEADER_CELL =
+  "flex h-[35px] items-center border-b border-[#f4f5f6] text-xs font-medium leading-4 text-[#777b84]"
+const TABLE_BODY_CELL =
+  "flex items-center border-b border-[#edeef0] py-3"
+const TABLE_BODY_CELL_TOP =
+  "flex items-start border-b border-[#edeef0] py-3"
+const TABLE_NUM_HEADER_CELL = cn(TABLE_CELL, TABLE_HEADER_CELL, "justify-end text-right")
+const TABLE_NUM_BODY_CELL = cn(TABLE_CELL, TABLE_BODY_CELL, "justify-end text-right tabular-nums")
 
 function buildClientesQueryString(options: { page?: number; q?: string }) {
   const params = new URLSearchParams()
@@ -56,10 +48,30 @@ function buildClientesQueryString(options: { page?: number; q?: string }) {
   return query ? `?${query}` : ""
 }
 
-function ClienteRow({ client }: { client: BackofficeClienteRow }) {
+const TABLE_BODY_EMPHASIS =
+  "truncate text-sm font-medium leading-5 text-[#18191b]"
+const TABLE_BODY_TEXT = "text-sm leading-5 text-[#363a3f]"
+const TABLE_BODY_MUTED = "truncate text-xs leading-4 text-[#777b84]"
+
+function ClienteRow({
+  client,
+  isLast = false,
+}: {
+  client: BackofficeClienteRow
+  isLast?: boolean
+}) {
+  const rowBorder = isLast ? "border-b-0" : ""
+
   return (
     <>
-      <div className={cn(TABLE_CELL, "flex min-w-0 items-start gap-3")}>
+      <div
+        className={cn(
+          TABLE_CELL,
+          TABLE_BODY_CELL,
+          rowBorder,
+          "min-w-0 gap-3",
+        )}
+      >
         {client.owner ? (
           <UserAvatar
             firstName={client.owner.firstName}
@@ -75,7 +87,7 @@ function ClienteRow({ client }: { client: BackofficeClienteRow }) {
             <Building2 className="size-3.5" strokeWidth={1.75} />
           </div>
         )}
-        <div className="min-w-0 pt-0.5">
+        <div className="min-w-0">
           <p className={TABLE_BODY_EMPHASIS}>
             {client.owner?.name ?? "Sin owner"}
           </p>
@@ -85,23 +97,15 @@ function ClienteRow({ client }: { client: BackofficeClienteRow }) {
         </div>
       </div>
 
-      <div className={cn(TABLE_CELL, "min-w-0 pt-0.5")}>
+      <div className={cn(TABLE_CELL, TABLE_BODY_CELL, rowBorder, "min-w-0")}>
         <p className={TABLE_BODY_EMPHASIS}>{client.companyName}</p>
       </div>
 
-      <div className={cn(TABLE_CELL, "pt-0.5")}>
-        <p className={TABLE_BODY_TEXT}>
-          {client.owner
-            ? formatCollaborationProjectCount(client.collaborationProjectCount)
-            : "—"}
-        </p>
-      </div>
-
-      <div className={cn(TABLE_CELL, "pt-0.5 text-right")}>
+      <div className={cn(TABLE_CELL, TABLE_BODY_CELL, rowBorder, "justify-start")}>
         <p className={cn(TABLE_BODY_TEXT, "tabular-nums")}>{client.projectCount}</p>
       </div>
 
-      <div className={cn(TABLE_CELL, "min-w-0 pt-0.5")}>
+      <div className={cn(TABLE_CELL, TABLE_BODY_CELL_TOP, rowBorder, "min-w-0")}>
         {client.planBreakdown.length === 0 ? (
           <p className={TABLE_BODY_TEXT}>Sin planes</p>
         ) : (
@@ -118,14 +122,14 @@ function ClienteRow({ client }: { client: BackofficeClienteRow }) {
         )}
       </div>
 
-      <div className={cn(TABLE_CELL, "min-w-0 pt-0.5")}>
+      <div className={cn(TABLE_CELL, TABLE_BODY_CELL_TOP, rowBorder, "min-w-0")}>
         <p className="whitespace-normal text-sm leading-5 text-[#363a3f]">
           {formatClienteStatusBreakdown(client.statusBreakdown)}
         </p>
       </div>
 
-      <div className={cn(TABLE_CELL, "pt-0.5 text-right")}>
-        <p className="whitespace-nowrap text-sm leading-5 tabular-nums text-[#363a3f]">
+      <div className={cn(TABLE_NUM_BODY_CELL, rowBorder)}>
+        <p className="whitespace-nowrap text-sm leading-5 text-[#363a3f]">
           {formatClienteUsd(client.monthlyPaymentUsd)}
           {client.monthlyPaymentUsd > 0 ? (
             <span className="text-[#777b84]"> / mes</span>
@@ -133,10 +137,10 @@ function ClienteRow({ client }: { client: BackofficeClienteRow }) {
         </p>
       </div>
 
-      <div className={cn(TABLE_CELL, "pt-0.5 text-right")}>
+      <div className={cn(TABLE_NUM_BODY_CELL, rowBorder)}>
         <p
           className={cn(
-            "whitespace-nowrap text-sm leading-5 tabular-nums",
+            "whitespace-nowrap text-sm leading-5",
             client.debtUsd > 0 ? "font-medium text-[#dc3e42]" : "text-[#363a3f]",
           )}
         >
@@ -287,36 +291,41 @@ export function ClientesView({ result, initialSearch }: ClientesViewProps) {
           </div>
 
           <div className="overflow-x-auto">
-            <div className="min-w-[1188px]">
-              <div className={TABLE_HEADER_ROW}>
-                <div className={cn(TABLE_CELL, "flex min-w-0 items-center gap-3")}>
-                  <span className="size-7 shrink-0" aria-hidden />
-                  <p className={TABLE_HEADER_CELL}>Cliente</p>
-                </div>
-                <p className={cn(TABLE_CELL, TABLE_HEADER_CELL)}>Empresa</p>
-                <p className={cn(TABLE_CELL, TABLE_HEADER_CELL)}>Colaboración</p>
-                <p className={cn(TABLE_CELL, TABLE_HEADER_CELL, "text-right")}>
-                  Proyectos
-                </p>
-                <p className={cn(TABLE_CELL, TABLE_HEADER_CELL)}>Planes</p>
-                <p className={cn(TABLE_CELL, TABLE_HEADER_CELL)}>Estado</p>
-                <p className={cn(TABLE_CELL, TABLE_HEADER_CELL, "text-right")}>
-                  Pago mensual
-                </p>
-                <p className={cn(TABLE_CELL, TABLE_HEADER_CELL, "text-right")}>
-                  Deuda
-                </p>
+            <div className={cn(TABLE_GRID, "min-w-[1080px] px-4")}>
+              <div className={cn(TABLE_CELL, TABLE_HEADER_CELL, "gap-3")}>
+                <span className="size-7 shrink-0" aria-hidden />
+                <span>Cliente</span>
+              </div>
+              <div className={cn(TABLE_CELL, TABLE_HEADER_CELL)}>
+                <span>Empresa</span>
+              </div>
+              <div className={cn(TABLE_CELL, TABLE_HEADER_CELL, "justify-start")}>
+                <span>Proyectos</span>
+              </div>
+              <div className={cn(TABLE_CELL, TABLE_HEADER_CELL)}>
+                <span>Planes</span>
+              </div>
+              <div className={cn(TABLE_CELL, TABLE_HEADER_CELL)}>
+                <span>Estado</span>
+              </div>
+              <div className={TABLE_NUM_HEADER_CELL}>
+                <span>Pago mensual</span>
+              </div>
+              <div className={TABLE_NUM_HEADER_CELL}>
+                <span>Deuda</span>
               </div>
 
               {result.clients.length === 0 ? (
-                <div className="px-4 py-12 text-center text-sm leading-5 text-[#696e77]">
+                <div className="col-span-7 px-0 py-12 text-center text-sm leading-5 text-[#696e77]">
                   No hay clientes que coincidan con la búsqueda.
                 </div>
               ) : (
-                result.clients.map((client) => (
-                  <div key={client.companyId} className={TABLE_BODY_ROW}>
-                    <ClienteRow client={client} />
-                  </div>
+                result.clients.map((client, index) => (
+                  <ClienteRow
+                    key={client.companyId}
+                    client={client}
+                    isLast={index === result.clients.length - 1}
+                  />
                 ))
               )}
             </div>

@@ -1,9 +1,9 @@
 "use client"
 
-import Image from "next/image"
 import { PanelLeftClose } from "lucide-react"
 import { usePathname } from "next/navigation"
 
+import { BackofficeBrandLink } from "@/components/backoffice-shell/BackofficeBrandLink"
 import { BackofficeNavLinks } from "@/components/backoffice-shell/BackofficeNavLinks"
 import { BackofficeUserFooter } from "@/components/backoffice-shell/BackofficeUserFooter"
 import { BACKOFFICE_SHELL } from "@/lib/backoffice/designTokens"
@@ -27,26 +27,7 @@ export function BackofficeSidebar({
         style={{ borderColor: BACKOFFICE_SHELL.sidebarBorder }}
       >
         <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className="relative size-8 shrink-0 overflow-hidden rounded-full bg-[#212225]">
-              <Image
-                src="/backoffice/buildon-iso.svg"
-                alt=""
-                width={20}
-                height={15}
-                aria-hidden
-                className="absolute left-1/2 top-1/2 h-[14.5px] w-5 -translate-x-1/2 -translate-y-1/2"
-              />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[13px] font-semibold leading-[15.6px] text-white">
-                BuildOn
-              </p>
-              <p className="text-xs leading-[1.4] tracking-[-0.36px] text-[#777b84]">
-                Administración
-              </p>
-            </div>
-          </div>
+          <BackofficeBrandLink className="min-w-0 flex-1" />
           <button
             type="button"
             onClick={onToggleSidebar}
