@@ -9,19 +9,12 @@ import { cn } from "@/lib/utils"
 
 type SolutionSlideCardDesktopProps = {
   slide: SolutionSlide
-  stacked?: boolean
 }
 
-export function SolutionSlideCardDesktop({
-  slide,
-  stacked = false,
-}: SolutionSlideCardDesktopProps) {
+export function SolutionSlideCardDesktop({ slide }: SolutionSlideCardDesktopProps) {
   return (
     <article
-      className={cn(
-        "box-border flex shrink-0 flex-col overflow-hidden rounded-[4px] border border-[#363a3f] bg-[#edeef0] p-px",
-        stacked && "shadow-[0_0_0_1px_rgba(54,58,63,0.35)]",
-      )}
+      className="flex shrink-0 flex-col overflow-hidden rounded-[4px] bg-[#edeef0]"
       style={{
         width: DESKTOP_CARD_WIDTH_PX,
         height: DESKTOP_CARD_HEIGHT_PX,

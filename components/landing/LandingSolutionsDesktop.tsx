@@ -13,13 +13,13 @@ import {
 import { SolutionSlideCardDesktop } from "@/components/landing/SolutionSlideCardDesktop"
 import {
   DESKTOP_CARD_HEIGHT_PX,
+  DESKTOP_CARD_WIDTH_PX,
   DESKTOP_CARDS_TO_CONTROLS_PX,
   DESKTOP_CONTENT_WIDTH_PX,
   DESKTOP_CONTROLS_BOTTOM_PX,
   DESKTOP_HEADER_GAP_PX,
   DESKTOP_HEADER_TO_CARDS_PX,
   DESKTOP_HEADING_WIDTH_PX,
-  DESKTOP_SECTION_HEIGHT_PX,
   DESKTOP_SECTION_TOP_PX,
   DESKTOP_STACK_LEFT_PADDING_PX,
   DESKTOP_TRACK_WIDTH_PX,
@@ -124,14 +124,10 @@ export function LandingSolutionsDesktop() {
   }
 
   return (
-    <div
-      className="relative"
-      style={{ minHeight: DESKTOP_SECTION_HEIGHT_PX }}
-    >
+    <div className="relative">
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 w-px -translate-x-1/2 bg-[#363a3f]"
-        style={{ height: DESKTOP_SECTION_HEIGHT_PX }}
+        className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-[#363a3f]"
       />
 
       <div
@@ -184,13 +180,14 @@ export function LandingSolutionsDesktop() {
                   ref={(node) => {
                     cardRefs.current[index] = node
                   }}
-                  className="absolute left-0 top-0 origin-left will-change-transform"
-                  style={{ zIndex: getDesktopCardZIndex(index) }}
+                  className="absolute left-0 top-0 origin-left overflow-hidden backface-hidden will-change-transform"
+                  style={{
+                    zIndex: getDesktopCardZIndex(index),
+                    width: DESKTOP_CARD_WIDTH_PX,
+                    height: DESKTOP_CARD_HEIGHT_PX,
+                  }}
                 >
-                  <SolutionSlideCardDesktop
-                    slide={slide}
-                    stacked={index < activeIndex}
-                  />
+                  <SolutionSlideCardDesktop slide={slide} />
                 </div>
               ))}
             </div>
