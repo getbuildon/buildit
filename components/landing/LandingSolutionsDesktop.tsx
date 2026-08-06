@@ -7,8 +7,13 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react"
 import { SolutionSlideCardDesktop } from "@/components/landing/SolutionSlideCardDesktop"
 import {
   DESKTOP_CARD_HEIGHT_PX,
-  DESKTOP_STAGE_WIDTH_PX,
-  DESKTOP_STACK_LEFT_PADDING_PX,
+  DESKTOP_CARDS_TO_CONTROLS_PX,
+  DESKTOP_CONTENT_WIDTH_PX,
+  DESKTOP_HEADER_GAP_PX,
+  DESKTOP_HEADER_TO_CARDS_PX,
+  DESKTOP_HEADING_WIDTH_PX,
+  DESKTOP_SECTION_HEIGHT_PX,
+  DESKTOP_TRACK_WIDTH_PX,
   getDesktopCardTarget,
 } from "@/lib/landing/solutionDesktopSlider"
 import { SOLUTION_SLIDES } from "@/lib/landing/solutionSlides"
@@ -77,86 +82,112 @@ export function LandingSolutionsDesktop() {
   }
 
   return (
-    <div className="mx-auto max-w-[1280px] px-20 py-28">
-      <div className="flex items-end gap-[180px]">
-        <h2 className="flex-1 font-recoleta text-[48px] leading-[1.05] text-[#fefcfb]">
-          Todo el avance de obra. En un{" "}
-          <span className="text-primary">solo lugar</span>.
-        </h2>
-        <p className="flex-1 pt-5 text-lg leading-[1.2] tracking-[0.36px] text-[#afb3ba]">
-          Con BuildOn conectás cada etapa del proyecto, desde la carga en campo
-          hasta la visualización para clientes.
-        </p>
-      </div>
+    <div
+      className="relative"
+      style={{ minHeight: DESKTOP_SECTION_HEIGHT_PX }}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-0 w-px -translate-x-1/2 bg-[#363a3f]"
+        style={{ height: DESKTOP_SECTION_HEIGHT_PX }}
+      />
 
-      <div className="pt-20">
+      <div className="relative z-10 mx-auto max-w-[1280px] px-20 py-28">
         <div
-          className="overflow-visible"
-          style={{ paddingLeft: DESKTOP_STACK_LEFT_PADDING_PX }}
+          className="flex items-end"
+          style={{
+            width: DESKTOP_CONTENT_WIDTH_PX,
+            gap: DESKTOP_HEADER_GAP_PX,
+          }}
         >
-          <div
-            className="relative overflow-visible"
-            style={{
-              width: DESKTOP_STAGE_WIDTH_PX,
-              height: DESKTOP_CARD_HEIGHT_PX,
-            }}
+          <h2
+            className="font-recoleta text-[48px] leading-[1.05] text-[#fefcfb]"
+            style={{ width: DESKTOP_HEADING_WIDTH_PX }}
           >
-            {SOLUTION_SLIDES.map((slide, index) => (
-              <div
-                key={slide.number}
-                ref={(node) => {
-                  cardRefs.current[index] = node
-                }}
-                className="absolute left-0 top-0 will-change-transform"
-              >
-                <SolutionSlideCardDesktop slide={slide} />
-              </div>
-            ))}
-          </div>
+            Todo el avance de obra. En un{" "}
+            <span className="text-primary">solo lugar</span>.
+          </h2>
+          <p
+            className="pt-5 text-lg leading-[1.2] tracking-[0.36px] text-[#afb3ba]"
+            style={{ width: DESKTOP_HEADING_WIDTH_PX }}
+          >
+            Con BuildOn conectás cada etapa del proyecto, desde la carga en campo
+            hasta la visualización para clientes.
+          </p>
         </div>
 
-        <div className="flex items-center justify-center gap-6 px-6 pt-10">
-          <button
-            type="button"
-            aria-label="Solución anterior"
-            disabled={activeIndex === 0}
-            onClick={() => goToSlide(activeIndex - 1)}
-            className="grid size-10 place-items-center rounded-full border border-white/20 text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
+        <div style={{ paddingTop: DESKTOP_HEADER_TO_CARDS_PX }}>
+          <div
+            className="overflow-hidden"
+            style={{ width: DESKTOP_CONTENT_WIDTH_PX }}
           >
-            <ChevronLeft className="size-5" strokeWidth={1.75} />
-          </button>
-
-          <div className="flex items-center gap-2">
-            {SOLUTION_SLIDES.map((slide, index) => {
-              const isActive = index === activeIndex
-
-              return (
-                <button
+            <div
+              className="relative"
+              style={{
+                width: DESKTOP_TRACK_WIDTH_PX,
+                height: DESKTOP_CARD_HEIGHT_PX,
+              }}
+            >
+              {SOLUTION_SLIDES.map((slide, index) => (
+                <div
                   key={slide.number}
-                  type="button"
-                  aria-label={`Ir a solución ${index + 1}`}
-                  aria-current={isActive ? "true" : undefined}
-                  onClick={() => goToSlide(index)}
-                  className={cn(
-                    "rounded-full transition-all duration-300",
-                    isActive
-                      ? "h-2 w-6 bg-primary"
-                      : "size-2 bg-white/25 hover:bg-white/40",
-                  )}
-                />
-              )
-            })}
+                  ref={(node) => {
+                    cardRefs.current[index] = node
+                  }}
+                  className="absolute left-0 top-0 will-change-transform"
+                >
+                  <SolutionSlideCardDesktop slide={slide} />
+                </div>
+              ))}
+            </div>
           </div>
 
-          <button
-            type="button"
-            aria-label="Solución siguiente"
-            disabled={activeIndex === SLIDE_COUNT - 1}
-            onClick={() => goToSlide(activeIndex + 1)}
-            className="grid size-10 place-items-center rounded-full border border-white/20 text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
+          <div
+            className="flex items-center justify-center gap-6"
+            style={{ paddingTop: DESKTOP_CARDS_TO_CONTROLS_PX }}
           >
-            <ChevronRight className="size-5" strokeWidth={1.75} />
-          </button>
+            <button
+              type="button"
+              aria-label="Solución anterior"
+              disabled={activeIndex === 0}
+              onClick={() => goToSlide(activeIndex - 1)}
+              className="grid size-10 place-items-center rounded-full border border-white/20 text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              <ChevronLeft className="size-5" strokeWidth={1.75} />
+            </button>
+
+            <div className="flex items-center gap-2">
+              {SOLUTION_SLIDES.map((slide, index) => {
+                const isActive = index === activeIndex
+
+                return (
+                  <button
+                    key={slide.number}
+                    type="button"
+                    aria-label={`Ir a solución ${index + 1}`}
+                    aria-current={isActive ? "true" : undefined}
+                    onClick={() => goToSlide(index)}
+                    className={cn(
+                      "rounded-full transition-all duration-300",
+                      isActive
+                        ? "h-2 w-6 bg-primary"
+                        : "size-2 bg-white/25 hover:bg-white/40",
+                    )}
+                  />
+                )
+              })}
+            </div>
+
+            <button
+              type="button"
+              aria-label="Solución siguiente"
+              disabled={activeIndex === SLIDE_COUNT - 1}
+              onClick={() => goToSlide(activeIndex + 1)}
+              className="grid size-10 place-items-center rounded-full border border-white/20 text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              <ChevronRight className="size-5" strokeWidth={1.75} />
+            </button>
+          </div>
         </div>
       </div>
     </div>

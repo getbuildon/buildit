@@ -13,13 +13,13 @@ type SolutionSlideCardDesktopProps = {
 export function SolutionSlideCardDesktop({ slide }: SolutionSlideCardDesktopProps) {
   return (
     <article
-      className="flex h-[600px] w-[900px] shrink-0 flex-col overflow-hidden rounded border border-[#363a3f] bg-[#edeef0]"
+      className="flex shrink-0 flex-col overflow-hidden rounded-[4px] border border-[#363a3f] bg-[#edeef0]"
       style={{
         width: DESKTOP_CARD_WIDTH_PX,
         height: DESKTOP_CARD_HEIGHT_PX,
       }}
     >
-      <div className="flex h-[160px] shrink-0 flex-col gap-4 px-7 pb-8 pt-6">
+      <div className="flex h-[160px] shrink-0 flex-col gap-4 px-[28px] pb-8 pt-[24px]">
         <p className="font-recoleta text-2xl leading-[1.05] text-primary">
           {slide.number}
         </p>
