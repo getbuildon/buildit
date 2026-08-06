@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 
 import { getLandingLeadNotificationRecipients } from "@/lib/email/parseCommaSeparatedEmails"
 import { renderLandingLeadEmail } from "@/lib/email/renderLandingLeadEmail"
-import { sendTransactionalEmail } from "@/lib/email/sendTransactionalEmail"
+import { getPublicEmailSendError, sendTransactionalEmail } from "@/lib/email/sendTransactionalEmail"
 import {
   buildLandingLeadEmail,
   parseLandingLeadPayload,
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: "No se pudo enviar la solicitud. Intentá de nuevo más tarde.",
+        error: getPublicEmailSendError(sendResult.error, sendResult.code),
       },
       { status: 503 },
     )
