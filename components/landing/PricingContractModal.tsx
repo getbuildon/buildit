@@ -205,8 +205,9 @@ export function PricingContractModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         showCloseButton={false}
+        presentation="sheet"
         overlayClassName="bg-[#18191b]/60"
-        className="fixed inset-0 top-0 left-0 flex h-[100dvh] max-h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col overflow-hidden rounded-none border-0 bg-[#fefcfb] p-0 shadow-none"
+        className="flex-col overflow-hidden border-0 bg-[#fefcfb] p-0 shadow-none"
       >
         <DialogTitle className="sr-only">
           Solicitar contratación de {plan.name}

@@ -32,7 +32,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-[#0f172a]/50 backdrop-blur-[2px]",
+        "dialog-overlay fixed inset-0 z-50 bg-[#0f172a]/50 backdrop-blur-[2px]",
         className,
       )}
       {...props}
@@ -45,10 +45,12 @@ function DialogContent({
   overlayClassName,
   children,
   showCloseButton = true,
+  presentation = "default",
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
   overlayClassName?: string
+  presentation?: "default" | "sheet"
 }) {
   return (
     <DialogPortal>
@@ -56,7 +58,10 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 flex max-h-[90vh] w-full max-w-[680px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[14px] border border-[#edeef0] bg-white shadow-[0_8px_32px_rgba(24,25,27,0.12)] outline-none",
+          "fixed z-50 flex max-h-[90vh] w-full max-w-[680px] flex-col overflow-hidden rounded-[14px] border border-[#edeef0] bg-white shadow-[0_8px_32px_rgba(24,25,27,0.12)] outline-none",
+          presentation === "sheet"
+            ? "dialog-content-sheet inset-0 top-0 left-0 h-[100dvh] max-h-[100dvh] max-w-none rounded-none"
+            : "dialog-content-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
           className,
         )}
         {...props}
