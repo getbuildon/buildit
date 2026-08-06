@@ -14,11 +14,16 @@ import { DashboardPeriodFilter } from "@/app/backoffice/dashboard/DashboardPerio
 import { DashboardComparePeriodFilter } from "@/app/backoffice/dashboard/DashboardComparePeriodFilter"
 import { DashboardCompareSection } from "@/app/backoffice/dashboard/DashboardCompareSection"
 import {
+  DashboardPendingProvider,
+  useDashboardPending,
+} from "@/app/backoffice/dashboard/DashboardPendingContext"
+import {
   PeriodActivityBarChart,
   PlanGroupsBarChart,
   PlanTiersBarChart,
   SubscriptionStatusDonutChart,
 } from "@/app/backoffice/dashboard/DashboardCharts"
+import { Spinner } from "@/components/ui/spinner"
 import { formatDashboardUsd } from "@/lib/backoffice/clientesBilling"
 import { cn } from "@/lib/utils"
 
@@ -78,7 +83,15 @@ function MetricCard({
   )
 }
 
-export function DashboardView({
+export function DashboardView(props: DashboardViewProps) {
+  return (
+    <DashboardPendingProvider>
+      <DashboardViewContent {...props} />
+    </DashboardPendingProvider>
+  )
+}
+
+function DashboardViewContent({
   metrics,
   from,
   to,
@@ -88,6 +101,7 @@ export function DashboardView({
   compareTo,
   comparePeriodLabel,
 }: DashboardViewProps) {
+  const { isPending } = useDashboardPending()
   const { snapshot, activity, subscriptionStatus, period } = metrics
 
   return (
@@ -115,90 +129,109 @@ export function DashboardView({
         />
       </div>
 
-      <div className="grid gap-4 pt-6 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Cargos emitidos"
-          value={formatDashboardUsd(snapshot.chargesUsd)}
-          hint="Total facturado en el rango seleccionado"
-          icon={CircleDollarSign}
-          tone="money"
-        />
-        <MetricCard
-          label="Cargos cobrados"
-          value={formatDashboardUsd(snapshot.collectedUsd)}
-          hint="Pagos registrados en el rango seleccionado"
-          icon={HandCoins}
-          tone="success"
-        />
-        <MetricCard
-          label="Cargos por cobrar"
-          value={formatDashboardUsd(snapshot.receivableUsd)}
-          hint="Emitidos en el rango que aún no se cobraron"
-          icon={Receipt}
-          tone="danger"
-        />
-        <MetricCard
-          label="Deuda"
-          value={formatDashboardUsd(snapshot.debtUsd)}
-          hint={`Cargos impagos con período vencido · ${snapshot.companiesWithDebt} ${snapshot.companiesWithDebt === 1 ? "cliente" : "clientes"}`}
-          icon={Wallet}
-          tone="danger"
-        />
-      </div>
-
-      <div className="grid gap-4 pt-4 lg:grid-cols-2">
-        <SubscriptionStatusDonutChart subscriptionStatus={subscriptionStatus} />
-        <PeriodActivityBarChart activity={activity} />
-      </div>
-
-      <div className="border-t border-[#edeef0] pt-8">
-        <div className="pb-4">
-          <h2 className="font-recoleta text-[22px] leading-[1.2] text-[#272a2d]">
-            Planes por subscripción
-          </h2>
-          <p className="pt-1 text-sm leading-5 text-[#777b84]">
-            Cantidades al cierre del período, por tipo de plan y tier de superficie.
-          </p>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <PlanGroupsBarChart planGroupBreakdown={metrics.planGroupBreakdown} />
-          <PlanTiersBarChart planTierBreakdown={metrics.planTierBreakdown} />
-        </div>
-      </div>
-
-      <div className="border-t border-[#edeef0] pt-8">
-        <div className="pb-4">
-          <h2 className="font-recoleta text-[22px] leading-[1.2] text-[#272a2d]">
-            Comparativa
-          </h2>
-          <p className="pt-1 text-sm leading-5 text-[#777b84]">
-            Variación del período principal respecto a otro rango de referencia.
-          </p>
-        </div>
-
-        <DashboardComparePeriodFilter
-          preset={comparePreset}
-          from={compareFrom}
-          to={compareTo}
-          periodLabel={comparePeriodLabel}
-          primaryPreset={period.preset}
-          primaryFrom={from}
-          primaryTo={to}
-        />
-
-        {comparison ? (
-          <div className="pt-4">
-            <DashboardCompareSection comparison={comparison} />
+      <div className="relative pt-6">
+        {isPending ? (
+          <div
+            className="pointer-events-none absolute inset-0 z-10 flex items-start justify-center pt-28"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <Spinner className="size-8 text-[#ff7433]" />
           </div>
-        ) : (
-          <div className="mt-4 rounded-[14px] border border-dashed border-[#edeef0] bg-[#f9f9fb] px-4 py-8 text-center">
-            <p className="text-sm leading-5 text-[#777b84]">
-              Elegí un período de referencia para ver incrementos y decrementos
-              respecto a {period.label}.
-            </p>
+        ) : null}
+
+        <div
+          className={cn(
+            "space-y-4 transition-opacity",
+            isPending && "pointer-events-none opacity-70",
+          )}
+        >
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              label="Cargos emitidos"
+              value={formatDashboardUsd(snapshot.chargesUsd)}
+              hint="Total facturado en el rango seleccionado"
+              icon={CircleDollarSign}
+              tone="money"
+            />
+            <MetricCard
+              label="Cargos cobrados"
+              value={formatDashboardUsd(snapshot.collectedUsd)}
+              hint="Pagos registrados en el rango seleccionado"
+              icon={HandCoins}
+              tone="success"
+            />
+            <MetricCard
+              label="Cargos por cobrar"
+              value={formatDashboardUsd(snapshot.receivableUsd)}
+              hint="Emitidos en el rango que aún no se cobraron"
+              icon={Receipt}
+              tone="danger"
+            />
+            <MetricCard
+              label="Deuda"
+              value={formatDashboardUsd(snapshot.debtUsd)}
+              hint={`Cargos impagos con período vencido · ${snapshot.companiesWithDebt} ${snapshot.companiesWithDebt === 1 ? "cliente" : "clientes"}`}
+              icon={Wallet}
+              tone="danger"
+            />
           </div>
-        )}
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <SubscriptionStatusDonutChart subscriptionStatus={subscriptionStatus} />
+            <PeriodActivityBarChart activity={activity} />
+          </div>
+
+          <div className="border-t border-[#edeef0] pt-8">
+            <div className="pb-4">
+              <h2 className="font-recoleta text-[22px] leading-[1.2] text-[#272a2d]">
+                Planes por subscripción
+              </h2>
+              <p className="pt-1 text-sm leading-5 text-[#777b84]">
+                Cantidades al cierre del período, por tipo de plan y tier de superficie.
+              </p>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <PlanGroupsBarChart planGroupBreakdown={metrics.planGroupBreakdown} />
+              <PlanTiersBarChart planTierBreakdown={metrics.planTierBreakdown} />
+            </div>
+          </div>
+
+          <div className="border-t border-[#edeef0] pt-8">
+            <div className="pb-4">
+              <h2 className="font-recoleta text-[22px] leading-[1.2] text-[#272a2d]">
+                Comparativa
+              </h2>
+              <p className="pt-1 text-sm leading-5 text-[#777b84]">
+                Variación del período principal respecto a otro rango de referencia.
+              </p>
+            </div>
+
+            <DashboardComparePeriodFilter
+              preset={comparePreset}
+              from={compareFrom}
+              to={compareTo}
+              periodLabel={comparePeriodLabel}
+              primaryPreset={period.preset}
+              primaryFrom={from}
+              primaryTo={to}
+            />
+
+            {comparison ? (
+              <div className="pt-4">
+                <DashboardCompareSection comparison={comparison} />
+              </div>
+            ) : (
+              <div className="mt-4 rounded-[14px] border border-dashed border-[#edeef0] bg-[#f9f9fb] px-4 py-8 text-center">
+                <p className="text-sm leading-5 text-[#777b84]">
+                  Elegí un período de referencia para ver incrementos y decrementos
+                  respecto a {period.label}.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

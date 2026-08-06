@@ -1,6 +1,5 @@
 "use client"
 
-import { useTransition } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import type { DateRange } from "react-day-picker"
 
@@ -15,6 +14,8 @@ import {
   serializeDashboardPeriodQuery,
   toDashboardCalendarDate,
 } from "@/lib/backoffice/dashboardPeriodClient"
+import { useDashboardPending } from "@/app/backoffice/dashboard/DashboardPendingContext"
+import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
 
 type DashboardPeriodFilterProps = {
@@ -59,7 +60,7 @@ export function DashboardPeriodFilter({
 }: DashboardPeriodFilterProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [isPending, startTransition] = useTransition()
+  const { isPending, startTransition } = useDashboardPending()
 
   const customRange = preset === "custom" ? getCustomRange(from, to) : undefined
 
@@ -96,9 +97,14 @@ export function DashboardPeriodFilter({
         isPending && "opacity-70",
       )}
     >
-      <div className="min-w-0">
-        <p className="text-xs font-medium leading-4 text-[#777b84]">Período</p>
-        <p className="pt-1 text-sm leading-5 text-[#18191b]">{periodLabel}</p>
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium leading-4 text-[#777b84]">Período</p>
+          <p className="pt-1 text-sm leading-5 text-[#18191b]">{periodLabel}</p>
+        </div>
+        {isPending ? (
+          <Spinner className="size-4 shrink-0 text-[#ff7433]" aria-hidden />
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
