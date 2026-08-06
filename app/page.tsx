@@ -11,18 +11,20 @@ import { LandingSolutionsSection } from "@/components/landing/LandingSolutionsSe
 export default function LandingPage() {
   return (
     <LandingActionsProvider>
-    <div className="landing-page min-h-screen overflow-x-hidden bg-background text-foreground">
-      <LandingHeader />
-      <div className="hidden lg:block">
-        <LandingHeroDesktop />
-        <LandingProblemSection />
+      <div className="min-h-screen bg-background text-foreground">
+        <LandingHeader />
+        <div className="landing-page overflow-x-clip">
+          <div className="hidden lg:block">
+            <LandingHeroDesktop />
+            <LandingProblemSection />
+          </div>
+          <LandingSolutionsSection />
+          <LandingPricingSection />
+          <LandingDemoSection />
+          <LandingFaqSection />
+          <LandingFooter />
+        </div>
       </div>
-      <LandingSolutionsSection />
-      <LandingPricingSection />
-      <LandingDemoSection />
-      <LandingFaqSection />
-      <LandingFooter />
-    </div>
     </LandingActionsProvider>
   )
 }
