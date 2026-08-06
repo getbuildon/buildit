@@ -59,6 +59,7 @@ export function AuthHashCallbackHandler() {
       }
 
       router.replace(destination)
+      window.history.replaceState(null, "", window.location.pathname)
     })()
   }, [router])
 

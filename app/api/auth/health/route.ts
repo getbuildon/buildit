@@ -17,6 +17,16 @@ export async function GET() {
 
   const projectHost = getSupabaseProjectHost(config)
 
+  if (!projectHost.endsWith(".supabase.co")) {
+    return NextResponse.json({
+      ok: false,
+      reason: "invalid_supabase_url",
+      projectHost,
+      message:
+        "NEXT_PUBLIC_SUPABASE_URL en Vercel debe ser la URL del proyecto Supabase (https://xxx.supabase.co), no la URL del sitio. Usá NEXT_PUBLIC_SITE_URL para getbuildon.com.",
+    })
+  }
+
   try {
     const response = await fetch(`${config.url}/auth/v1/health`, {
       method: "GET",

@@ -369,6 +369,7 @@ export async function createBackofficeUser(
     data: {
       first_name: firstName,
       last_name: lastName,
+      password_setup_required: true,
     },
   })
 
