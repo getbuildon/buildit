@@ -1,10 +1,14 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { format } from "date-fns"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
+import {
+  formatArgentinaDateTime,
+  formatArgentinaEntryDate,
+  formatArgentinaLongDate,
+} from "@/lib/datetime/argentinaDateTime"
 import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
 import { canAccessUnitProgress } from "@/lib/project/projectAccessContext"
 import { hasStrictProjectPermission } from "@/lib/project/projectPermissions"
@@ -163,28 +167,6 @@ function mapProgressStatus(
   if (status === "rejected") return "Bloqueado"
   if (progressState === "completed" || status === "approved") return "Completado"
   return "En Proceso"
-}
-
-function formatEntryDate(value: string | null): string {
-  if (!value) return "—"
-  return new Intl.DateTimeFormat("es-AR", {
-    day: "numeric",
-    month: "short",
-  }).format(new Date(value))
-}
-
-function formatEntryLongDate(value: string): string {
-  const formatted = new Intl.DateTimeFormat("es-AR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(value))
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
-}
-
-function formatHistoryDate(value: string): string {
-  return format(new Date(value), "dd/MM/yyyy HH:mm")
 }
 
 function formatProfileName(profile: {
@@ -421,7 +403,7 @@ export async function getTrabajoDiarioData(
       unitLabel: getUnitLabelInFloor(floorUnits, entry.unit_id),
       unitName: unit.name,
       occurredAt: entry.submitted_at ?? entry.created_at,
-      date: formatEntryDate(entry.submitted_at ?? entry.created_at),
+      date: formatArgentinaEntryDate(entry.submitted_at ?? entry.created_at),
       status: mapProgressStatus(entry.status, entry.progress_state),
     })
   }
@@ -802,7 +784,7 @@ export async function getTrabajoDiarioTaskDetail(
       status: mapProgressStatus(row.status, row.progress_state),
       comment: row.comment,
       occurredAt: rowOccurredAt,
-      formattedDate: formatHistoryDate(rowOccurredAt),
+      formattedDate: formatArgentinaDateTime(rowOccurredAt),
       authorName: profile ? formatProfileName(profile) : "Usuario",
       attachments: attachmentsByEntry.get(row.id) ?? [],
     }
@@ -816,7 +798,7 @@ export async function getTrabajoDiarioTaskDetail(
         status: "Certificada",
         comment: validation.comment,
         occurredAt: validation.validated_at,
-        formattedDate: formatHistoryDate(validation.validated_at),
+        formattedDate: formatArgentinaDateTime(validation.validated_at),
         authorName: profile ? formatProfileName(profile) : "Usuario",
         attachments: [],
       }
@@ -843,12 +825,12 @@ export async function getTrabajoDiarioTaskDetail(
     floorIdentifier,
     unitLabel,
     occurredAt: displayOccurredAt,
-    formattedLongDate: formatEntryLongDate(displayOccurredAt),
+    formattedLongDate: formatArgentinaLongDate(displayOccurredAt),
     registeredByName,
     status: mapProgressStatus(entry.status, entry.progress_state),
     comment: displayComment,
     attachments: displayAttachments,
-    history,
+    history: history.slice(1),
   }
 }
 

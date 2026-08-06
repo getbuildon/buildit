@@ -32,11 +32,9 @@ import {
   type CargarAvanceRubroOption,
   type CargarAvanceTaskDraft,
   type CargarAvanceTaskStatus,
-  type CargarAvanceMultiUnitMismatch,
 } from "@/lib/projects/cargarAvance"
 import type { TrabajoDiarioRubroTask } from "./actions"
 import { CargarAvanceUnitMismatchCallout } from "./CargarAvanceUnitMismatchCallout"
-import { CargarAvanceUnitMismatchDialog } from "./CargarAvanceUnitMismatchDialog"
 import { TaskTargetUnitChip } from "./TaskTargetUnitChip"
 
 const LEGEND_ITEMS: Array<{ status: CargarAvanceTaskStatus; label: string }> = [
@@ -227,13 +225,7 @@ type CargarAvanceTaskPanelProps = {
   loadedKeys: Set<string>
   unitTaskStatuses: Record<string, CargarAvanceTaskStatus>
   selectedUnitCount: number
-  multiUnitMismatch: CargarAvanceMultiUnitMismatch
-  onViewUnitMismatchDetail: () => void
-  floorLabel: string
-  selectedUnitLabels: string[]
-  rubroName: string
-  showUnitMismatchDetail: boolean
-  onShowUnitMismatchDetailChange: (open: boolean) => void
+  showUnitMismatchDisclaimer: boolean
 }
 
 export function CargarAvanceTaskPanel({
@@ -256,13 +248,7 @@ export function CargarAvanceTaskPanel({
   loadedKeys,
   unitTaskStatuses,
   selectedUnitCount,
-  multiUnitMismatch,
-  onViewUnitMismatchDetail,
-  floorLabel,
-  selectedUnitLabels,
-  rubroName,
-  showUnitMismatchDetail,
-  onShowUnitMismatchDetailChange,
+  showUnitMismatchDisclaimer,
 }: CargarAvanceTaskPanelProps) {
   return (
     <div className="flex flex-col gap-6">
@@ -306,8 +292,7 @@ export function CargarAvanceTaskPanel({
 
         <CargarAvanceUnitMismatchCallout
           selectedUnitCount={selectedUnitCount}
-          mismatch={multiUnitMismatch}
-          onViewDetail={onViewUnitMismatchDetail}
+          show={showUnitMismatchDisclaimer}
         />
 
         {tasks.length === 0 ? (
@@ -391,7 +376,9 @@ export function CargarAvanceTaskPanel({
                                       key={option.status}
                                       type="button"
                                       onClick={() =>
-                                        onUpdateTaskDraft(task.id, { taskStatus: option.status })
+                                        onUpdateTaskDraft(task.id, {
+                                          taskStatus: isActive ? "pending" : option.status,
+                                        })
                                       }
                                       aria-pressed={isActive}
                                       className={cn(
@@ -463,15 +450,6 @@ export function CargarAvanceTaskPanel({
           </Button>
         </div>
       </div>
-
-      <CargarAvanceUnitMismatchDialog
-        open={showUnitMismatchDetail}
-        onOpenChange={onShowUnitMismatchDetailChange}
-        floorLabel={floorLabel}
-        unitLabels={selectedUnitLabels}
-        rubroName={rubroName}
-        mismatch={multiUnitMismatch}
-      />
     </div>
   )
 }

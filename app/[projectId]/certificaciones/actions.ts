@@ -1,11 +1,14 @@
 "use server"
 
-import { differenceInDays, format } from "date-fns"
-import { es } from "date-fns/locale"
+import { differenceInDays } from "date-fns"
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
+import {
+  formatArgentinaTaskDate,
+  formatArgentinaTaskTime,
+} from "@/lib/datetime/argentinaDateTime"
 import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
 import { hasProjectPermission } from "@/lib/project/projectPermissions"
 import { buildTaskCodeMap } from "@/lib/projects/unitDetailTasks"
@@ -55,14 +58,6 @@ function formatProfileName(profile: {
   if (firstName && lastName) return `${firstName} ${lastName}`
   if (firstName) return firstName
   return profile.email
-}
-
-function formatTaskDate(value: string): string {
-  return format(new Date(value), "d MMM yyyy", { locale: es })
-}
-
-function formatTaskTime(value: string): string {
-  return format(new Date(value), "H:mm", { locale: es }) + " h"
 }
 
 export async function getCertificacionesData(
@@ -210,8 +205,8 @@ export async function getCertificacionesData(
       certifiedByName: null,
       occurredAt,
       certifiedAt: null,
-      formattedDate: formatTaskDate(occurredAt),
-      formattedTime: formatTaskTime(occurredAt),
+      formattedDate: formatArgentinaTaskDate(occurredAt),
+      formattedTime: formatArgentinaTaskTime(occurredAt),
       comment: entry.comment,
       daysPending,
       isUrgent: daysPending >= 7,
@@ -285,8 +280,8 @@ export async function getCertificacionesData(
       const certifiedAt =
         certifiedAtByEntryId.get(task.entryId) ?? task.occurredAt
       task.certifiedAt = certifiedAt
-      task.formattedDate = formatTaskDate(certifiedAt)
-      task.formattedTime = formatTaskTime(certifiedAt)
+      task.formattedDate = formatArgentinaTaskDate(certifiedAt)
+      task.formattedTime = formatArgentinaTaskTime(certifiedAt)
 
       const certifierId = certifiedByIdByEntryId.get(task.entryId)
       task.certifiedById = certifierId ?? null

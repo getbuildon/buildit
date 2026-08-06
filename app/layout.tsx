@@ -65,7 +65,7 @@ export default function RootLayout({
   const supabasePublicConfig = readPublicSupabaseConfigFromEnv()
 
   return (
-    <html lang="es" className="scroll-smooth">
+    <html lang="es">
       <body
         className={`${recoleta.variable} ${googleSansFlex.variable} font-sans antialiased`}
       >

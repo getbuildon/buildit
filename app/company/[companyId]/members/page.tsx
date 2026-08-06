@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react"
 import { BackButton } from "@/components/ui/BackButton"
 import { AlertCircle, CheckCircle, Trash2, Plus, Clock } from "lucide-react"
+import { formatArgentinaCalendarDate } from "@/lib/datetime/argentinaDateTime"
 import { getCompanyMembers, updateMemberRole, removeMember, inviteMember, revokeInvitation, type CompanyMember } from "./actions"
 
 type Feedback = { type: "success" | "error"; message: string } | null
@@ -362,8 +363,8 @@ export default function CompanyMembersPage({ params }: { params: Promise<{ compa
                     </div>
                     <div style={{ fontSize: "12px", color: "#777b84" }}>
                       {member.user_id === null
-                        ? `Invitado el ${member.joined_at ? new Date(member.joined_at).toLocaleDateString() : "N/A"}`
-                        : `Se unió el ${member.joined_at ? new Date(member.joined_at).toLocaleDateString() : "N/A"}`}
+                        ? `Invitado el ${member.joined_at ? formatArgentinaCalendarDate(member.joined_at) : "N/A"}`
+                        : `Se unió el ${member.joined_at ? formatArgentinaCalendarDate(member.joined_at) : "N/A"}`}
                     </div>
                   </div>
 

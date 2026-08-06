@@ -11,10 +11,13 @@ import {
   MessageCircle,
   ShieldCheck,
 } from "lucide-react"
-import { endOfDay, endOfMonth, format, startOfDay, startOfMonth } from "date-fns"
-import { es } from "date-fns/locale"
+import { endOfDay, endOfMonth, startOfDay, startOfMonth } from "date-fns"
 import { DatePicker } from "@/components/ui/date-picker"
 import { CertifierShieldIcon } from "@/components/icons/CertifierShieldIcon"
+import {
+  formatArgentinaTaskDate,
+  formatArgentinaTaskTime,
+} from "@/lib/datetime/argentinaDateTime"
 import {
   Select,
   SelectContent,
@@ -46,14 +49,6 @@ import {
 
 const ALL_MEMBERS_VALUE = "__all_members__"
 const PAGE_SIZE = 8
-
-function formatCertTaskDate(value: string): string {
-  return format(new Date(value), "d MMM yyyy", { locale: es })
-}
-
-function formatCertTaskTime(value: string): string {
-  return format(new Date(value), "H:mm", { locale: es }) + " h"
-}
 
 function getTaskMemberId(task: CertificacionTask): string {
   return task.status === "certified"
@@ -294,7 +289,7 @@ function TaskCard({
                       •
                     </span>
                     <span className={CERTIFICACIONES_TYPE.taskMeta}>
-                      {formatCertTaskDate(task.occurredAt)} · {formatCertTaskTime(task.occurredAt)}
+                      {formatArgentinaTaskDate(task.occurredAt)} · {formatArgentinaTaskTime(task.occurredAt)}
                     </span>
                   </>
                 )}
@@ -503,8 +498,8 @@ export function CertificacionesView({ projectId, initialData }: Props) {
           status: "certified" as const,
           isUrgent: false,
           certifiedAt,
-          formattedDate: formatCertTaskDate(certifiedAt),
-          formattedTime: formatCertTaskTime(certifiedAt),
+          formattedDate: formatArgentinaTaskDate(certifiedAt),
+          formattedTime: formatArgentinaTaskTime(certifiedAt),
           comment: certificationComment,
         }
       }),

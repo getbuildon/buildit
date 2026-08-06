@@ -13,6 +13,12 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { BackButton } from "@/components/ui/BackButton"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { InProcessStatusIcon } from "@/components/icons/InProcessStatusIcon"
 import {
@@ -214,6 +220,7 @@ export function UnitDetailView({ projectId, data }: UnitDetailViewProps) {
   const [search, setSearch] = useState("")
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null)
   const [taskDetailOpen, setTaskDetailOpen] = useState(false)
+  const [planPreviewOpen, setPlanPreviewOpen] = useState(false)
 
   const planPreviewUrl = data.unit.planUrl
 
@@ -291,12 +298,19 @@ export function UnitDetailView({ projectId, data }: UnitDetailViewProps) {
           style={{ boxShadow: UNIT_DETAIL_SHADOW }}
         >
           {planPreviewUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={planPreviewUrl}
-              alt={`Plano de ${data.unit.displayCode}`}
-              className="size-[128px] object-contain"
-            />
+            <button
+              type="button"
+              onClick={() => setPlanPreviewOpen(true)}
+              aria-label={`Ver plano de ${data.unit.displayCode} en tamaño completo`}
+              className="cursor-zoom-in rounded-[8px] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7433] focus-visible:ring-offset-2"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={planPreviewUrl}
+                alt={`Plano de ${data.unit.displayCode}`}
+                className="size-[128px] object-contain"
+              />
+            </button>
           ) : (
             <div className="flex size-[128px] items-center justify-center rounded-[8px] border border-dashed border-[#edeef0] bg-[#fefcfb] text-center text-[12px] leading-[1.4] text-[#777b84]">
               Sin planta
@@ -377,6 +391,29 @@ export function UnitDetailView({ projectId, data }: UnitDetailViewProps) {
         onEntryIdChange={setSelectedEntryId}
         onSaved={() => router.refresh()}
       />
+
+      {planPreviewUrl ? (
+        <Dialog open={planPreviewOpen} onOpenChange={setPlanPreviewOpen}>
+          <DialogContent className="w-[min(960px,calc(100vw-32px))] max-w-none gap-0 p-0">
+            <div className="border-b border-[#edeef0] px-6 py-5 pr-14">
+              <DialogTitle className="text-[18px] font-semibold leading-7 text-[#272a2d]">
+                Plano de {data.unit.displayCode}
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-[13px] leading-5 text-[#62748e]">
+                {data.floor.name}
+              </DialogDescription>
+            </div>
+            <div className="overflow-hidden bg-[#f5f6f7] px-6 py-5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={planPreviewUrl}
+                alt={`Plano de ${data.unit.displayCode}`}
+                className="mx-auto max-h-[min(75vh,720px)] w-full object-contain"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </div>
   )
 }

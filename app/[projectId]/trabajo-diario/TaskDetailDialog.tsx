@@ -561,7 +561,7 @@ export function TaskDetailDialog({
                 )}
               </DetailField>
 
-              {canViewAuditLog ? (
+              {canViewAuditLog && detail.history.length > 0 ? (
                 <div className="flex flex-col gap-2">
                   <button
                     type="button"

@@ -1,5 +1,4 @@
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { formatArgentinaUnitTaskMeta } from "@/lib/datetime/argentinaDateTime"
 import type { ProgressEntryRow } from "@/lib/projects/dashboardProgress"
 import { getAssignedTaskIdsForUnit } from "@/lib/projects/dashboardProgress"
 
@@ -110,10 +109,7 @@ export function buildTaskCodeMap(
 }
 
 export function formatUnitTaskMetaDate(value: string): string {
-  const date = new Date(value)
-  const datePart = format(date, "d MMM yyyy", { locale: es })
-  const timePart = format(date, "H:mm", { locale: es }) + " h"
-  return `${datePart} · ${timePart}`
+  return formatArgentinaUnitTaskMeta(value)
 }
 
 export function countCompletedTasks(

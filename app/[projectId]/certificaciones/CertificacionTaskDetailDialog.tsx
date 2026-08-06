@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
-import { format } from "date-fns"
+import { useEffect, useState, type ReactNode } from "react"
 import {
   AlertCircle,
   BadgeCheck,
@@ -35,6 +34,10 @@ import {
 import { buildAttachmentsForSingleEntry } from "@/lib/progress/linkProgressPhotos.client"
 import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
 import { CERTIFICACION_MODAL } from "@/lib/project/certificacionesDesignTokens"
+import {
+  formatArgentinaCalendarDate,
+  formatArgentinaTime,
+} from "@/lib/datetime/argentinaDateTime"
 import { cn } from "@/lib/utils"
 import { useStrictProjectPermission } from "@/components/project-shell/ProjectAccessProvider"
 import { CertificarTareaDialog, type CertificarTareaSummary } from "./CertificarTareaDialog"
@@ -86,14 +89,6 @@ function mapTrabajoDiarioStatusToDraft(status: TrabajoDiarioTaskStatus): Editabl
     case "Bloqueado":
       return "blocked"
   }
-}
-
-function formatModalDate(value: string): string {
-  return format(new Date(value), "dd/MM/yyyy")
-}
-
-function formatModalTime(value: string): string {
-  return format(new Date(value), "HH:mm")
 }
 
 function formatPhotoCount(count: number): string {
@@ -305,11 +300,7 @@ export function CertificacionTaskDetailDialog({
     }
   }, [entryId, open, projectId])
 
-  const completedByName = useMemo(() => {
-    if (!detail) return "Usuario"
-    const current = detail.history.find((item) => item.id === detail.entryId)
-    return current?.authorName ?? detail.registeredByName
-  }, [detail])
+  const completedByName = detail?.registeredByName ?? "Usuario"
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -563,18 +554,18 @@ export function CertificacionTaskDetailDialog({
 
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <p className={CERTIFICACION_MODAL.label}>Fecha y hora de registro</p>
+                    <p className={CERTIFICACION_MODAL.label}>Fecha y hora del último registro</p>
                     <div className="flex flex-col gap-0.5">
                       <div className="flex items-center gap-2">
                         <Calendar className="size-3.5 shrink-0 text-[#777b84]" aria-hidden />
                         <span className={CERTIFICACION_MODAL.metaValue}>
-                          {formatModalDate(detail.occurredAt)}
+                          {formatArgentinaCalendarDate(detail.occurredAt)}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="size-3.5 shrink-0 text-[#777b84]" aria-hidden />
                         <span className={CERTIFICACION_MODAL.metaValue}>
-                          {formatModalTime(detail.occurredAt)}
+                          {formatArgentinaTime(detail.occurredAt)}
                         </span>
                       </div>
                     </div>
@@ -589,7 +580,7 @@ export function CertificacionTaskDetailDialog({
                   </div>
                 </div>
 
-                {canViewAuditLog ? (
+                {canViewAuditLog && detail.history.length > 0 ? (
                   <>
                     <button
                       type="button"

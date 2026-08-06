@@ -140,7 +140,6 @@ export function CargarAvanceView({
   const [showConfirmSave, setShowConfirmSave] = useState(false)
   const [pendingRubroId, setPendingRubroId] = useState<string | null>(null)
   const [showRubroChangeConfirm, setShowRubroChangeConfirm] = useState(false)
-  const [showUnitMismatchDetail, setShowUnitMismatchDetail] = useState(false)
 
   const selectedFloor = floors.find((floor) => floor.id === selectedFloorId) ?? null
   const floorUnits = selectedFloor?.units ?? []
@@ -212,14 +211,6 @@ export function CargarAvanceView({
     selectedUnitIds,
     unitLabelById,
   ])
-
-  const selectedUnitLabelsForMismatch = useMemo(
-    () =>
-      selectedUnitIds.map(
-        (unitId) => unitLabelById[unitId] ?? unitId.slice(0, 8),
-      ),
-    [selectedUnitIds, unitLabelById],
-  )
 
   const reviewTasks = useMemo(() => {
     return availableTasks
@@ -569,13 +560,7 @@ export function CargarAvanceView({
             loadedKeys={loadedKeys}
             unitTaskStatuses={unitTaskStatuses}
             selectedUnitCount={selectedUnitIds.length}
-            multiUnitMismatch={multiUnitMismatch}
-            onViewUnitMismatchDetail={() => setShowUnitMismatchDetail(true)}
-            floorLabel={selectedFloor ? getFloorDisplayLabel(selectedFloor) : "—"}
-            selectedUnitLabels={selectedUnitLabelsForMismatch}
-            rubroName={selectedRubroName}
-            showUnitMismatchDetail={showUnitMismatchDetail}
-            onShowUnitMismatchDetailChange={setShowUnitMismatchDetail}
+            showUnitMismatchDisclaimer={multiUnitMismatch.shouldShowDisclaimer}
           />
         ) : null}
 

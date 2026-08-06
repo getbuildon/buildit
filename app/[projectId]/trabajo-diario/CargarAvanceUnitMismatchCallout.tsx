@@ -1,22 +1,18 @@
 "use client"
 
-import type { CargarAvanceMultiUnitMismatch } from "@/lib/projects/cargarAvance"
-
 type CargarAvanceUnitMismatchCalloutProps = {
   selectedUnitCount: number
-  mismatch: CargarAvanceMultiUnitMismatch
-  onViewDetail: () => void
+  show: boolean
 }
 
 export function CargarAvanceUnitMismatchCallout({
   selectedUnitCount,
-  mismatch,
-  onViewDetail,
+  show,
 }: CargarAvanceUnitMismatchCalloutProps) {
-  if (!mismatch.shouldShowDisclaimer) return null
+  if (!show) return null
 
   return (
-    <div className="flex gap-[10px] overflow-hidden rounded-[8px] bg-[#e6f4fe] px-4 py-3 mb-4">
+    <div className="mb-4 flex gap-[10px] overflow-hidden rounded-[8px] bg-[#e6f4fe] px-4 py-3">
       <div
         className="flex size-5 shrink-0 items-center justify-center rounded-[10px] bg-[#0090ff]"
         aria-hidden
@@ -28,16 +24,9 @@ export function CargarAvanceUnitMismatchCallout({
           Se seleccionaron {selectedUnitCount} unidades funcionales:
         </p>
         <p className="mb-0 mt-0 font-normal">
-          Las tareas comunes podrán cargarse de forma conjunta. Las tareas que no coincidan entre
-          las unidades deberán registrarse individualmente.
+          Existen tareas que pueden cargarse de forma conjunta y otras que no coinciden. Seleccioná
+          en cada tarea a qué unidad querés aplicar el avance.
         </p>
-        <button
-          type="button"
-          onClick={onViewDetail}
-          className="mt-0 cursor-pointer font-medium underline decoration-solid underline-offset-2"
-        >
-          Ver detalle
-        </button>
       </div>
     </div>
   )

@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { endOfDay, endOfMonth, format, startOfDay, startOfMonth } from "date-fns"
-import { es } from "date-fns/locale"
+import { endOfDay, endOfMonth, startOfDay, startOfMonth } from "date-fns"
+import { formatArgentinaTodayLabel } from "@/lib/datetime/argentinaDateTime"
 import { Calendar, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
@@ -95,10 +95,7 @@ export function DashboardView({ project, data }: Props) {
     })
   }, [data.tasks, fromDate, selectedFloorId, selectedUnitId, toDate])
 
-  const todayLabel = (() => {
-    const formatted = format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })
-    return formatted.charAt(0).toUpperCase() + formatted.slice(1)
-  })()
+  const todayLabel = formatArgentinaTodayLabel()
 
   const exitLoadMode = () => {
     setViewMode("list")
