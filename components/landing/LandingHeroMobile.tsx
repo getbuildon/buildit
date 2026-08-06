@@ -4,7 +4,7 @@ import Image from "next/image"
 
 import { useLandingActions } from "@/components/landing/LandingActionsProvider"
 
-export function LandingHero() {
+export function LandingHeroMobile() {
   const { openContactModal, scrollToPlans } = useLandingActions()
 
   return (

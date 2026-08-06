@@ -4,7 +4,7 @@ import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { useLayoutEffect, useRef, useState } from "react"
 
-import { LandingHero } from "@/components/landing/LandingHero"
+import { LandingHeroMobile } from "@/components/landing/LandingHeroMobile"
 import { LandingSolutionsHeader } from "@/components/landing/LandingSolutionsHeader"
 import { SolutionSlideCard } from "@/components/landing/SolutionSlideCard"
 import { SOLUTION_SLIDES } from "@/lib/landing/solutionSlides"
@@ -184,7 +184,7 @@ export function LandingSolutionsStack() {
 
   return (
     <div ref={rootRef} className="relative w-full lg:hidden">
-      <LandingHero />
+      <LandingHeroMobile />
 
       <div className="w-full bg-[#272a2d]">
         <div className="relative z-10 mx-auto w-full max-w-[390px] pt-10">
