@@ -28,7 +28,11 @@ function main() {
       throw new Error(`No se encontró la plantilla: ${sourcePath}`)
     }
 
-    const html = applyEmailLogo(fs.readFileSync(sourcePath, "utf8"), projectRoot)
+    const html = applyEmailLogo(
+      fs.readFileSync(sourcePath, "utf8"),
+      projectRoot,
+      { requirePublicUrl: false },
+    )
     fs.writeFileSync(outputPath, html, "utf8")
   }
 

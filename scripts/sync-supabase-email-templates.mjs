@@ -4,7 +4,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { applyEmailLogo } from "./emailTemplateLogo.mjs"
+import { applyEmailLogo, loadEnvFile } from "./emailTemplateLogo.mjs"
 
 const projectRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const templatesDir = path.join(projectRoot, "supabase", "templates")
@@ -39,34 +39,6 @@ const TEMPLATE_DEFINITIONS = [
     contentKey: "mailer_templates_magic_link_content",
   },
 ]
-
-function loadEnvFile(filePath) {
-  if (!fs.existsSync(filePath)) return
-
-  const contents = fs.readFileSync(filePath, "utf8")
-
-  for (const line of contents.split("\n")) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith("#")) continue
-
-    const separatorIndex = trimmed.indexOf("=")
-    if (separatorIndex === -1) continue
-
-    const key = trimmed.slice(0, separatorIndex).trim()
-    let value = trimmed.slice(separatorIndex + 1).trim()
-
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1)
-    }
-
-    if (!(key in process.env)) {
-      process.env[key] = value
-    }
-  }
-}
 
 function resolveProjectRef() {
   if (process.env.SUPABASE_PROJECT_REF?.trim()) {
@@ -118,8 +90,9 @@ Variables requeridas:
 Variables opcionales:
   SUPABASE_PROJECT_REF    Ref del proyecto (default: derivado de NEXT_PUBLIC_SUPABASE_URL)
   NEXT_PUBLIC_SUPABASE_URL
+  NEXT_PUBLIC_SITE_URL    URL pública del sitio (ej. https://getbuildon.com) para el logo en emails
 
-El logo se incrusta en base64 al sincronizar para que funcione en mails enviados.
+El logo se referencia con URL pública al sincronizar (Gmail/Outlook bloquean imágenes base64).
 
 Ejemplo:
   SUPABASE_ACCESS_TOKEN=sbp_... npm run sync:email-templates
