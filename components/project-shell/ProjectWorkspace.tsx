@@ -3,8 +3,9 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { type ReactNode, useState } from "react"
-import { ArrowLeftRight, ChevronDown } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 import { BuiltItIsoIcon } from "@/components/brand/BuiltItIsoIcon"
+import { SidebarSwitchProjectButton } from "@/components/project-shell/SidebarSwitchProjectButton"
 import { SHELL_COLORS, SHELL_LAYOUT } from "@/lib/project/designTokens"
 import { isProjectNavActive, getAllowedProjectNavItems } from "@/lib/project/navigation"
 import { useProjectAccess } from "@/components/project-shell/ProjectAccessProvider"
@@ -54,64 +55,46 @@ export function ProjectSidebar({ project, userProfile }: ProjectSidebarProps) {
         boxShadow: "0 0 39px 4px rgba(0,0,0,0.08)",
       }}
     >
-      {/* Brand header */}
+      {/* Brand header — Figma 1157:2703 */}
       <div
-        className="flex shrink-0 items-center border-b"
+        className="flex shrink-0 items-center justify-between border-b"
         style={{
           padding: "16px",
-          gap: "12px",
           borderColor: "#dadada",
         }}
       >
-        {/* Brand icon — 36x36 orange rounded square */}
-        <div
-          className="flex shrink-0 items-center justify-center"
-          style={{
-            width: "36px",
-            height: "36px",
-            borderRadius: "10px",
-            backgroundColor: "#ff7433",
-          }}
-        >
-          <BuiltItIsoIcon className="size-5 text-white" />
+        <div className="flex min-w-0 items-center" style={{ gap: "12px" }}>
+          {/* Brand icon — 36x36 orange rounded square */}
+          <div
+            className="flex shrink-0 items-center justify-center"
+            style={{
+              width: "36px",
+              height: "36px",
+              borderRadius: "10px",
+              backgroundColor: "#ff7433",
+            }}
+          >
+            <BuiltItIsoIcon className="size-5 text-white" />
+          </div>
+
+          {/* Org + project name */}
+          <div className="min-w-0 flex-1" style={{ gap: "0px" }}>
+            <p
+              className="truncate"
+              style={{ fontSize: "14px", fontWeight: 600, lineHeight: "19.6px", color: "#000000" }}
+            >
+              {project.organizationName || "Organización"}
+            </p>
+            <p
+              className="truncate"
+              style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16.8px", color: "#000000" }}
+            >
+              {project.name}
+            </p>
+          </div>
         </div>
 
-        {/* Org + project name */}
-        <div className="min-w-0 flex-1" style={{ gap: "0px" }}>
-          <p
-            className="truncate"
-            style={{ fontSize: "14px", fontWeight: 600, lineHeight: "19.6px", color: "#000000" }}
-          >
-            {project.organizationName || "Organización"}
-          </p>
-          <p
-            className="truncate"
-            style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16.8px", color: "#000000" }}
-          >
-            {project.name}
-          </p>
-        </div>
-
-        {/* Switch project button — 24x24 gray square */}
-        <Link
-          href="/home"
-          aria-label="Cambiar de obra"
-          className={cn(
-            "flex shrink-0 items-center justify-center",
-            "rounded-[8px] bg-[#edeef0] text-[#afb3ba]",
-            "transition-all duration-150",
-            "hover:bg-[#d8d9db] hover:text-[#696e77]",
-            "active:scale-95 active:bg-[#c8c9cb]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18191b]/20 focus-visible:ring-offset-1",
-          )}
-          style={{ width: "24px", height: "24px", padding: "4px" }}
-        >
-          {/* lucide/arrow-right-left — Figma: 16x16, stroke=#afb3ba w=1 */}
-          <ArrowLeftRight
-            aria-hidden
-            style={{ width: "16px", height: "16px", color: "currentColor", strokeWidth: 1 }}
-          />
-        </Link>
+        <SidebarSwitchProjectButton />
       </div>
 
       {/* Nav */}
