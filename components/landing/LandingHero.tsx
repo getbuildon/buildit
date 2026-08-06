@@ -3,7 +3,7 @@ import Link from "next/link"
 
 export function LandingHero() {
   return (
-    <section className="relative z-2 overflow-visible">
+    <section id="landing-hero" className="relative z-2 overflow-visible">
       <div className="relative">
         <div aria-hidden className="absolute inset-0">
           <Image

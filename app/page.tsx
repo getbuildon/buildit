@@ -7,7 +7,9 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <LandingHeader />
-      <LandingHero />
+      <div className="hidden lg:block">
+        <LandingHero />
+      </div>
       <LandingSolutionsSection />
       <LandingPricingSection />
     </div>

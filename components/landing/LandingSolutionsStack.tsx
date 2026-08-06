@@ -1,6 +1,6 @@
 "use client"
 
-import { useLayoutEffect, useRef, useState } from "react"
+import { useLayoutEffect, useRef, useState, type RefObject } from "react"
 
 import { LandingSolutionsHeader } from "@/components/landing/LandingSolutionsHeader"
 import { SolutionSlideCard } from "@/components/landing/SolutionSlideCard"
@@ -11,6 +11,10 @@ import {
   getStackedCardVars,
   SCROLL_DISTANCE_PX,
 } from "@/lib/landing/solutionStackAnimation"
+
+type LandingSolutionsStackProps = {
+  sequenceRef: RefObject<HTMLDivElement | null>
+}
 
 function setInitialCardState(
   gsap: typeof import("gsap").default,
@@ -93,13 +97,16 @@ function refreshScrollTriggerAfterImages(container: HTMLElement) {
   })
 }
 
-export function LandingSolutionsStack() {
-  const rootRef = useRef<HTMLDivElement>(null)
+export function LandingSolutionsStack({
+  sequenceRef,
+}: LandingSolutionsStackProps) {
+  const contentRef = useRef<HTMLDivElement>(null)
   const [initError, setInitError] = useState<string | null>(null)
 
   useLayoutEffect(() => {
-    const root = rootRef.current
-    if (!root) return
+    const sequence = sequenceRef.current
+    const content = contentRef.current
+    if (!sequence || !content) return
 
     let ctx: ReturnType<typeof import("gsap").default.context> | undefined
     let refreshTimer: ReturnType<typeof setTimeout> | undefined
@@ -129,7 +136,7 @@ export function LandingSolutionsStack() {
 
         const cards = gsap.utils.toArray<HTMLDivElement>(
           "[data-solution-card]",
-          root,
+          content,
         )
 
         if (cards.length !== SOLUTION_SLIDES.length) {
@@ -149,15 +156,12 @@ export function LandingSolutionsStack() {
           const timeline = buildTimeline(gsap, cards)
 
           /*
-           * Patrón GSAP estándar para scroll + pin + scrub:
-           * - Mismo nodo como trigger y pin (evita saltos / desapariciones).
-           * - start "bottom bottom": ancla cuando el bloque llega al fondo.
-           * - pinSpacing: agrega el scroll de la animación automáticamente.
-           * - NO pinReparent: reparentar al body rompe el stacking en mobile.
+           * Pin del contenedor completo (hero + soluciones) para que
+           * la franja naranja y los mockups queden quietos junto al título.
            */
           ScrollTrigger.create({
-            trigger: root,
-            pin: true,
+            trigger: sequence,
+            pin: sequence,
             start: "bottom bottom",
             end: `+=${SCROLL_DISTANCE_PX}`,
             scrub: true,
@@ -170,9 +174,9 @@ export function LandingSolutionsStack() {
               }
             },
           })
-        }, root)
+        }, sequence)
 
-        refreshScrollTriggerAfterImages(root)
+        refreshScrollTriggerAfterImages(sequence)
         ScrollTrigger.refresh()
       } catch (error) {
         setInitError(
@@ -184,7 +188,8 @@ export function LandingSolutionsStack() {
     void init()
 
     resizeObserver = new ResizeObserver(scheduleRefresh)
-    resizeObserver.observe(root)
+    resizeObserver.observe(sequence)
+    resizeObserver.observe(content)
 
     window.addEventListener("orientationchange", scheduleRefresh)
 
@@ -195,45 +200,43 @@ export function LandingSolutionsStack() {
       window.removeEventListener("orientationchange", scheduleRefresh)
       ctx?.revert()
     }
-  }, [])
+  }, [sequenceRef])
 
   return (
-    <div className="relative lg:hidden">
-      <div
-        ref={rootRef}
-        className="relative z-10 mx-auto w-full max-w-[390px] bg-[#272a2d] pt-10"
-      >
-        <LandingSolutionsHeader />
+    <div
+      ref={contentRef}
+      className="relative z-10 mx-auto w-full max-w-[390px] bg-[#272a2d] pt-10"
+    >
+      <LandingSolutionsHeader />
 
-        <div className="mt-[52px] px-6">
-          <div className="relative mx-auto w-full max-w-[324px] overflow-x-hidden overflow-y-visible pt-2">
-            <div className="invisible pointer-events-none" aria-hidden>
-              <SolutionSlideCard slide={SOLUTION_SLIDES[0]} />
-            </div>
-
-            {SOLUTION_SLIDES.map((slide, index) => (
-              <div
-                key={slide.number}
-                data-solution-card
-                className="absolute inset-x-0 top-2 origin-top will-change-transform"
-                style={{
-                  zIndex: 10 + index,
-                  opacity: index === 0 ? 1 : 0,
-                  pointerEvents: index === 0 ? "auto" : "none",
-                }}
-              >
-                <SolutionSlideCard slide={slide} stacked={index > 0} />
-              </div>
-            ))}
+      <div className="mt-[52px] px-6">
+        <div className="relative mx-auto w-full max-w-[324px] overflow-x-hidden overflow-y-visible pt-2">
+          <div className="invisible pointer-events-none" aria-hidden>
+            <SolutionSlideCard slide={SOLUTION_SLIDES[0]} />
           </div>
-        </div>
 
-        {initError ? (
-          <p className="px-6 pb-4 text-center text-xs text-red-300">
-            Stack: {initError}
-          </p>
-        ) : null}
+          {SOLUTION_SLIDES.map((slide, index) => (
+            <div
+              key={slide.number}
+              data-solution-card
+              className="absolute inset-x-0 top-2 origin-top will-change-transform"
+              style={{
+                zIndex: 10 + index,
+                opacity: index === 0 ? 1 : 0,
+                pointerEvents: index === 0 ? "auto" : "none",
+              }}
+            >
+              <SolutionSlideCard slide={slide} stacked={index > 0} />
+            </div>
+          ))}
+        </div>
       </div>
+
+      {initError ? (
+        <p className="px-6 pb-4 text-center text-xs text-red-300">
+          Stack: {initError}
+        </p>
+      ) : null}
     </div>
   )
 }
