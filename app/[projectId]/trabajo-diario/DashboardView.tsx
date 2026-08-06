@@ -119,10 +119,10 @@ export function DashboardView({ project, data }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-24 py-6">
-      <div className="flex items-end justify-between">
+    <div className="flex flex-col gap-4 py-4 sm:gap-6 sm:py-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2">
-          <h1 className="font-recoleta text-[28px] font-normal leading-tight text-[#272a2d]">
+          <h1 className="font-recoleta text-[26px] font-normal leading-tight text-[#272a2d] sm:text-[28px]">
             Trabajo Diario
           </h1>
           <div className="flex items-center gap-2 text-[14px] text-[#43484e]">
@@ -135,14 +135,19 @@ export function DashboardView({ project, data }: Props) {
           <Button
             variant="brand"
             size="brand"
-            className="gap-2"
+            className="w-full gap-2 sm:w-auto"
             onClick={() => setViewMode("load")}
           >
             <Plus className="size-5" />
             Cargar Avances
           </Button>
         ) : (
-          <Button variant="brand" size="brand" className="gap-2" onClick={exitLoadMode}>
+          <Button
+            variant="brand"
+            size="brand"
+            className="w-full gap-2 sm:w-auto"
+            onClick={exitLoadMode}
+          >
             <X className="size-4" />
             Cancelar
           </Button>
@@ -165,12 +170,12 @@ export function DashboardView({ project, data }: Props) {
           onSaved={handleSaved}
         />
       ) : (
-        <div className="rounded-[14px] border border-[#edeef0] bg-white p-[25px] shadow-[0_0_5px_rgba(243,103,31,0.08)]">
-          <h2 className="mb-6 text-[20px] font-normal leading-7 text-[#1d293d] tracking-[0.4px]">
+        <div className="rounded-[14px] border border-[#edeef0] bg-white p-4 shadow-[0_0_5px_rgba(243,103,31,0.08)] sm:p-[25px]">
+          <h2 className="mb-4 text-[18px] font-normal leading-7 text-[#1d293d] tracking-[0.4px] sm:mb-6 sm:text-[20px]">
             Trabajos Cargados
           </h2>
 
-          <div className="mb-6 grid grid-cols-4 gap-4">
+          <div className="mb-4 grid grid-cols-1 gap-4 sm:mb-6 sm:grid-cols-2 md:grid-cols-4">
             <div className={filterFieldClassName}>
               <Label htmlFor="filter-from-date" className={filterLabelClassName}>
                 Desde
@@ -270,10 +275,10 @@ export function DashboardView({ project, data }: Props) {
                     setSelectedTaskId(task.id)
                     setTaskDetailOpen(true)
                   }}
-                  className="flex w-full items-center justify-between rounded-[12px] border border-[#edeef0] p-3.5 text-left transition-colors hover:border-[#d8dade] hover:bg-[#fafafa]"
+                  className="flex w-full flex-col gap-3 rounded-[12px] border border-[#edeef0] p-3.5 text-left transition-colors hover:border-[#d8dade] hover:bg-[#fafafa] sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="flex flex-1 flex-col gap-1">
-                    <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="font-mono text-[12px] font-normal leading-[1.4] text-[#696e77]">
                         {task.taskCode}
                       </span>
@@ -284,16 +289,16 @@ export function DashboardView({ project, data }: Props) {
                         {task.category}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-[12px] leading-[1.4] tracking-[-0.36px] text-[#62748e]">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] leading-[1.4] tracking-[-0.36px] text-[#62748e]">
                       <span>{task.floorName}</span>
-                      <span>•</span>
+                      <span aria-hidden>•</span>
                       <span>{task.unitLabel}</span>
-                      <span>•</span>
+                      <span aria-hidden>•</span>
                       <span>{task.date}</span>
                     </div>
                   </div>
                   <div
-                    className={`rounded-lg px-2 py-1.5 text-[12px] font-medium ${statusStyles[task.status]}`}
+                    className={`self-start rounded-lg px-2 py-1.5 text-[12px] font-medium sm:shrink-0 ${statusStyles[task.status]}`}
                   >
                     {task.status}
                   </div>

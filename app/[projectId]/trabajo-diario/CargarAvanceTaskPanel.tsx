@@ -252,7 +252,7 @@ export function CargarAvanceTaskPanel({
 }: CargarAvanceTaskPanelProps) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-[14px] border border-[#edeef0] bg-white p-6 shadow-[0_0_5px_rgba(243,103,31,0.08)]">
+      <div className="rounded-[14px] border border-[#edeef0] bg-white p-4 shadow-[0_0_5px_rgba(243,103,31,0.08)] sm:p-6">
         <div className="mb-3 flex items-center gap-2">
           <Wrench className="size-4 text-[#314158]" aria-hidden />
           <p className="text-[16px] font-normal leading-[1.4] text-[#314158]">Rubro</p>
@@ -271,7 +271,7 @@ export function CargarAvanceTaskPanel({
         </Select>
       </div>
 
-      <div className="rounded-[14px] border border-[#edeef0] bg-white p-6 shadow-[0_0_5px_rgba(243,103,31,0.08)]">
+      <div className="rounded-[14px] border border-[#edeef0] bg-white p-4 shadow-[0_0_5px_rgba(243,103,31,0.08)] sm:p-6">
         <div className="mb-4 flex flex-col gap-1">
           <h3 className="text-[16px] font-normal leading-[1.4] text-[#314158]">
             Estado de Trabajos por Tarea
@@ -316,7 +316,7 @@ export function CargarAvanceTaskPanel({
                     type="button"
                     onClick={() => onToggleTask(task.id)}
                     aria-expanded={expanded}
-                    className="flex h-[52px] w-full items-center gap-3 px-3.5 text-left transition-colors hover:bg-[#fafafa]"
+                    className="flex min-h-[52px] w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-[#fafafa] sm:h-[52px] sm:py-0"
                   >
                     <TaskStatusIcon status={draft.taskStatus} />
                     <span className="min-w-0 flex-1 truncate text-[14px] leading-[1.4] text-[#272a2d]">
@@ -326,10 +326,13 @@ export function CargarAvanceTaskPanel({
                       className={cn(
                         TASK_ROW_BADGE_CLASSNAME,
                         showBadge
-                          ? BADGE_STYLES[
-                              draft.taskStatus as Exclude<CargarAvanceTaskStatus, "pending">
-                            ]
-                          : "invisible",
+                          ? cn(
+                              "hidden sm:inline-flex",
+                              BADGE_STYLES[
+                                draft.taskStatus as Exclude<CargarAvanceTaskStatus, "pending">
+                              ],
+                            )
+                          : "hidden sm:invisible sm:inline-flex",
                       )}
                       aria-hidden={!showBadge}
                     >
@@ -367,7 +370,7 @@ export function CargarAvanceTaskPanel({
                               <p className="text-[12px] font-normal text-[#777b84]">
                                 Estado de la Tarea
                               </p>
-                              <div className="grid grid-cols-3 gap-2">
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                                 {STATUS_BUTTON_STYLES.map((option) => {
                                   const isActive = draft.taskStatus === option.status
 
@@ -434,14 +437,14 @@ export function CargarAvanceTaskPanel({
           </div>
         )}
 
-        <div className="mt-6 flex flex-col items-end gap-3 border-t border-[#edeef0] pt-6">
+        <div className="mt-6 flex flex-col items-stretch gap-3 border-t border-[#edeef0] pt-6 sm:items-end">
           {saveError ? (
             <p className="w-full text-[14px] text-[#641723]">{saveError}</p>
           ) : null}
           <Button
             variant="brand"
             size="brand"
-            className="min-w-[200px] rounded-[12px] px-5 text-[14px] font-medium shadow-[0_4px_14px_rgba(241,132,77,0.35)]"
+            className="w-full rounded-[12px] px-5 text-[14px] font-medium shadow-[0_4px_14px_rgba(241,132,77,0.35)] sm:w-auto sm:min-w-[200px]"
             disabled={!canSave || saving}
             onClick={onReview}
           >

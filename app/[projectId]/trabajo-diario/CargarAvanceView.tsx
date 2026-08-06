@@ -60,7 +60,7 @@ function SelectionPill({ label, title, selected, onClick }: SelectionPillProps) 
       aria-label={title}
       title={title}
       className={cn(
-        "flex min-w-0 flex-1 basis-0 items-center justify-center rounded-[10px] px-3 py-3 text-center text-[14px] leading-[1.4] transition-colors",
+        "flex min-h-[44px] min-w-[calc(50%-4px)] flex-1 items-center justify-center rounded-[10px] px-3 py-3 text-center text-[14px] leading-[1.4] transition-colors sm:min-w-[88px] sm:basis-0",
         selected
           ? "bg-[#ff7433] font-medium text-white"
           : "bg-[#edeef0] font-normal text-[#272a2d] hover:bg-[#d8d9db]",
@@ -72,7 +72,7 @@ function SelectionPill({ label, title, selected, onClick }: SelectionPillProps) 
 }
 
 function SelectionPillRow({ children }: { children: ReactNode }) {
-  return <div className="flex w-full gap-2">{children}</div>
+  return <div className="flex w-full flex-wrap gap-2">{children}</div>
 }
 
 function SelectionCard({
@@ -87,7 +87,7 @@ function SelectionCard({
   children: ReactNode
 }) {
   return (
-    <div className="rounded-[14px] border border-[#edeef0] bg-white p-6 shadow-[0_0_5px_rgba(243,103,31,0.08)]">
+    <div className="rounded-[14px] border border-[#edeef0] bg-white p-4 shadow-[0_0_5px_rgba(243,103,31,0.08)] sm:p-6">
       <div className="mb-3 flex flex-col gap-1">
         <div className="flex items-center gap-2">
           {icon}
@@ -474,9 +474,9 @@ export function CargarAvanceView({
   }
 
   return (
-    <section className="rounded-[14px] border border-[#edeef0] bg-white p-6 shadow-[0_0_5px_rgba(243,103,31,0.08)]">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-[20px] font-normal leading-7 text-[#1d293d]">
+    <section className="rounded-[14px] border border-[#edeef0] bg-white p-4 shadow-[0_0_5px_rgba(243,103,31,0.08)] sm:p-6">
+      <div className="mb-4 flex items-start justify-between gap-3 sm:mb-6">
+        <h2 className="text-[18px] font-normal leading-7 text-[#1d293d] sm:text-[20px]">
           Carga de Trabajo Diario
         </h2>
         <button

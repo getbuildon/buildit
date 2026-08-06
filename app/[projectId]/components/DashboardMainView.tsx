@@ -157,7 +157,7 @@ function StatCard({
 }) {
   return (
     <div
-      className="flex flex-1 flex-col gap-6 rounded-[14px] border border-[#edeef0] bg-white px-4 py-[17px]"
+      className="flex min-w-0 flex-col gap-4 rounded-[14px] border border-[#edeef0] bg-white px-3 py-3 sm:gap-6 sm:px-4 sm:py-[17px] md:flex-1"
       style={{ boxShadow: DASHBOARD_SHADOW }}
     >
       <div className="flex items-center gap-3">
@@ -167,7 +167,7 @@ function StatCard({
         >
           <Icon className={cn("size-4", iconColor)} aria-hidden />
         </div>
-        <p className={DASHBOARD_TYPE.statValue}>{value}</p>
+        <p className={cn(DASHBOARD_TYPE.statValue, "text-[22px] sm:text-[28px]")}>{value}</p>
       </div>
       <div className="flex flex-col gap-0.5">
         <p className={DASHBOARD_TYPE.statLabel}>{label}</p>
@@ -243,25 +243,25 @@ function FloorCard({
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-3 px-4 py-[11.5px] text-left transition-colors hover:bg-[#f9f9fb]"
+        className="flex w-full flex-col gap-3 px-4 py-3 text-left transition-colors hover:bg-[#f9f9fb] sm:flex-row sm:items-center sm:gap-3 sm:py-[11.5px]"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-6">
+        <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
           <div className="flex shrink-0 items-center gap-1">
             {open ? (
               <ChevronDown className="size-4 text-[#696e77]" aria-hidden />
             ) : (
               <ChevronRight className="size-4 text-[#696e77]" aria-hidden />
             )}
-            <span className={DASHBOARD_TYPE.floorName}>{floor.name}</span>
+            <span className={cn(DASHBOARD_TYPE.floorName, "w-auto")}>{floor.name}</span>
           </div>
 
-          <div className="flex min-w-0 items-center gap-2">
-            <DashboardProgressBar progress={floor.progress} className="h-2 w-[300px] shrink-0" />
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <DashboardProgressBar progress={floor.progress} className="h-2 min-w-0 flex-1" />
             <span className={DASHBOARD_TYPE.floorProgress}>{floor.progress}%</span>
           </div>
         </div>
 
-        <div className={cn("flex shrink-0 items-center gap-2", DASHBOARD_TYPE.floorMeta)}>
+        <div className={cn("flex shrink-0 items-center gap-2 sm:justify-end", DASHBOARD_TYPE.floorMeta)}>
           <span>
             {floor.units.length} {floor.units.length === 1 ? "unidad" : "unidades"}
           </span>
@@ -312,17 +312,24 @@ export function DashboardMainView({
   }
 
   return (
-    <div className="flex flex-col gap-8 py-6">
-      <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 py-4 sm:gap-8 sm:py-6">
+      <div className="flex flex-col gap-4 sm:gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className={DASHBOARD_TYPE.pageTitle}>{project.name}</h1>
-          <p className={DASHBOARD_TYPE.pageSubtitle}>
+          <h1
+            className={cn(
+              DASHBOARD_TYPE.pageTitle,
+              "text-[26px] leading-[1.08] sm:text-[30px] lg:text-[36px] lg:leading-[1.05]",
+            )}
+          >
+            {project.name}
+          </h1>
+          <p className={cn(DASHBOARD_TYPE.pageSubtitle, "text-[13px] sm:text-[14px]")}>
             {stats.totalFloors} Pisos · {stats.totalUnits} Unidades · Progreso General:{" "}
             {stats.generalProgress}%
           </p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <StatCard
             iconBg="#eff6ff"
             icon={TrendingUp}

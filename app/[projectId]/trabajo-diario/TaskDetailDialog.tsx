@@ -474,10 +474,10 @@ export function TaskDetailDialog({
         showCloseButton={false}
         className="w-[680px] max-w-[calc(100vw-32px)] gap-0 p-0"
       >
-        <div className="border-b border-[#edeef0] px-6 pt-6 pb-5">
-          <div className="flex items-start justify-between gap-4">
+        <div className="border-b border-[#edeef0] px-4 pt-5 pb-4 sm:px-6 sm:pt-6 sm:pb-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0 flex-1">
-              <DialogTitle className="text-[20px] font-semibold leading-7 text-[#272a2d]">
+              <DialogTitle className="text-[18px] font-semibold leading-7 text-[#272a2d] sm:text-[20px]">
                 {detail?.taskName ?? "Detalle de tarea"}
               </DialogTitle>
               {detail ? (
@@ -491,7 +491,10 @@ export function TaskDetailDialog({
               <button
                 type="button"
                 onClick={handleStartEdit}
-                className={cn(EDIT_STATE_BADGE_CLASSNAME, "gap-1.5 transition-colors hover:bg-[#fff8f5]")}
+                className={cn(
+                  EDIT_STATE_BADGE_CLASSNAME,
+                  "w-fit gap-1.5 self-start transition-colors hover:bg-[#fff8f5]",
+                )}
               >
                 <Pencil className="size-4" aria-hidden />
                 Editar Estado
@@ -499,12 +502,12 @@ export function TaskDetailDialog({
             ) : null}
 
             {mode === "edit" ? (
-              <span className={EDIT_STATE_BADGE_CLASSNAME}>Editando</span>
+              <span className={cn(EDIT_STATE_BADGE_CLASSNAME, "self-start")}>Editando</span>
             ) : null}
           </div>
         </div>
 
-        <div className="flex max-h-[calc(90vh-180px)] flex-col overflow-y-auto px-6 pt-6 pb-5">
+        <div className="flex max-h-[calc(90vh-180px)] flex-col overflow-y-auto px-4 pt-5 pb-4 sm:px-6 sm:pt-6 sm:pb-5">
           {loading ? (
             <div className="flex min-h-[240px] items-center justify-center">
               <Spinner className="size-6" />
@@ -601,7 +604,7 @@ export function TaskDetailDialog({
                 </p>
                 <div className="flex flex-col gap-2">
                   <p className={FIELD_LABEL_CLASSNAME}>Nuevo Estado</p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {STATUS_BUTTON_STYLES.map((option) => {
                       const isActive = draftStatus === option.status
                       return (
@@ -650,7 +653,7 @@ export function TaskDetailDialog({
           )}
         </div>
 
-        <div className="border-t border-[#edeef0] px-6 pt-5 pb-6">
+        <div className="border-t border-[#edeef0] px-4 pt-4 pb-5 sm:px-6 sm:pt-5 sm:pb-6">
           {mode === "view" ? (
             <Button
               variant="brand"

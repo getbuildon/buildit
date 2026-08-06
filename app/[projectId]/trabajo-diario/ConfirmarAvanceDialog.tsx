@@ -49,9 +49,9 @@ export function ConfirmarAvanceDialog({
 }: ConfirmarAvanceDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-[680px] gap-0 p-0">
-        <div className="border-b border-[#edeef0] px-6 pt-6 pb-5">
-          <AlertDialogTitle className="font-recoleta text-[24px] font-normal leading-[1.2] text-[#272a2d]">
+      <AlertDialogContent className="w-[calc(100vw-32px)] max-w-[680px] gap-0 p-0 sm:w-full">
+        <div className="border-b border-[#edeef0] px-4 pt-5 pb-4 sm:px-6 sm:pt-6 sm:pb-5">
+          <AlertDialogTitle className="font-recoleta text-[20px] font-normal leading-[1.2] text-[#272a2d] sm:text-[24px]">
             Confirmar registro de avance
           </AlertDialogTitle>
           <AlertDialogDescription className="mt-2 text-[14px] leading-[1.5] text-[#777b84]">
@@ -59,7 +59,7 @@ export function ConfirmarAvanceDialog({
           </AlertDialogDescription>
         </div>
 
-        <div className="flex flex-col gap-4 px-6 py-5">
+        <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5">
           <div className="rounded-[10px] bg-[#f5f6f7] px-4 py-3">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[14px] leading-[1.4]">
               <p>
@@ -77,7 +77,7 @@ export function ConfirmarAvanceDialog({
             {tasks.map((task) => (
               <div
                 key={task.id}
-                className="flex min-h-[52px] items-center justify-between gap-3 rounded-[10px] border border-[#edeef0] bg-white px-4 py-3"
+                className="flex min-h-[52px] flex-col gap-2 rounded-[10px] border border-[#edeef0] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[14px] text-[#272a2d]">{task.name}</p>
@@ -96,12 +96,14 @@ export function ConfirmarAvanceDialog({
                   ) : null}
                 </div>
                 {task.status === "pending" ? (
-                  <span className="shrink-0 text-[12px] font-medium text-[#777b84]">Sin Iniciar</span>
+                  <span className="self-start text-[12px] font-medium text-[#777b84] sm:shrink-0">
+                    Sin Iniciar
+                  </span>
                 ) : (
                   <span
                     className={cn(
                       CARGAR_AVANCE_BADGE_CLASSNAME,
-                      "shrink-0",
+                      "self-start sm:shrink-0",
                       CARGAR_AVANCE_BADGE_STYLES[task.status],
                     )}
                   >
@@ -115,7 +117,7 @@ export function ConfirmarAvanceDialog({
           {saveError ? <p className="text-[14px] text-[#641723]">{saveError}</p> : null}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 border-t border-[#edeef0] px-6 py-5">
+        <div className="grid grid-cols-1 gap-3 border-t border-[#edeef0] px-4 py-4 sm:grid-cols-2 sm:px-6 sm:py-5">
           <AlertDialogCancel className="mt-0 w-full sm:mt-0">
             Volver a editar
           </AlertDialogCancel>
