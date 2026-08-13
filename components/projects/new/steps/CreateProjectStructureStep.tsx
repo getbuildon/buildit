@@ -253,7 +253,7 @@ export function CreateProjectStructureStep({
 
       <div
         className="flex w-full flex-col gap-4 rounded-[10px] p-4"
-        style={{ backgroundColor: STRUCTURE_STEP_COLORS.unitRowBg }}
+        style={{ backgroundColor: STRUCTURE_STEP_COLORS.unitsSectionBg }}
       >
         <div className="flex flex-col gap-1">
           <h3 className="text-[14px] font-normal leading-5 text-[#18191b]">
@@ -396,11 +396,12 @@ function StructureFloorCard({
       data-new-item-id={floor.id}
       data-structure-floor-id={floor.id}
       className={cn(
-        "flex w-full flex-col gap-3 rounded-[10px] bg-white p-3",
+        "flex w-full flex-col gap-3 rounded-[10px] border bg-white p-3",
         newItemHighlightClass(isHighlighted),
       )}
       style={{
         maxWidth: STRUCTURE_STEP_LAYOUT.floorCardMaxWidth,
+        borderColor: STRUCTURE_STEP_COLORS.floorCardBorder,
         boxShadow: "0 0 7.5px rgba(0, 0, 0, 0.05)",
       }}
     >

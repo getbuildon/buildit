@@ -24,7 +24,12 @@ export const STRUCTURE_STEP_COLORS = {
   unitFieldText: "#43484e",
   floorInputBorder: "#edeef0",
   unitInputBorder: "#e2e8f0",
-  unitRowBg: "#fefcfb",
+  /** Contenedor “Unidades por Piso” — crema base del paso */
+  unitsSectionBg: "#fefcfb",
+  /** Fondo de cada fila de unidad — contraste cálido vs card blanca del piso */
+  unitRowBg: "#fff6f1",
+  /** Borde de la card de piso — misma gama que summaryBorder */
+  floorCardBorder: "#ffeae0",
   floorAction: "#321a10",
   delete: "#ce2c31",
   summaryBg: "#fff6f1",
