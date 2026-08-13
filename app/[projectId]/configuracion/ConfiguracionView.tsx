@@ -127,7 +127,7 @@ const basicDatePickerClassName = cn(basicInputClassName, "border-[#e2e8f0] text-
 const CONFIG_CARD_SHADOW = "0 0 10px rgba(243, 103, 31, 0.08)" as const
 
 const CONFIG_SAVE_FOOTER_ANIMATION_MS = 320
-const CONFIG_SAVE_FOOTER_HEIGHT = 88
+const CONFIG_SAVE_FOOTER_HEIGHT = 96
 const CONFIG_SAVE_FOOTER_SCROLL_GAP = 16
 
 function SettingsCard({
@@ -362,39 +362,30 @@ function ConfigSaveFooter({
         <section
           ref={footerRef}
           data-viewport-bottom-inset={visible ? "" : undefined}
-          className="pointer-events-auto w-full overflow-hidden rounded-t-[16px] border border-b-0 border-[#d8d9db] bg-[#edeef0] px-4 py-4 shadow-[0_-8px_24px_rgba(24,25,27,0.08)] sm:px-6"
+          className="pointer-events-auto w-full overflow-hidden rounded-t-[12px] border border-b-0 border-[#ffeae0] bg-[#fff6f1] px-[25px] py-[17px]"
         >
-          <div
-            className={cn(
-              "flex flex-col gap-3",
-              errorMessage
-                ? "sm:gap-3"
-                : "sm:flex-row sm:items-center sm:justify-between sm:gap-4",
-            )}
-          >
-            {errorMessage ? (
-              <p className="flex items-start gap-1.5 text-[13px] leading-5 text-[#b91c1c]">
-                <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                <span>{errorMessage}</span>
-              </p>
-            ) : (
-              <div className="min-w-0">
-                <p className="text-[13px] font-medium leading-4 text-[#272a2d]">
-                  Cambios sin guardar
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+            <div className="min-w-0 flex flex-col gap-0 leading-[1.4] text-[#111113]">
+              <p className="text-[16px] font-medium">Cambios sin guardar</p>
+              {errorMessage ? (
+                <p className="mt-1 flex items-start gap-1.5 text-[14px] font-normal text-[#b91c1c]">
+                  <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                  <span>{errorMessage}</span>
                 </p>
-                <p className="hidden text-[12px] leading-4 text-[#777b84] sm:block">
+              ) : (
+                <p className="text-[14px] font-normal">
                   Guardá para aplicar la configuración del proyecto
                 </p>
-              </div>
-            )}
+              )}
+            </div>
 
-            <div className="flex w-full shrink-0 flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+            <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onRequestDiscard}
                 disabled={saving}
-                className="h-11 w-full rounded-[10px] border-[#afb3ba] bg-white px-4 text-[14px] font-medium text-[#43484e] shadow-none hover:border-[#696e77] hover:bg-[#f4f5f6] hover:text-[#272a2d] sm:w-auto"
+                className="h-auto min-h-[44px] w-full rounded-[10px] border-[#696e77] bg-transparent px-4 py-3 text-[14px] font-normal leading-[1.4] text-[#363a3f] shadow-none hover:border-[#696e77] hover:bg-[#fff6f1] hover:text-[#272a2d] sm:w-auto"
               >
                 Descartar cambios
               </Button>
@@ -404,9 +395,9 @@ function ConfigSaveFooter({
                 size="brand"
                 onClick={onSave}
                 disabled={saving || disableSave}
-                className="h-11 w-full text-[14px] font-medium sm:w-auto sm:min-w-[168px]"
+                className="h-auto min-h-[44px] w-full gap-2 rounded-[10px] px-6 py-3 text-[14px] font-normal leading-[1.4] shadow-[0_0_10px_rgba(243,103,31,0.3)] sm:w-auto"
               >
-                <Check className="size-4" aria-hidden />
+                <Check className="size-4 shrink-0" aria-hidden />
                 {saving ? "Guardando..." : "Guardar cambios"}
               </Button>
             </div>
@@ -752,7 +743,22 @@ export function ConfiguracionView({
 
       if (!structureResult.ok) {
         setSaving(false)
-        setFeedback({ type: "error", message: structureResult.error })
+        const structureErrorsOnFailure = getStructureStepFieldErrors({
+          ...draftSnapshot!,
+          projectName: name,
+          location,
+          totalSurface,
+          startDate,
+          endDate,
+        })
+        if (hasStructureStepFieldErrors(structureErrorsOnFailure)) {
+          setStructureFieldErrors(structureErrorsOnFailure)
+          setStructureSectionOpen(true)
+          scrollToStructureFieldError(structureErrorsOnFailure)
+          setSaveDialogOpen(false)
+        } else {
+          setFeedback({ type: "error", message: structureResult.error })
+        }
         perf.finish(false)
         return false
       }

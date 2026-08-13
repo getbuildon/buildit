@@ -26,19 +26,44 @@ function getNamedRubroTasks(rubro: RubroItemDraft) {
   return rubro.tasks.filter((task) => task.name.trim())
 }
 
-function getFlatRubros(draft: CreateProjectDraft): FlatRubro[] {
+function getAllFlatRubros(draft: CreateProjectDraft): FlatRubro[] {
   return draft.groups.flatMap((group, groupIndex) =>
-    group.rubros.flatMap((rubro, rubroIndex) => {
-      if (getNamedRubroTasks(rubro).length === 0) return []
+    group.rubros.map((rubro, rubroIndex) => ({
+      rubro,
+      groupNumber: groupIndex + 1,
+      rubroNumber: rubroIndex + 1,
+    })),
+  )
+}
 
-      return [
-        {
-          rubro,
-          groupNumber: groupIndex + 1,
-          rubroNumber: rubroIndex + 1,
-        },
-      ]
-    }),
+function getFlatRubros(draft: CreateProjectDraft): FlatRubro[] {
+  return getAllFlatRubros(draft).filter(
+    ({ rubro }) => getNamedRubroTasks(rubro).length > 0,
+  )
+}
+
+function hasProjectRubros(draft: CreateProjectDraft): boolean {
+  return draft.groups.some((group) => group.rubros.length > 0)
+}
+
+function getFloorDisabledReason(floor: CreateProjectDraft["floors"][number]): string | null {
+  if (floor.units.length === 0) return "sin unidades funcionales"
+  return null
+}
+
+function getUnitDisabledReason(draft: CreateProjectDraft): string | null {
+  if (!hasProjectRubros(draft)) return "sin rubros"
+  return null
+}
+
+function getRubroDisabledReason(rubro: RubroItemDraft): string | null {
+  if (getNamedRubroTasks(rubro).length === 0) return "sin tareas"
+  return null
+}
+
+function DisabledReasonSuffix({ reason }: { reason: string }) {
+  return (
+    <span className="font-normal text-[#777b84]">{` (${reason})`}</span>
   )
 }
 
@@ -159,6 +184,8 @@ export function CreateProjectUnitTasksStep({
   const [expandedRubros, setExpandedRubros] = useState<Set<string>>(new Set())
 
   const flatRubros = getFlatRubros(draft)
+  const allFlatRubros = getAllFlatRubros(draft)
+  const unitDisabledReason = getUnitDisabledReason(draft)
   const exclusions = draft.unitTaskExclusions
 
   function toggleFloor(id: string) {
@@ -207,78 +234,101 @@ export function CreateProjectUnitTasksStep({
     )
   }
 
-  if (flatRubros.length === 0) {
-    return (
-      <p className="text-[14px] text-[#777b84]">
-        No hay rubros definidos. Revisá el paso de Rubros y Tareas.
-      </p>
-    )
-  }
+  const hasAssignableRubros = flatRubros.length > 0
 
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[14px] leading-[1.4] text-[#18191b]">
-        Todos los rubros y tareas fueron asignadas automáticamente a todos los
-        pisos y unidades funcionales. Revisá todas las unidades y quitá aquellos
-        rubros o tareas que no le correspondan.
+        {hasAssignableRubros
+          ? "Todos los rubros y tareas fueron asignadas automáticamente a todos los pisos y unidades funcionales. Revisá todas las unidades y quitá aquellos rubros o tareas que no le correspondan."
+          : "Completá la estructura del edificio y definí rubros con tareas para poder asignarlos por unidad."}
       </p>
 
       <div className="flex flex-col gap-0.5 rounded-[8px]">
         {draft.floors.map((floor) => {
-          const floorExpanded = expandedFloors.has(floor.id)
+          const floorDisabledReason = getFloorDisabledReason(floor)
+          const floorDisabled = floorDisabledReason !== null
+          const floorExpanded = !floorDisabled && expandedFloors.has(floor.id)
 
           return (
             <div
               key={floor.id}
-              className="flex flex-col rounded-[4px] bg-[rgba(237,238,240,0.3)]"
+              className={cn(
+                "flex flex-col rounded-[4px] bg-[rgba(237,238,240,0.3)]",
+                floorDisabled && "opacity-50",
+              )}
             >
               {/* Floor header */}
               <button
                 type="button"
+                disabled={floorDisabled}
                 onClick={() => toggleFloor(floor.id)}
-                className="flex items-center gap-2 px-3 py-2"
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 text-left",
+                  floorDisabled && "cursor-not-allowed",
+                )}
               >
                 <ChevronDown
                   className={cn(
                     "size-4 shrink-0 text-[#272a2d] transition-transform duration-300 ease-in-out",
                     !floorExpanded && "-rotate-90",
+                    floorDisabled && "opacity-60",
                   )}
                 />
                 <span className="text-[14px] font-medium leading-[1.4] text-[#272a2d]">
                   {floor.name}
+                  {floorDisabledReason ? (
+                    <DisabledReasonSuffix reason={floorDisabledReason} />
+                  ) : null}
                 </span>
               </button>
 
               {/* Units */}
               <AnimatedCollapsible open={floorExpanded}>
                 {floor.units.map((unit, unitIndex) => {
-                  const unitExpanded = expandedUnits.has(unit.id)
+                  const unitDisabled = unitDisabledReason !== null
+                  const unitExpanded =
+                    !unitDisabled && expandedUnits.has(unit.id)
                   const unitLabel = `${unit.type} ${unitIndex + 1}`
 
                   return (
-                    <div key={unit.id} className="flex flex-col">
+                    <div
+                      key={unit.id}
+                      className={cn("flex flex-col", unitDisabled && "opacity-50")}
+                    >
                       {/* Unit header */}
                       <button
                         type="button"
+                        disabled={unitDisabled}
                         onClick={() => toggleUnit(unit.id)}
-                        className="flex items-center gap-2 px-4 py-1"
+                        className={cn(
+                          "flex items-center gap-2 px-4 py-1 text-left",
+                          unitDisabled && "cursor-not-allowed",
+                        )}
                       >
                         <ChevronDown
                           className={cn(
                             "size-4 shrink-0 text-[#272a2d] transition-transform duration-300 ease-in-out",
                             !unitExpanded && "-rotate-90",
+                            unitDisabled && "opacity-60",
                           )}
                         />
-                        <span className="min-w-0 flex-1 text-left text-[14px] font-medium leading-[1.4] text-[#272a2d]">
+                        <span className="min-w-0 flex-1 text-[14px] font-medium leading-[1.4] text-[#272a2d]">
                           {unitLabel}
+                          {unitDisabledReason ? (
+                            <DisabledReasonSuffix reason={unitDisabledReason} />
+                          ) : null}
                         </span>
                       </button>
 
                       {/* Rubros */}
                       <AnimatedCollapsible open={unitExpanded}>
-                        {flatRubros.map(({ rubro, groupNumber, rubroNumber }) => {
+                        {allFlatRubros.map(({ rubro, groupNumber, rubroNumber }) => {
                           const rubroKey = `${unit.id}::${rubro.id}`
-                          const rubroExpanded = expandedRubros.has(rubroKey)
+                          const rubroDisabledReason = getRubroDisabledReason(rubro)
+                          const rubroDisabled = rubroDisabledReason !== null
+                          const rubroExpanded =
+                            !rubroDisabled && expandedRubros.has(rubroKey)
                           const rubroState = getRubroCheckboxState(
                             exclusions,
                             unit.id,
@@ -287,28 +337,40 @@ export function CreateProjectUnitTasksStep({
                           const rubroPrefix = `${groupNumber}.${rubroNumber}`
 
                           return (
-                            <div key={rubro.id}>
+                            <div
+                              key={rubro.id}
+                              className={cn(rubroDisabled && "opacity-50")}
+                            >
                               {/* Rubro row */}
                               <div className="flex items-center justify-between border-b-2 border-white pl-8 pr-3 py-1">
                                 <button
                                   type="button"
+                                  disabled={rubroDisabled}
                                   onClick={() =>
                                     toggleRubroExpanded(unit.id, rubro.id)
                                   }
-                                  className="flex min-w-0 flex-1 items-center gap-2"
+                                  className={cn(
+                                    "flex min-w-0 flex-1 items-center gap-2 text-left",
+                                    rubroDisabled && "cursor-not-allowed",
+                                  )}
                                 >
                                   <ChevronDown
                                     className={cn(
                                       "size-4 shrink-0 text-[#272a2d] transition-transform duration-300 ease-in-out",
                                       !rubroExpanded && "-rotate-90",
+                                      rubroDisabled && "opacity-60",
                                     )}
                                   />
                                   <span className="min-w-0 truncate text-[14px] font-medium leading-[1.4] text-[#272a2d]">
                                     {rubroPrefix}. {rubro.name}
+                                    {rubroDisabledReason ? (
+                                      <DisabledReasonSuffix reason={rubroDisabledReason} />
+                                    ) : null}
                                   </span>
                                 </button>
                                 <UnitCheckbox
                                   state={rubroState}
+                                  disabled={rubroDisabled}
                                   onToggle={() =>
                                     handleRubroToggle(unit.id, rubro, rubroState)
                                   }

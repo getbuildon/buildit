@@ -156,7 +156,11 @@ export function CreateProjectBasicInfoStep({
       </CreateProjectFormField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <CreateProjectFormField label="Fecha de Inicio" htmlFor="project-start">
+        <CreateProjectFormField
+          label="Fecha de Inicio *"
+          htmlFor="project-start"
+          error={fieldErrors.startDate}
+        >
           <DatePicker
             id="project-start"
             value={startDate}
@@ -168,7 +172,7 @@ export function CreateProjectBasicInfoStep({
         </CreateProjectFormField>
 
         <CreateProjectFormField
-          label="Fecha de finalización estimada"
+          label="Fecha de finalización estimada *"
           htmlFor="project-end"
           error={fieldErrors.endDate}
         >

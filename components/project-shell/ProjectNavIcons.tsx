@@ -4,10 +4,12 @@ import { cn } from "@/lib/utils"
 
 export type ProjectNavIconId =
   | "dashboard"
+  | "mi-unidad"
   | "trabajo-diario"
   | "certificaciones"
   | "equipo"
   | "clientes"
+  | "portal-clientes"
   | "configuracion"
 
 type ProjectNavIconProps = {
@@ -70,6 +72,27 @@ function DashboardIcon({ className }: { className?: string }) {
         d="M5.94817 10.5745H2.64364C2.27863 10.5745 1.98274 10.8704 1.98274 11.2354V13.2182C1.98274 13.5832 2.27863 13.8791 2.64364 13.8791H5.94817C6.31318 13.8791 6.60908 13.5832 6.60908 13.2182V11.2354C6.60908 10.8704 6.31318 10.5745 5.94817 10.5745Z"
         stroke="currentColor"
         strokeWidth={STROKE.md}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </NavIconSvg>
+  )
+}
+
+function MiUnidadIcon({ className }: { className?: string }) {
+  return (
+    <NavIconSvg viewBox="0 0 16 16" className={className}>
+      <path
+        d="M2 6.66667L8 1.33333L14 6.66667V13.3333C14 13.687 13.8595 14.0261 13.6095 14.2761C13.3594 14.5262 13.0203 14.6667 12.6667 14.6667H3.33333C2.97971 14.6667 2.64057 14.5262 2.39052 14.2761C2.14048 14.0261 2 13.687 2 13.3333V6.66667Z"
+        stroke="currentColor"
+        strokeWidth={STROKE.sm}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6 14.6667V8H10V14.6667"
+        stroke="currentColor"
+        strokeWidth={STROKE.sm}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -203,6 +226,28 @@ function ClientesIcon({ className }: { className?: string }) {
   )
 }
 
+function PortalClientesIcon({ className }: { className?: string }) {
+  return (
+    <NavIconSvg viewBox="0 0 24 24" className={className}>
+      <path
+        d="M4 11a9 9 0 0 1 9 9"
+        stroke="currentColor"
+        strokeWidth={STROKE.sm}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 4a16 16 0 0 1 16 16"
+        stroke="currentColor"
+        strokeWidth={STROKE.sm}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="5" cy="19" r="1" fill="currentColor" />
+    </NavIconSvg>
+  )
+}
+
 function ConfiguracionIcon({ className }: { className?: string }) {
   return (
     <NavIconSvg viewBox="0 0 15.8617 15.8617" className={className}>
@@ -229,10 +274,12 @@ const ICONS: Record<
   ({ className }: { className?: string }) => ReactElement
 > = {
   dashboard: DashboardIcon,
+  "mi-unidad": MiUnidadIcon,
   "trabajo-diario": TrabajoDiarioIcon,
   certificaciones: CertificacionesIcon,
   equipo: EquipoIcon,
   clientes: ClientesIcon,
+  "portal-clientes": PortalClientesIcon,
   configuracion: ConfiguracionIcon,
 }
 

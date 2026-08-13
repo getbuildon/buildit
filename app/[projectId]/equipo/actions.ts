@@ -11,8 +11,9 @@ import { getLandingLeadNotificationRecipients } from "@/lib/email/parseCommaSepa
 import { renderLandingLeadEmail } from "@/lib/email/renderLandingLeadEmail"
 import { getPublicEmailSendError, sendTransactionalEmail } from "@/lib/email/sendTransactionalEmail"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
-import { PROJECT_ROLE_SLUG } from "@/lib/projects/catalogSlugs"
+import { PROJECT_ROLE_SLUG, USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
 import type { ProjectTeamRole, ProjectUserType } from "@/lib/projects/createProjectDraft"
+import { mapTeamMemberUserType, getProjectUserTypeDisplayLabel } from "@/lib/projects/projectUserTypeDisplay"
 import {
   addExistingUserToProject,
   buildInvitationInsertExtras,
@@ -28,6 +29,7 @@ export type ProjectTeamMember = {
   lastName: string
   email: string
   roleLabel: string
+  userType: ProjectUserType | null
   userTypeLabel: string | null
   avatarUrl: string | null
   isYou: boolean
@@ -39,6 +41,7 @@ export type ProjectTeamInvitation = {
   lastName: string
   email: string
   roleLabel: string
+  userType: ProjectUserType | null
   userTypeLabel: string | null
 }
 
@@ -115,6 +118,7 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
       const profile = profileById.get(m.user_id)
       const role = roleById.get(m.role_id)
       const userType = m.user_type_id != null ? userTypeById.get(m.user_type_id) : null
+      const mappedUserType = mapTeamMemberUserType(userType)
       return {
         memberId: m.id,
         userId: m.user_id,
@@ -122,7 +126,8 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
         lastName: profile?.last_name ?? "",
         email: profile?.email ?? "",
         roleLabel: role?.label ?? "",
-        userTypeLabel: userType?.label ?? null,
+        userType: mappedUserType.userType,
+        userTypeLabel: mappedUserType.userTypeLabel,
         avatarUrl: profile?.avatar_url ?? null,
         isYou: m.user_id === user.id,
       }
@@ -133,13 +138,15 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
     .map((i) => {
       const role = roleById.get(i.role_id)
       const userType = i.user_type_id != null ? userTypeById.get(i.user_type_id) : null
+      const mappedUserType = mapTeamMemberUserType(userType)
       return {
         invitationId: i.id,
         firstName: i.first_name,
         lastName: i.last_name,
         email: i.email,
         roleLabel: role?.label ?? "",
-        userTypeLabel: userType?.label ?? null,
+        userType: mappedUserType.userType,
+        userTypeLabel: mappedUserType.userTypeLabel,
       }
     })
 
@@ -239,7 +246,8 @@ export async function addTeamMember(
         lastName: profileRow?.last_name ?? data.lastName.trim(),
         email: profileRow?.email ?? normalizedEmail,
         roleLabel: roleRes.data?.label ?? data.role,
-        userTypeLabel: userTypeRes.data?.label ?? data.userType,
+        userType: data.userType,
+        userTypeLabel: getProjectUserTypeDisplayLabel(data.userType),
         avatarUrl: profileRow?.avatar_url ?? null,
         isYou: existingProfile.id === user.id,
       },
@@ -300,7 +308,8 @@ export async function addTeamMember(
       lastName: invitation.last_name,
       email: invitation.email,
       roleLabel: roleRes.data?.label ?? "",
-      userTypeLabel: userTypeRes.data?.label ?? null,
+      userType: data.userType,
+      userTypeLabel: getProjectUserTypeDisplayLabel(data.userType),
     },
   }
 }
@@ -317,13 +326,33 @@ export async function removeTeamMember(
 
   const { data: memberRow } = await supabase
     .from("project_members")
-    .select("user_id")
+    .select("user_id, user_type_id")
     .eq("id", memberId)
     .eq("project_id", projectId)
     .single()
 
-  if (memberRow?.user_id === user.id) {
+  if (!memberRow) {
+    return { ok: false, error: "Miembro no encontrado." }
+  }
+
+  if (memberRow.user_id === user.id) {
     return { ok: false, error: "No podés eliminar tu propio acceso." }
+  }
+
+  if (memberRow.user_type_id) {
+    const admin = createAdminClient()
+    const { data: userTypeRow } = await admin
+      .from("user_types")
+      .select("slug")
+      .eq("id", memberRow.user_type_id)
+      .maybeSingle()
+
+    if (userTypeRow?.slug === USER_TYPE_SLUG.Owner) {
+      return {
+        ok: false,
+        error: "No se puede eliminar al propietario del proyecto.",
+      }
+    }
   }
 
   const { error } = await supabase
@@ -341,7 +370,7 @@ export async function updateTeamMember(
   projectId: string,
   data: { userType: ProjectUserType; role: ProjectTeamRole },
 ): Promise<
-  | { ok: true; userTypeLabel: string | null; roleLabel: string }
+  | { ok: true; userType: ProjectUserType; userTypeLabel: string | null; roleLabel: string }
   | { ok: false; error: string }
 > {
   const permission = await checkProjectPermission(projectId, "editPermissions")
@@ -378,15 +407,15 @@ export async function updateTeamMember(
 
   if (error) return { ok: false, error: error.message }
 
-  const [roleRes, userTypeRes] = await Promise.all([
+  const [roleRes] = await Promise.all([
     admin.from("project_roles").select("label").eq("id", catalog.roleIds[data.role]).single(),
-    admin.from("user_types").select("label").eq("id", catalog.userTypeIds[data.userType]).single(),
   ])
 
   return {
     ok: true,
+    userType: data.userType,
     roleLabel: roleRes.data?.label ?? data.role,
-    userTypeLabel: userTypeRes.data?.label ?? data.userType,
+    userTypeLabel: getProjectUserTypeDisplayLabel(data.userType),
   }
 }
 

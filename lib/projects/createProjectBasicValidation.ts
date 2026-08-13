@@ -59,6 +59,7 @@ export function getConfigBasicsFieldErrors(input: {
 export type BasicInfoFieldErrors = {
   projectName?: string
   totalSurface?: string
+  startDate?: string
   endDate?: string
 }
 
@@ -73,9 +74,14 @@ export function getBasicInfoFieldErrors(draft: CreateProjectDraft): BasicInfoFie
     errors.totalSurface = "La superficie total es obligatoria."
   }
 
-  if (
+  if (!draft.startDate.trim()) {
+    errors.startDate = "La fecha de inicio es obligatoria."
+  }
+
+  if (!draft.endDate.trim()) {
+    errors.endDate = "La fecha de finalización es obligatoria."
+  } else if (
     draft.startDate.trim() &&
-    draft.endDate.trim() &&
     !isEndDateAfterStartDate(draft.startDate, draft.endDate)
   ) {
     errors.endDate = "La fecha de finalización debe ser posterior a la de inicio."
@@ -86,5 +92,11 @@ export function getBasicInfoFieldErrors(draft: CreateProjectDraft): BasicInfoFie
 
 export function validateBasicInfoStep(draft: CreateProjectDraft): string | null {
   const errors = getBasicInfoFieldErrors(draft)
-  return errors.projectName ?? errors.totalSurface ?? errors.endDate ?? null
+  return (
+    errors.projectName ??
+    errors.totalSurface ??
+    errors.startDate ??
+    errors.endDate ??
+    null
+  )
 }

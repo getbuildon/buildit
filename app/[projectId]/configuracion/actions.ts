@@ -23,6 +23,7 @@ import {
   type StructureFloorSaveInput,
 } from "@/lib/projects/syncProjectStructure"
 import { syncUnitTaskAssignments } from "@/lib/projects/syncUnitTaskAssignments"
+import { getConfigBasicsFieldErrors } from "@/lib/projects/createProjectBasicValidation"
 
 export type ProjectBasics = {
   id: string
@@ -431,6 +432,21 @@ export async function updateProjectBasics(
   const name = input.name.trim()
   if (!name) {
     return { ok: false, error: "El nombre del proyecto es obligatorio." }
+  }
+
+  const basicsErrors = getConfigBasicsFieldErrors({
+    name,
+    location: input.location,
+    startDate: input.startDate,
+    endDate: input.endDate,
+  })
+  const firstBasicsError =
+    basicsErrors.projectName ??
+    basicsErrors.location ??
+    basicsErrors.startDate ??
+    basicsErrors.endDate
+  if (firstBasicsError) {
+    return { ok: false, error: firstBasicsError }
   }
 
   const permission = await checkProjectPermission(id, "configureProject")

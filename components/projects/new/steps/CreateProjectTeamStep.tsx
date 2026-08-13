@@ -17,7 +17,6 @@ import {
   createTeamMemberDraft,
   getTeamRoleDisplay,
   teamMemberFullName,
-  PROJECT_USER_TYPES,
   USER_TYPE_ROLES,
   type AvailableTeamMember,
   type CreateProjectDraft,
@@ -25,6 +24,10 @@ import {
   type ProjectUserType,
   type TeamMemberDraft,
 } from "@/lib/projects/createProjectDraft"
+import {
+  getProjectUserTypeDisplayLabel,
+  PROJECT_TEAM_SELECTABLE_USER_TYPES,
+} from "@/lib/projects/projectUserTypeDisplay"
 
 type CreateProjectTeamStepProps = {
   draft: CreateProjectDraft
@@ -215,7 +218,7 @@ export function CreateProjectTeamStep({
               id="member-user-type"
               value={userType}
               placeholder="Tipo de usuario"
-              options={PROJECT_USER_TYPES}
+              options={PROJECT_TEAM_SELECTABLE_USER_TYPES}
               onChange={(value) => {
                 setUserType(value as ProjectUserType)
                 setRole("")
@@ -383,6 +386,14 @@ export function CreateProjectTeamStep({
                       {member.email}
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {getProjectUserTypeDisplayLabel(member.userType) ? (
+                        <span
+                          className="rounded-[12px] px-2 py-0.5 text-[10px] font-medium leading-[10px]"
+                          style={{ backgroundColor: "#ffeae0", color: "#321a10" }}
+                        >
+                          {getProjectUserTypeDisplayLabel(member.userType)}
+                        </span>
+                      ) : null}
                       <span
                         className="rounded-[12px] px-2 py-0.5 text-[10px] font-medium leading-[10px]"
                         style={{ backgroundColor: "#ffc9ae", color: "#321a10" }}

@@ -396,7 +396,7 @@ function StructureFloorCard({
       data-new-item-id={floor.id}
       data-structure-floor-id={floor.id}
       className={cn(
-        "flex w-full flex-col gap-3 rounded-[10px] border bg-white p-3",
+        "flex w-full flex-col rounded-[10px] border bg-white p-3",
         newItemHighlightClass(isHighlighted),
       )}
       style={{
@@ -406,7 +406,7 @@ function StructureFloorCard({
       }}
     >
       <div
-        className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:gap-2.5"
+        className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:gap-2.5"
       >
         <div className="grid grid-cols-1 gap-2.5 sm:flex sm:min-w-0 sm:flex-1 sm:items-start sm:gap-2.5">
         <CreateProjectFormField
@@ -416,7 +416,7 @@ function StructureFloorCard({
           labelClassName={structureLabelClassName}
           labelStyle={structureFloorLabelStyle}
           error={nameError}
-          errorDisplay="inline"
+          errorDisplay="tooltip"
         >
           <Input
             id={`floor-name-${floor.id}`}
@@ -458,7 +458,6 @@ function StructureFloorCard({
             }}
             aria-invalid={Boolean(identifierError)}
           />
-          <div className="min-h-4" aria-hidden />
         </div>
 
         <CreateProjectFormField
@@ -467,7 +466,7 @@ function StructureFloorCard({
           className="min-w-0 flex-1 gap-1"
           labelClassName={structureLabelClassName}
           labelStyle={structureFloorLabelStyle}
-          errorDisplay="inline"
+          errorDisplay="tooltip"
         >
           <Input
             id={`floor-level-${floor.id}`}
@@ -480,7 +479,7 @@ function StructureFloorCard({
         </CreateProjectFormField>
         </div>
 
-        <div className="flex shrink-0 items-center gap-4 self-start sm:mt-5 sm:px-6">
+        <div className="flex shrink-0 items-center gap-4 sm:px-6">
           <button
             type="button"
             onClick={onAddUnit}
@@ -507,7 +506,7 @@ function StructureFloorCard({
           No hay unidades configuradas
         </p>
       ) : (
-        <div className="flex w-full flex-col gap-2">
+        <div className="mt-3 flex w-full flex-col gap-2">
           {floor.units.map((unit) => (
             <StructureUnitRow
               key={unit.id}

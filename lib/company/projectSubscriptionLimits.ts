@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
+import { USER_TYPE_SLUG, PROJECT_ROLE_SLUG } from "@/lib/projects/catalogSlugs"
+import { findProfileByEmail } from "@/lib/invitations/projectInvitationService"
+import { createAdminClient } from "@/utils/supabase/admin"
 import type { ProjectUserType } from "@/lib/projects/createProjectDraft"
 import type { ProjectSeatBucket, ProjectSeatLimits, ProjectSeatUsage, TeamSeatSummary, ClientSeatSummary, ProjectPlanSurfaceLimit } from "@/lib/company/subscriptionTypes"
 
@@ -46,7 +48,7 @@ export function formatSubscriptionLimitError(
 }
 
 export function getUserTypeLimitDisplayLabel(userType: ProjectUserType): string {
-  if (userType === "Owner") return "Owner"
+  if (userType === "Owner") return "Admin"
   return userType
 }
 
@@ -384,19 +386,94 @@ export function formatClientSeatSummarySubtitle(summary: ClientSeatSummary): str
   return `${summary.usage}/${summary.limit} Clientes en este proyecto`
 }
 
+/** Usuarios con acceso de cliente: unidades asignadas + invitaciones de cliente pendientes. */
+export async function loadProjectClientSeatUsageCount(
+  supabase: SupabaseClient,
+  projectId: string,
+): Promise<number> {
+  const admin = createAdminClient()
+
+  const { data: units, error: unitsError } = await admin
+    .from("project_units")
+    .select("id")
+    .eq("project_id", projectId)
+
+  if (unitsError) throw unitsError
+
+  const unitIds = (units ?? []).map((unit) => unit.id)
+  const activeUserIds = new Set<string>()
+
+  if (unitIds.length > 0) {
+    const { data: assignments, error: assignmentsError } = await admin
+      .from("unit_clients")
+      .select("user_id")
+      .in("unit_id", unitIds)
+      .eq("status", "active")
+
+    if (assignmentsError) throw assignmentsError
+
+    for (const row of assignments ?? []) {
+      activeUserIds.add(row.user_id)
+    }
+  }
+
+  const { data: invitations, error: invitationsError } = await admin
+    .from("project_invitations")
+    .select("email, project_roles ( slug )")
+    .eq("project_id", projectId)
+    .eq("status", "pending")
+
+  if (invitationsError) throw invitationsError
+
+  let pendingClientInvites = 0
+  for (const invitation of invitations ?? []) {
+    const roleRelation = invitation.project_roles as
+      | { slug: string }
+      | { slug: string }[]
+      | null
+    const roleSlug = Array.isArray(roleRelation)
+      ? roleRelation[0]?.slug
+      : roleRelation?.slug
+    if (roleSlug !== PROJECT_ROLE_SLUG.Cliente) continue
+
+    const profile = await findProfileByEmail(admin, invitation.email)
+    if (profile && activeUserIds.has(profile.id)) continue
+
+    pendingClientInvites += 1
+  }
+
+  return activeUserIds.size + pendingClientInvites
+}
+
+export async function assertCanAddClientAccess(
+  supabase: SupabaseClient,
+  projectId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const limits = await loadProjectSeatLimits(supabase, projectId)
+  if (!limits) return { ok: true }
+
+  const usage = await loadProjectClientSeatUsageCount(supabase, projectId)
+  if (usage >= limits.clients) {
+    return {
+      ok: false,
+      error: formatSubscriptionLimitError("clients", limits.clients),
+    }
+  }
+
+  return { ok: true }
+}
+
 export async function loadClientSeatSummary(
   supabase: SupabaseClient,
   projectId: string,
 ): Promise<ClientSeatSummary | null> {
-  const [limits, usage] = await Promise.all([
-    loadProjectSeatLimits(supabase, projectId),
-    loadProjectSeatUsage(supabase, projectId),
-  ])
-
+  const limits = await loadProjectSeatLimits(supabase, projectId)
   if (!limits) return null
 
+  const usage = await loadProjectClientSeatUsageCount(supabase, projectId)
+
   return {
-    usage: usage.clients,
+    usage,
     limit: limits.clients,
   }
 }

@@ -196,7 +196,9 @@ export function isNavSegmentAllowed(
 ): boolean {
   switch (segment) {
     case "":
-      return hasProjectPermission(permissions, "viewDashboard") || permissions.clientPortal === true
+      return hasStrictProjectPermission(permissions, "viewDashboard")
+    case "mi-unidad":
+      return permissions.clientPortal === true
     case "trabajo-diario":
       return hasProjectPermission(permissions, "loadProgress")
     case "certificaciones":
@@ -206,6 +208,8 @@ export function isNavSegmentAllowed(
     case "clientes":
       return hasProjectPermission(permissions, "manageClients")
     case "configuracion":
+      return hasProjectPermission(permissions, "configureProject")
+    case "portal-clientes":
       return hasProjectPermission(permissions, "configureProject")
     default:
       return hasProjectPermission(permissions, "viewDashboard")

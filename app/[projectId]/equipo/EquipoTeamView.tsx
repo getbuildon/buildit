@@ -21,13 +21,6 @@ import {
 } from "@/components/ui/dialog"
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { useToast } from "@/components/ui/toast"
 import {
@@ -42,11 +35,18 @@ import {
 } from "./actions"
 import { TeamSeatSummarySubtitle } from "@/components/team/TeamSeatSummarySubtitle"
 import { TeamSeatLimitBanner } from "@/components/team/TeamSeatLimitBanner"
+import { TeamRoleSelect } from "@/components/team/TeamRoleSelect"
 import { RequestPlanUpgradeModal } from "@/components/team/RequestPlanUpgradeModal"
 import type { TeamSeatSummary } from "@/lib/company/subscriptionTypes"
 import { isUserTypeAtSeatLimit } from "@/lib/company/projectSubscriptionLimits"
 import {
-  PROJECT_USER_TYPES,
+  PROJECT_TEAM_SELECTABLE_USER_TYPES,
+  decodeTeamRoleSelection,
+  encodeTeamRoleSelection,
+  getProjectUserTypeForTeamSelect,
+  isProtectedProjectOwnerMember,
+} from "@/lib/projects/projectUserTypeDisplay"
+import {
   USER_TYPE_ROLES,
   type ProjectTeamRole,
   type ProjectUserType,
@@ -114,50 +114,6 @@ function MemberAvatar({
   )
 }
 
-function FormSelect({
-  id,
-  value,
-  placeholder,
-  options,
-  disabled,
-  hasError,
-  onChange,
-}: {
-  id: string
-  value: string
-  placeholder: string
-  options: readonly string[]
-  disabled?: boolean
-  hasError?: boolean
-  onChange: (value: string) => void
-}) {
-  return (
-    <Select
-      value={value || undefined}
-      onValueChange={onChange}
-      disabled={disabled}
-    >
-      <SelectTrigger
-        id={id}
-        aria-label={placeholder}
-        className={cn(
-          formSelectTriggerClassName,
-          hasError && "border-[#eb8e90] focus:border-[#eb8e90]",
-        )}
-      >
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent position="popper">
-        {options.map((option) => (
-          <SelectItem key={option} value={option}>
-            {option}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
-
 function EditMemberDialog({
   member,
   open,
@@ -176,33 +132,35 @@ function EditMemberDialog({
   seatSummary: TeamSeatSummary | null
   onRequestUpgrade: (userType: ProjectUserType) => void
 }) {
-  const [editUserType, setEditUserType] = useState<ProjectUserType>(PROJECT_USER_TYPES[0])
-  const [editRole, setEditRole] = useState<ProjectTeamRole>(
-    USER_TYPE_ROLES[PROJECT_USER_TYPES[0]][0],
-  )
+  const [editRoleSelection, setEditRoleSelection] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [editError, setEditError] = useState("")
+
+  const editSelection = decodeTeamRoleSelection(editRoleSelection)
+  const editUserType = editSelection?.userType ?? null
+  const editRole = editSelection?.role ?? null
 
   useEffect(() => {
     if (!member || !open) return
 
-    const nextUserType = (PROJECT_USER_TYPES.find((t) => t === member.userTypeLabel) ??
-      PROJECT_USER_TYPES[0]) as ProjectUserType
+    const nextUserType = getProjectUserTypeForTeamSelect(
+      member.userType ?? PROJECT_TEAM_SELECTABLE_USER_TYPES[0],
+    )
     const nextRole = USER_TYPE_ROLES[nextUserType].find((r) => r === member.roleLabel)
       ? (member.roleLabel as ProjectTeamRole)
       : USER_TYPE_ROLES[nextUserType][0]
 
-    setEditUserType(nextUserType)
-    setEditRole(nextRole)
+    setEditRoleSelection(encodeTeamRoleSelection(nextUserType, nextRole))
     setEditError("")
     setIsSaving(false)
   }, [member, open])
 
   const handleSave = async () => {
-    if (!member) return
+    if (!member || !editUserType || !editRole) return
 
-    const currentUserType = (PROJECT_USER_TYPES.find((t) => t === member.userTypeLabel) ??
-      PROJECT_USER_TYPES[0]) as ProjectUserType
+    const currentUserType = getProjectUserTypeForTeamSelect(
+      member.userType ?? PROJECT_TEAM_SELECTABLE_USER_TYPES[0],
+    )
     const currentRole = USER_TYPE_ROLES[currentUserType].find((r) => r === member.roleLabel)
       ? (member.roleLabel as ProjectTeamRole)
       : USER_TYPE_ROLES[currentUserType][0]
@@ -232,9 +190,11 @@ function EditMemberDialog({
 
   if (!member) return null
 
-  const currentUserType = (PROJECT_USER_TYPES.find((t) => t === member.userTypeLabel) ??
-    PROJECT_USER_TYPES[0]) as ProjectUserType
+  const currentUserType = getProjectUserTypeForTeamSelect(
+    member.userType ?? PROJECT_TEAM_SELECTABLE_USER_TYPES[0],
+  )
   const isEditTypeAtLimit =
+    editUserType != null &&
     isUserTypeAtSeatLimit(seatSummary, editUserType) &&
     editUserType !== currentUserType
 
@@ -251,8 +211,7 @@ function EditMemberDialog({
               Editar miembro
             </DialogTitle>
             <DialogDescription className={FORM_MODAL_DIALOG.description}>
-              Actualizá el tipo de usuario y el rol de {member.firstName}{" "}
-              {member.lastName}.
+              Actualizá el rol de {member.firstName} {member.lastName}.
             </DialogDescription>
           </div>
 
@@ -267,49 +226,27 @@ function EditMemberDialog({
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="edit-member-user-type"
-                  className="text-[12px] font-medium leading-4 text-[#43484e]"
-                >
-                  Tipo de usuario
-                </label>
-                <FormSelect
-                  id="edit-member-user-type"
-                  value={editUserType}
-                  placeholder="Tipo de usuario"
-                  options={PROJECT_USER_TYPES}
-                  hasError={isEditTypeAtLimit}
-                  onChange={(v) => {
-                    const nextType = v as ProjectUserType
-                    setEditUserType(nextType)
-                    setEditRole(USER_TYPE_ROLES[nextType][0])
-                    if (editError) setEditError("")
-                  }}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="edit-member-role"
-                  className="text-[12px] font-medium leading-4 text-[#43484e]"
-                >
-                  Rol
-                </label>
-                <FormSelect
-                  id="edit-member-role"
-                  value={editRole}
-                  placeholder="Rol"
-                  options={USER_TYPE_ROLES[editUserType]}
-                  onChange={(v) => {
-                    setEditRole(v as ProjectTeamRole)
-                    if (editError) setEditError("")
-                  }}
-                />
-              </div>
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="edit-member-role"
+                className="text-[12px] font-medium leading-4 text-[#43484e]"
+              >
+                Rol
+              </label>
+              <TeamRoleSelect
+                id="edit-member-role"
+                value={editRoleSelection}
+                placeholder="Rol"
+                triggerClassName={formSelectTriggerClassName}
+                hasError={isEditTypeAtLimit}
+                onChange={(value) => {
+                  setEditRoleSelection(value)
+                  if (editError) setEditError("")
+                }}
+              />
             </div>
 
-            {isEditTypeAtLimit ? (
+            {isEditTypeAtLimit && editUserType ? (
               <TeamSeatLimitBanner
                 userType={editUserType}
                 onUpgradeClick={() => onRequestUpgrade(editUserType)}
@@ -568,8 +505,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
   const [showForm, setShowForm] = useState(false)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
-  const [userType, setUserType] = useState<ProjectUserType | "">("")
-  const [role, setRole] = useState<ProjectTeamRole | "">("")
+  const [roleSelection, setRoleSelection] = useState("")
   const [email, setEmail] = useState("")
   const [formError, setFormError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -595,6 +531,9 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
     ...pendingInvitations.map((i) => i.email.toLowerCase()),
   ])
 
+  const selectedRole = decodeTeamRoleSelection(roleSelection)
+  const selectedUserType = selectedRole?.userType ?? ""
+
   const handleAddMember = async () => {
     const trimmedFirst = firstName.trim()
     const trimmedLast = lastName.trim()
@@ -602,8 +541,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
 
     if (!trimmedFirst) { setFormError("Ingresá el nombre."); return }
     if (!trimmedLast) { setFormError("Ingresá el apellido."); return }
-    if (!userType) { setFormError("Seleccioná el tipo de usuario."); return }
-    if (!role) { setFormError("Seleccioná el rol."); return }
+    if (!selectedRole) { setFormError("Seleccioná el rol."); return }
     if (!trimmedEmail || !EMAIL_PATTERN.test(trimmedEmail)) {
       setFormError("Ingresá un correo electrónico válido.")
       return
@@ -620,8 +558,8 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       firstName: trimmedFirst,
       lastName: trimmedLast,
       email: trimmedEmail,
-      userType,
-      role,
+      userType: selectedRole.userType,
+      role: selectedRole.role,
     })
 
     setIsSubmitting(false)
@@ -643,8 +581,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
     setFirstName("")
     setLastName("")
     setEmail("")
-    setUserType("")
-    setRole("")
+    setRoleSelection("")
     setShowForm(false)
   }
 
@@ -688,6 +625,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
           m.memberId === memberId
             ? {
                 ...m,
+                userType: result.userType,
                 userTypeLabel: result.userTypeLabel,
                 roleLabel: result.roleLabel,
               }
@@ -736,7 +674,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       ? members.find((member) => member.memberId === removingMemberId) ?? null
       : null
 
-  const isSelectedTypeAtLimit = isUserTypeAtSeatLimit(seatSummary, userType)
+  const isSelectedTypeAtLimit = isUserTypeAtSeatLimit(seatSummary, selectedUserType)
 
   const openUpgradeModal = (nextUserType: ProjectUserType) => {
     setUpgradeModalUserType(nextUserType)
@@ -792,7 +730,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
           style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
         >
           <h2 className="text-[18px] font-normal leading-7 text-[#272a2d] sm:text-[20px]">Nuevo miembro</h2>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <Input
               value={firstName}
               onChange={(e) => {
@@ -813,26 +751,14 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
               className={formInputClassName}
               style={formInputStyle}
             />
-            <FormSelect
-              id="member-user-type"
-              value={userType}
-              placeholder="Tipo de usuario"
-              options={PROJECT_USER_TYPES}
-              hasError={isSelectedTypeAtLimit}
-              onChange={(v) => {
-                setUserType(v as ProjectUserType)
-                setRole("")
-                if (formError) setFormError("")
-              }}
-            />
-            <FormSelect
+            <TeamRoleSelect
               id="member-role"
-              value={role}
+              value={roleSelection}
               placeholder="Rol"
-              options={userType ? USER_TYPE_ROLES[userType] : []}
-              disabled={!userType}
-              onChange={(v) => {
-                setRole(v as ProjectTeamRole)
+              triggerClassName={formSelectTriggerClassName}
+              hasError={isSelectedTypeAtLimit}
+              onChange={(value) => {
+                setRoleSelection(value)
                 if (formError) setFormError("")
               }}
             />
@@ -866,10 +792,10 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
               {isSubmitting ? "Invitando..." : "Agregar miembro"}
             </Button>
           </div>
-          {isSelectedTypeAtLimit && userType ? (
+          {isSelectedTypeAtLimit && selectedUserType ? (
             <TeamSeatLimitBanner
-              userType={userType}
-              onUpgradeClick={() => openUpgradeModal(userType)}
+              userType={selectedUserType}
+              onUpgradeClick={() => openUpgradeModal(selectedUserType)}
             />
           ) : null}
           {formError ? (
@@ -910,8 +836,16 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
               <MemberRow
                 key={member.memberId}
                 member={member}
-                canEdit={canEditPermissions && !member.isYou}
-                canRemove={canEditPermissions && !member.isYou}
+                canEdit={
+                  canEditPermissions &&
+                  !member.isYou &&
+                  !isProtectedProjectOwnerMember(member.userType)
+                }
+                canRemove={
+                  canEditPermissions &&
+                  !member.isYou &&
+                  !isProtectedProjectOwnerMember(member.userType)
+                }
                 onEdit={() => setEditingMemberId(member.memberId)}
                 onRemove={() => {
                   setRemovingMemberId(member.memberId)

@@ -21,6 +21,66 @@ export function hasUnitSquareMetersValue(value: string): boolean {
   return Number.isFinite(parsed) && parsed > 0
 }
 
+const STRUCTURE_ID_DUPLICATE_MESSAGE = "Este ID ya está en uso en el proyecto."
+
+function normalizeStructureId(value: string): string {
+  return value.trim().toUpperCase()
+}
+
+type StructureIdUsage = {
+  floorId: string
+  unitId?: string
+}
+
+function collectStructureIdUsages(draft: CreateProjectDraft): Map<string, StructureIdUsage[]> {
+  const usages = new Map<string, StructureIdUsage[]>()
+
+  const register = (rawValue: string, usage: StructureIdUsage) => {
+    const key = normalizeStructureId(rawValue)
+    if (!key) return
+
+    const current = usages.get(key) ?? []
+    current.push(usage)
+    usages.set(key, current)
+  }
+
+  for (const floor of draft.floors) {
+    register(floor.identifier, { floorId: floor.id })
+
+    for (const unit of floor.units) {
+      register(unit.code, { floorId: floor.id, unitId: unit.id })
+    }
+  }
+
+  return usages
+}
+
+function applyDuplicateStructureIdErrors(
+  draft: CreateProjectDraft,
+  errors: StructureStepFieldErrors,
+): void {
+  for (const entries of collectStructureIdUsages(draft).values()) {
+    if (entries.length <= 1) continue
+
+    for (const entry of entries) {
+      const floorErrors = errors[entry.floorId] ?? {}
+
+      if (entry.unitId) {
+        const unitErrors = floorErrors.unitErrors ?? {}
+        unitErrors[entry.unitId] = {
+          ...unitErrors[entry.unitId],
+          code: STRUCTURE_ID_DUPLICATE_MESSAGE,
+        }
+        floorErrors.unitErrors = unitErrors
+      } else {
+        floorErrors.identifier = STRUCTURE_ID_DUPLICATE_MESSAGE
+      }
+
+      errors[entry.floorId] = floorErrors
+    }
+  }
+}
+
 export function getStructureStepFieldErrors(
   draft: CreateProjectDraft,
 ): StructureStepFieldErrors {
@@ -63,6 +123,8 @@ export function getStructureStepFieldErrors(
     }
   }
 
+  applyDuplicateStructureIdErrors(draft, errors)
+
   return errors
 }
 
@@ -76,13 +138,13 @@ export function getFirstStructureFieldErrorTarget(
   errors: StructureStepFieldErrors,
 ): { floorId: string; unitId?: string } | null {
   for (const [floorId, floorErrors] of Object.entries(errors)) {
-    if (floorErrors.name || floorErrors.identifier) {
-      return { floorId }
-    }
-
     const firstUnitId = Object.keys(floorErrors.unitErrors ?? {})[0]
     if (firstUnitId) {
       return { floorId, unitId: firstUnitId }
+    }
+
+    if (floorErrors.identifier || floorErrors.name) {
+      return { floorId }
     }
   }
 

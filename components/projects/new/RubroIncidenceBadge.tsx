@@ -386,12 +386,21 @@ export function validateRubroWeightDraft(
   return null
 }
 
+export {
+  RUBRO_STRUCTURE_BORDER,
+  RUBRO_STRUCTURE_COLORS,
+  RUBRO_STRUCTURE_SHADOW,
+} from "@/lib/projects/rubroStructureTokens"
+
 export const rubroRowStyles = {
-  card: "overflow-hidden rounded-[10px] border border-[#ffeae0] bg-[#fefcfb] p-px",
+  card: "overflow-hidden rounded-[10px] border bg-[#fefcfb] p-px",
+  cardRest: "border-[#e2e8f0]",
+  cardActive: "border-[#cad5e2] p-0 shadow-[0_0_7.5px_rgba(0,0,0,0.05)]",
   header:
     "flex h-12 w-full items-center justify-between gap-2 bg-[#fefcfb] p-3",
-  headerExpanded: "rounded-t-[10px] border-b border-[#ffeae0]",
+  headerExpanded: "rounded-t-[10px] border-b border-[#cad5e2]",
   headerCollapsed: "rounded-[10px]",
+  tasksBody: "space-y-2 rounded-b-[10px] bg-white px-3 py-3",
   leftCluster: "flex h-6 min-w-0 flex-1 items-center gap-2",
   rightCluster: "flex shrink-0 items-center gap-2",
   indexBadge:

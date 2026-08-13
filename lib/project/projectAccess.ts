@@ -109,15 +109,17 @@ export async function getProjectAccessContext(
   if (!userType) return null
 
   const permissions = getProjectPermissions(userType)
-  const clientUnitIds =
-    permissions.viewDetailedProgress === "unitOnly"
-      ? await loadClientAssignedUnitIds(supabase, id, user.id)
-      : []
+  const clientUnitIds = await loadClientAssignedUnitIds(supabase, id, user.id)
+
+  const effectivePermissions =
+    clientUnitIds.length > 0 && !permissions.clientPortal
+      ? { ...permissions, clientPortal: true as const }
+      : permissions
 
   return {
     userType,
-    permissions,
-    assignedUnitIds: resolveAssignedUnitIds(permissions, clientUnitIds),
+    permissions: effectivePermissions,
+    assignedUnitIds: resolveAssignedUnitIds(effectivePermissions, clientUnitIds),
   }
 }
 

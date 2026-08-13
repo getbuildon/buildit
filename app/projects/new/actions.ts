@@ -19,6 +19,7 @@ import {
   requireAuthenticatedUserId,
   resolveProjectCompanyId,
 } from "@/lib/projects/persistProjectFromDraft"
+import { getBasicInfoFieldErrors } from "@/lib/projects/createProjectBasicValidation"
 import { buildDraftFromProjectDb } from "@/lib/projects/buildDraftFromProjectDb"
 import { mergeProjectSetupDraft } from "@/lib/projects/mergeProjectSetupDraft"
 import {
@@ -288,6 +289,16 @@ export async function createProjectFromDraft(
   const name = draft.projectName.trim()
   if (!name) {
     return { ok: false, error: "El nombre del proyecto es obligatorio." }
+  }
+
+  const basicErrors = getBasicInfoFieldErrors(draft)
+  const firstBasicError =
+    basicErrors.projectName ??
+    basicErrors.totalSurface ??
+    basicErrors.startDate ??
+    basicErrors.endDate
+  if (firstBasicError) {
+    return { ok: false, error: firstBasicError }
   }
 
   const userId = await requireAuthenticatedUserId()

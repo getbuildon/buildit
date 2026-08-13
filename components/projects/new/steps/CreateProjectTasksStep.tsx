@@ -42,7 +42,14 @@ import {
   type RubroItemDraft,
   type RubroTaskDraft,
 } from "@/lib/projects/createProjectDraft"
-import { RubroIncidenceBadge, RubroIncidenceEditor, rubroRowStyles, validateRubroWeightDraft } from "@/components/projects/new/RubroIncidenceBadge"
+import {
+  RubroIncidenceBadge,
+  RubroIncidenceEditor,
+  rubroRowStyles,
+  RUBRO_STRUCTURE_COLORS,
+  RUBRO_STRUCTURE_SHADOW,
+  validateRubroWeightDraft,
+} from "@/components/projects/new/RubroIncidenceBadge"
 import { RubroProgressHelpModal } from "@/components/projects/new/RubroProgressHelpModal"
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { getAllRubrosFromGroups, getRubroEffectiveWeightValue, finalizeManualRubroWeightPercent, isManualRubroWeightOverLimit, isRubroWeightAuto, parseRubroWeightInput, RUBRO_WEIGHT_OVER_LIMIT_MESSAGE } from "@/lib/projects/rubroWeights"
@@ -106,10 +113,11 @@ function SortableTaskItem({
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
-        backgroundColor: "#f8fafc",
+        backgroundColor: RUBRO_STRUCTURE_COLORS.taskSurface,
+        borderColor: RUBRO_STRUCTURE_COLORS.taskBorder,
       }}
       className={cn(
-        "flex h-10 items-center gap-2 rounded-lg border border-[#edeef0] px-2",
+        "flex h-10 items-center gap-2 rounded-lg border px-2",
         newItemHighlightClass(isHighlighted),
       )}
     >
@@ -780,15 +788,31 @@ export function CreateProjectTasksStep({
               key={group.id}
               data-new-item-id={group.id}
               className={cn(
-                "rounded-[10px] border border-[#e2e8f0] bg-white",
+                "rounded-[10px] border",
                 newItemHighlightClass(isHighlighted(group.id)),
               )}
+              style={{
+                borderColor: isGroupExpanded
+                  ? RUBRO_STRUCTURE_COLORS.borderActive
+                  : RUBRO_STRUCTURE_COLORS.borderRest,
+                boxShadow: isGroupExpanded ? RUBRO_STRUCTURE_SHADOW : undefined,
+                backgroundColor: isGroupExpanded
+                  ? RUBRO_STRUCTURE_COLORS.groupCanvas
+                  : RUBRO_STRUCTURE_COLORS.groupHeaderRest,
+              }}
             >
               <div
                 className={`flex min-h-[62px] w-full items-center gap-3 px-3 py-3 ${
-                  isGroupExpanded ? "rounded-t-[10px] border-b border-[#edeef0]" : "rounded-[10px]"
+                  isGroupExpanded ? "rounded-t-[10px] border-b" : "rounded-[10px]"
                 }`}
-                style={{ backgroundColor: "#fff6f1" }}
+                style={{
+                  backgroundColor: isGroupExpanded
+                    ? RUBRO_STRUCTURE_COLORS.groupHeaderOpen
+                    : RUBRO_STRUCTURE_COLORS.groupHeaderRest,
+                  borderColor: isGroupExpanded
+                    ? RUBRO_STRUCTURE_COLORS.borderActive
+                    : undefined,
+                }}
               >
                 {editingId === group.id ? (
                   <>
@@ -858,12 +882,10 @@ export function CreateProjectTasksStep({
               </div>
 
               <AnimatedCollapsible open={isGroupExpanded}>
-                <div className="space-y-2 rounded-b-[10px] bg-white px-3 py-3">
-                  <DashedAddButton
-                    label="Agregar Rubro"
-                    onClick={() => addRubroToGroup(group.id)}
-                  />
-
+                <div
+                  className="space-y-2 rounded-b-[10px] px-3 py-3"
+                  style={{ backgroundColor: RUBRO_STRUCTURE_COLORS.groupCanvas }}
+                >
                   {group.rubros.map((rubro, rubroIndex) => {
                     const rubroNumber = `${groupNumber}.${rubroIndex + 1}`
                     const isRubroExpanded = expandedRubroIds.has(
@@ -880,6 +902,9 @@ export function CreateProjectTasksStep({
                         data-new-item-id={rubro.id}
                         className={cn(
                           rubroRowStyles.card,
+                          isRubroExpanded
+                            ? rubroRowStyles.cardActive
+                            : rubroRowStyles.cardRest,
                           newItemHighlightClass(isHighlighted(rubro.id)),
                         )}
                       >
@@ -1000,12 +1025,7 @@ export function CreateProjectTasksStep({
                         </div>
 
                         <AnimatedCollapsible open={isRubroExpanded}>
-                          <div className="space-y-2 rounded-b-[10px] bg-white px-3 py-3">
-                            <DashedAddButton
-                              label="Agregar Tarea"
-                              onClick={() => addTaskToRubro(group.id, rubro.id)}
-                            />
-
+                          <div className={rubroRowStyles.tasksBody}>
                             {rubro.tasks.length > 0 ? (
                               <DndContext
                                 sensors={sensors}
@@ -1039,11 +1059,21 @@ export function CreateProjectTasksStep({
                                 </SortableContext>
                               </DndContext>
                             ) : null}
+
+                            <DashedAddButton
+                              label="Agregar Tarea"
+                              onClick={() => addTaskToRubro(group.id, rubro.id)}
+                            />
                           </div>
                         </AnimatedCollapsible>
                       </div>
                     )
                   })}
+
+                  <DashedAddButton
+                    label="Agregar Rubro"
+                    onClick={() => addRubroToGroup(group.id)}
+                  />
                 </div>
               </AnimatedCollapsible>
             </div>

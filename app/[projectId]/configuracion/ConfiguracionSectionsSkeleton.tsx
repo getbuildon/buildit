@@ -12,7 +12,9 @@ function ConfigSettingsCardSkeleton({ titleWidth }: { titleWidth: string }) {
       aria-hidden
     >
       <div className="flex w-full items-center gap-2">
-        <Skeleton className={titleWidth} />
+        <div className="flex min-w-0 flex-1">
+          <Skeleton className={titleWidth} />
+        </div>
         <ChevronDown className="size-4 shrink-0 text-[#edeef0]" aria-hidden />
       </div>
     </section>

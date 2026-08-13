@@ -167,7 +167,8 @@ export function CreateNewProjectView() {
       const next = { ...current }
       if ("projectName" in patch) delete next.projectName
       if ("totalSurface" in patch) delete next.totalSurface
-      if ("startDate" in patch || "endDate" in patch) delete next.endDate
+      if ("startDate" in patch) delete next.startDate
+      if ("endDate" in patch) delete next.endDate
       return next
     })
     if ("floors" in patch) {
@@ -269,6 +270,15 @@ export function CreateNewProjectView() {
   }
 
   const handleSubmit = async () => {
+    const basicErrors = getBasicInfoFieldErrors(draft)
+    if (Object.keys(basicErrors).length > 0) {
+      setBasicFieldErrors(basicErrors)
+      setActiveStepId("basic")
+      setSubmitError(null)
+      return
+    }
+    setBasicFieldErrors({})
+
     if (planSurfaceLimitError) {
       setSubmitError(planSurfaceLimitError)
       focusPlanSurfaceLimit()

@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
 import { checkProjectPermission } from "@/lib/project/projectAccess"
-import { assertCanAddProjectSeat, loadClientSeatSummary } from "@/lib/company/projectSubscriptionLimits"
+import { assertCanAddClientAccess, loadClientSeatSummary } from "@/lib/company/projectSubscriptionLimits"
 import type { ClientSeatSummary } from "@/lib/company/subscriptionTypes"
 import { getUnitPillLabel } from "@/lib/projects/floorLabels"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
@@ -14,7 +14,8 @@ import {
   addExistingUserToProject,
   buildInvitationInsertExtras,
   dispatchProjectInvitation,
-  findActiveProjectMemberUserId,
+  findActiveClientUserIdInProject,
+  findPendingProjectInvitationByEmail,
   findProfileByEmail,
 } from "@/lib/invitations/projectInvitationService"
 
@@ -461,19 +462,32 @@ export async function addProjectClientInvitation(
   }
 
   try {
-    const seatCheck = await assertCanAddProjectSeat(supabase, projectId, "Cliente")
+    const seatCheck = await assertCanAddClientAccess(supabase, projectId)
     if (!seatCheck.ok) return seatCheck
   } catch {
     return { ok: false, error: "No se pudo validar los límites del plan." }
   }
 
-  const activeMemberUserId = await findActiveProjectMemberUserId(
+  const existingClientUserId = await findActiveClientUserIdInProject(
     admin,
     projectId,
     normalizedEmail,
   )
-  if (activeMemberUserId) {
-    return { ok: false, error: "Ese cliente ya tiene acceso al proyecto." }
+  if (existingClientUserId) {
+    return { ok: false, error: "Ese correo ya está registrado como cliente." }
+  }
+
+  const pendingInvitation = await findPendingProjectInvitationByEmail(
+    admin,
+    projectId,
+    normalizedEmail,
+  )
+  if (pendingInvitation && !pendingInvitation.isClient) {
+    return {
+      ok: false,
+      error:
+        "Ese correo tiene una invitación pendiente al equipo. Revocala o esperá a que la acepte antes de agregarlo como cliente.",
+    }
   }
 
   const roleId = catalog.roleIds.Cliente

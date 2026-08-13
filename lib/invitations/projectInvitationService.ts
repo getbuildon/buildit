@@ -305,6 +305,94 @@ export async function findActiveProjectMemberUserId(
   return profile.id
 }
 
+/** Miembro activo del equipo (no cuenta usuarios cuyo rol en el proyecto es Cliente). */
+export async function findActiveTeamMemberUserId(
+  admin: SupabaseClient,
+  projectId: string,
+  email: string,
+): Promise<string | null> {
+  const profile = await findProfileByEmail(admin, email)
+  if (!profile) return null
+
+  const { data: member } = await admin
+    .from("project_members")
+    .select("user_id, is_active, project_roles ( slug )")
+    .eq("project_id", projectId)
+    .eq("user_id", profile.id)
+    .maybeSingle()
+
+  if (!member?.is_active) return null
+
+  const roleRelation = member.project_roles as
+    | { slug: string }
+    | { slug: string }[]
+    | null
+  const roleSlug = Array.isArray(roleRelation)
+    ? roleRelation[0]?.slug
+    : roleRelation?.slug
+  if (roleSlug === PROJECT_ROLE_SLUG.Cliente) return null
+
+  return profile.id
+}
+
+export async function findActiveClientUserIdInProject(
+  admin: SupabaseClient,
+  projectId: string,
+  email: string,
+): Promise<string | null> {
+  const profile = await findProfileByEmail(admin, email)
+  if (!profile) return null
+
+  const { data: units } = await admin
+    .from("project_units")
+    .select("id")
+    .eq("project_id", projectId)
+
+  const unitIds = (units ?? []).map((unit) => unit.id)
+  if (unitIds.length === 0) return null
+
+  const { data: assignment } = await admin
+    .from("unit_clients")
+    .select("user_id")
+    .eq("user_id", profile.id)
+    .eq("status", "active")
+    .in("unit_id", unitIds)
+    .limit(1)
+    .maybeSingle()
+
+  return assignment ? profile.id : null
+}
+
+export async function findPendingProjectInvitationByEmail(
+  admin: SupabaseClient,
+  projectId: string,
+  email: string,
+): Promise<{ id: string; isClient: boolean } | null> {
+  const normalizedEmail = email.trim().toLowerCase()
+  const { data: invitation } = await admin
+    .from("project_invitations")
+    .select("id, project_roles ( slug )")
+    .eq("project_id", projectId)
+    .eq("status", "pending")
+    .eq("email", normalizedEmail)
+    .maybeSingle()
+
+  if (!invitation) return null
+
+  const roleRelation = invitation.project_roles as
+    | { slug: string }
+    | { slug: string }[]
+    | null
+  const roleSlug = Array.isArray(roleRelation)
+    ? roleRelation[0]?.slug
+    : roleRelation?.slug
+
+  return {
+    id: invitation.id,
+    isClient: roleSlug === PROJECT_ROLE_SLUG.Cliente,
+  }
+}
+
 export async function addExistingUserToProject(
   admin: SupabaseClient,
   params: {

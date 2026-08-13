@@ -80,6 +80,17 @@ export const EQUIPO_LAYOUT = {
   pageBottomPadding: "40px",
 } as const
 
+/** Figma node 2130:4624 — ancho del contenido de Portal Clientes (~1010px). */
+export const PORTAL_CLIENTES_LAYOUT = {
+  contentMaxWidth: "1010px",
+} as const
+
+/** Figma node 1859:5368 — ancho del contenido de Mi Unidad (~1010px). */
+export const MI_UNIDAD_LAYOUT = {
+  contentMaxWidth: "1010px",
+  contentPaddingTop: "80px",
+} as const
+
 /** Figma node 1228:12933 — sidebar nav link selected (black pill 229x40, r12) */
 export const SIDEBAR_NAV_ACTIVE_LINK_STYLE = {
   height: "40px",
