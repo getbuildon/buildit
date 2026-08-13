@@ -13,14 +13,14 @@ export function PortalNewsCarousel({ items }: PortalNewsCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0)
 
   const activeItem = items[activeIndex]
+  const canNavigate = items.length > 1
 
   const goTo = (index: number) => {
     if (items.length === 0) return
     const nextIndex = (index + items.length) % items.length
+    if (nextIndex === activeIndex) return
     setActiveIndex(nextIndex)
   }
-
-  const canNavigate = items.length > 1
 
   if (!activeItem) {
     return (
@@ -32,31 +32,50 @@ export function PortalNewsCarousel({ items }: PortalNewsCarouselProps) {
 
   return (
     <div className="relative h-[280px] overflow-hidden rounded-[16px] shadow-[0_0_5px_rgba(243,103,31,0.08)] sm:h-[380px]">
-      {activeItem.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={activeItem.imageUrl}
-          alt={activeItem.title}
-          className="absolute inset-0 size-full object-cover"
-        />
-      ) : (
-        <div className="absolute inset-0 bg-[#1d293d]" />
-      )}
+      {items.map((item, index) => {
+        const isActive = index === activeIndex
 
-      <div className="absolute inset-0 bg-gradient-to-t from-[rgba(10,14,26,0.88)] via-[rgba(10,14,26,0.48)] via-[55%] to-[rgba(0,0,0,0)]" />
+        return (
+          <div
+            key={item.id}
+            aria-hidden={!isActive}
+            className={cn(
+              "absolute inset-0 overflow-hidden transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.4,0,0.2,1)]",
+              isActive
+                ? "portal-news-slide-active z-[2] opacity-100"
+                : "pointer-events-none z-[1] scale-[1.02] opacity-0",
+            )}
+          >
+            {item.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.imageUrl}
+                alt={isActive ? item.title : ""}
+                className="size-full object-cover will-change-transform"
+              />
+            ) : (
+              <div className="portal-news-slide-fallback size-full bg-[#1d293d]" />
+            )}
+          </div>
+        )
+      })}
 
-      <div className="relative flex h-full flex-col justify-end p-6">
-        <p className="text-[12px] leading-[1.4] tracking-[-0.36px] text-[#edeef0]">
-          Novedad {activeIndex + 1}
-        </p>
-        <h3 className="pt-1.5 font-recoleta text-[24px] leading-[1.05] text-white sm:text-[28px]">
-          {activeItem.title}
-        </h3>
-        {activeItem.description ? (
-          <p className="pt-2 max-w-[560px] text-[14px] leading-[1.4] text-white">
-            {activeItem.description}
+      <div className="pointer-events-none absolute inset-0 z-[3] bg-gradient-to-t from-[rgba(10,14,26,0.88)] via-[rgba(10,14,26,0.48)] via-[55%] to-[rgba(0,0,0,0)]" />
+
+      <div className="relative z-[4] flex h-full flex-col justify-end p-6">
+        <div key={activeItem.id} className="portal-news-caption-enter">
+          <p className="text-[12px] leading-[1.4] tracking-[-0.36px] text-[#edeef0]">
+            Novedad {activeIndex + 1}
           </p>
-        ) : null}
+          <h3 className="pt-1.5 font-recoleta text-[24px] leading-[1.05] text-white sm:text-[28px]">
+            {activeItem.title}
+          </h3>
+          {activeItem.description ? (
+            <p className="max-w-[560px] pt-2 text-[14px] leading-[1.4] text-white">
+              {activeItem.description}
+            </p>
+          ) : null}
+        </div>
 
         <div className="flex items-center gap-3.5 pt-5">
           {canNavigate ? (
@@ -66,9 +85,9 @@ export function PortalNewsCarousel({ items }: PortalNewsCarouselProps) {
                   key={item.id}
                   type="button"
                   aria-label={`Ir a novedad ${index + 1}`}
-                  onClick={() => setActiveIndex(index)}
+                  onClick={() => goTo(index)}
                   className={cn(
-                    "rounded-full transition-all",
+                    "rounded-full transition-all duration-300 ease-out",
                     index === activeIndex
                       ? "h-[5px] w-5 bg-[#ff7433]"
                       : "size-[5px] bg-[rgba(255,255,255,0.35)] hover:bg-white/60",
@@ -86,7 +105,7 @@ export function PortalNewsCarousel({ items }: PortalNewsCarouselProps) {
                 type="button"
                 aria-label="Novedad anterior"
                 onClick={() => goTo(activeIndex - 1)}
-                className="flex size-8 items-center justify-center rounded-full border border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.15)] text-white transition-colors hover:bg-[rgba(255,255,255,0.25)]"
+                className="flex size-8 items-center justify-center rounded-full border border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.15)] text-white transition-all duration-200 hover:scale-[1.03] hover:bg-[rgba(255,255,255,0.25)] active:scale-95"
               >
                 <ChevronLeft className="size-4" aria-hidden />
               </button>
@@ -94,7 +113,7 @@ export function PortalNewsCarousel({ items }: PortalNewsCarouselProps) {
                 type="button"
                 aria-label="Novedad siguiente"
                 onClick={() => goTo(activeIndex + 1)}
-                className="flex size-8 items-center justify-center rounded-full border border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.15)] text-white transition-colors hover:bg-[rgba(255,255,255,0.25)]"
+                className="flex size-8 items-center justify-center rounded-full border border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.15)] text-white transition-all duration-200 hover:scale-[1.03] hover:bg-[rgba(255,255,255,0.25)] active:scale-95"
               >
                 <ChevronRight className="size-4" aria-hidden />
               </button>

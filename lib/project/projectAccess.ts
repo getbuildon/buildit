@@ -33,7 +33,7 @@ function userTypeFromSlug(slug: string | null | undefined): ProjectUserType | nu
   return SLUG_TO_USER_TYPE[slug] ?? null
 }
 
-async function loadClientAssignedUnitIds(
+export async function getClientAssignedUnitIds(
   supabase: Awaited<ReturnType<typeof createClient>>,
   projectId: string,
   userId: string,
@@ -109,7 +109,7 @@ export async function getProjectAccessContext(
   if (!userType) return null
 
   const permissions = getProjectPermissions(userType)
-  const clientUnitIds = await loadClientAssignedUnitIds(supabase, id, user.id)
+  const clientUnitIds = await getClientAssignedUnitIds(supabase, id, user.id)
 
   const effectivePermissions =
     clientUnitIds.length > 0 && !permissions.clientPortal

@@ -91,6 +91,17 @@ export const MI_UNIDAD_LAYOUT = {
   contentPaddingTop: "80px",
 } as const
 
+/** Figma node 1860:6300 — widget de clima en Mi Unidad */
+export const MI_UNIDAD_WEATHER_WIDGET = {
+  container:
+    "flex shrink-0 items-center gap-[24px] rounded-[13px] border border-[#e8ecf0] bg-white px-[17px] py-[13px] shadow-[0_1px_1.5px_rgba(0,0,0,0.07)]",
+  temperature: "text-[24px] font-medium leading-[1.05] text-[#111113]",
+  unit: "text-[12px] font-normal leading-[18px] text-[#777b84]",
+  city: "text-[12px] font-medium leading-[1.4] text-[#43484e]",
+  description:
+    "text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#5a6169]",
+} as const
+
 /** Figma node 1228:12933 — sidebar nav link selected (black pill 229x40, r12) */
 export const SIDEBAR_NAV_ACTIVE_LINK_STYLE = {
   height: "40px",

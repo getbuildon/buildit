@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
+import { requireAuthenticatedUser } from "@/lib/authHelpers"
 import { checkProjectPermission } from "@/lib/project/projectAccess"
+import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
+import type { MiUnidadAssignedUnit } from "@/lib/projects/miUnidadTypes"
+import { displayNameFromEmail } from "@/lib/projects/mockProjects"
+import { fetchProjectWeather } from "@/lib/weather/openMeteo"
+import type { ProjectWeatherSnapshot } from "@/lib/weather/openMeteo"
 import type {
   PortalClientesData,
   PortalMilestoneItem,
@@ -49,6 +55,101 @@ function mapMilestoneRow(row: {
     estimatedDate: row.estimated_date,
     status: row.status as PortalMilestoneStatus,
     sortOrder: row.sort_order,
+  }
+}
+
+export type PortalClientesPreviewContext = {
+  greetingName: string
+  projectName: string
+  projectEndDate: string | null
+  weather: ProjectWeatherSnapshot | null
+  units: MiUnidadAssignedUnit[]
+}
+
+export async function getPortalClientesPreviewContext(
+  projectId: string,
+): Promise<PortalClientesPreviewContext> {
+  const permission = await checkProjectPermission(projectId, "configureProject")
+  if (!permission.ok) {
+    throw new Error(permission.error)
+  }
+
+  const user = await requireAuthenticatedUser()
+  const supabase = await createClient()
+
+  const [profileResult, projectResult, unitsResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("first_name, last_name, email")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("projects")
+      .select("name, location, end_date, companies(country)")
+      .eq("id", projectId)
+      .maybeSingle(),
+    supabase
+      .from("project_units")
+      .select(
+        "id, code, name, unit_type, room_count, render_url, sort_order, floor:project_floors(name, identifier)",
+      )
+      .eq("project_id", projectId)
+      .order("sort_order", { ascending: true })
+      .limit(4),
+  ])
+
+  if (profileResult.error) {
+    throw new Error(profileResult.error.message)
+  }
+  if (projectResult.error) {
+    throw new Error(projectResult.error.message)
+  }
+  if (unitsResult.error) {
+    throw new Error(unitsResult.error.message)
+  }
+
+  const firstName = profileResult.data?.first_name?.trim() ?? ""
+  const lastName = profileResult.data?.last_name?.trim() ?? ""
+  const email = profileResult.data?.email ?? ""
+  const fullName =
+    [firstName, lastName].filter(Boolean).join(" ") ||
+    displayNameFromEmail(email)
+  const greetingName = firstName || fullName.split(" ")[0] || "Cliente"
+
+  const company = Array.isArray(projectResult.data?.companies)
+    ? projectResult.data.companies[0]
+    : projectResult.data?.companies
+
+  const weather = await fetchProjectWeather({
+    location: projectResult.data?.location?.trim() ?? "",
+    country: company?.country ?? null,
+  })
+
+  const units: MiUnidadAssignedUnit[] = (unitsResult.data ?? []).map((row) => {
+    const floor = Array.isArray(row.floor) ? row.floor[0] : row.floor
+
+    return {
+      id: row.id,
+      code: row.code?.trim() || "Sin código",
+      name: row.name,
+      unitType: row.unit_type,
+      roomCount: row.room_count,
+      renderUrl: row.render_url,
+      floorLabel: floor
+        ? getFloorDisplayLabel({
+            name: floor.name,
+            identifier: floor.identifier,
+          })
+        : null,
+    }
+  })
+
+  return {
+    greetingName,
+    projectName: projectResult.data?.name?.trim() || "Proyecto",
+    projectEndDate: projectResult.data?.end_date ?? null,
+    weather,
+    units,
   }
 }
 

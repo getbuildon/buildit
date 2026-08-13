@@ -44,6 +44,9 @@ import {
 } from "./PortalFieldErrorWrap"
 import { PortalNewsImageUpload } from "./PortalNewsImageUpload"
 import { savePortalClientesContent } from "./actions"
+import type { PortalClientesPreviewContext } from "./actions"
+import { PortalClientesPreviewBanner } from "./PortalClientesPreviewBanner"
+import { MiUnidadView } from "../mi-unidad/MiUnidadView"
 
 const PORTAL_CARD_CLASSNAME =
   "rounded-[16px] border border-[#edeef0] bg-white p-4 shadow-[0_0_5px_rgba(243,103,31,0.08)] sm:p-[25px]"
@@ -97,6 +100,19 @@ function formatPortalDeleteDescription(
 type Props = {
   projectId: string
   initialData: PortalClientesData
+  previewContext: PortalClientesPreviewContext
+}
+
+function mapDraftNewsToPreview(items: NewsDraft[]): PortalNewsItem[] {
+  return items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    sortOrder: item.sortOrder,
+    imageUrl: item.clearedImage
+      ? null
+      : item.imageDraft?.previewUrl ?? item.imageUrl,
+  }))
 }
 
 function mapNewsToDraft(item: PortalNewsItem): NewsDraft {
@@ -306,14 +322,6 @@ function PortalSaveFooter({
                 <Check className="size-4 shrink-0" aria-hidden />
                 {saving ? "Guardando..." : "Guardar cambios"}
               </Button>
-              <button
-                type="button"
-                aria-label="Vista previa del portal"
-                className="flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-[#ffeae0] bg-white px-3 py-1.5 text-[#363a3f] shadow-[0_0_5px_rgba(243,103,31,0.08)] transition-colors hover:bg-[#fff6f1] disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={saving}
-              >
-                <Eye className="size-5" aria-hidden />
-              </button>
             </div>
           </div>
         </section>
@@ -323,10 +331,16 @@ function PortalSaveFooter({
   )
 }
 
-export function PortalClientesView({ projectId, initialData }: Props) {
+export function PortalClientesView({
+  projectId,
+  initialData,
+  previewContext,
+}: Props) {
   const toast = useToast()
   const contentRef = useRef<HTMLDivElement>(null)
   const footerAlign = useContentFooterAlign(contentRef)
+
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
   const [newsItems, setNewsItems] = useState<NewsDraft[]>(() =>
     initialData.news.map(mapNewsToDraft),
@@ -645,6 +659,40 @@ export function PortalClientesView({ projectId, initialData }: Props) {
     toast.success("Cambios guardados correctamente.")
   }
 
+  const previewData = useMemo(
+    () => ({
+      news: mapDraftNewsToPreview(newsItems),
+      milestones,
+      projectName: previewContext.projectName,
+      projectLocation: "",
+      projectEndDate: previewContext.projectEndDate,
+      weather: previewContext.weather,
+      units: previewContext.units,
+    }),
+    [milestones, newsItems, previewContext],
+  )
+
+  const openPreview = () => {
+    setIsPreviewOpen(true)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  const closePreview = () => {
+    setIsPreviewOpen(false)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  if (isPreviewOpen) {
+    return (
+      <MiUnidadView
+        projectId={projectId}
+        data={previewData}
+        greetingName={previewContext.greetingName}
+        topSlot={<PortalClientesPreviewBanner onBackToEdit={closePreview} />}
+      />
+    )
+  }
+
   return (
     <>
       <div
@@ -656,13 +704,24 @@ export function PortalClientesView({ projectId, initialData }: Props) {
           className="flex flex-col gap-5"
           style={{ paddingBottom: footerScrollPadding }}
         >
-          <div className="flex flex-col gap-0.5 pt-6">
-            <h1 className="font-recoleta text-[28px] font-normal leading-[1.05] text-[#272a2d]">
-              Portal de Clientes
-            </h1>
-            <p className="text-[14px] leading-[1.4] text-[#43484e]">
-              Mantené actualizada la información y el contenido visible para tus clientes.
-            </p>
+          <div className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <h1 className="font-recoleta text-[28px] font-normal leading-[1.05] text-[#272a2d]">
+                Portal de Clientes
+              </h1>
+              <p className="text-[14px] leading-[1.4] text-[#43484e]">
+                Mantené actualizada la información y el contenido visible para tus clientes.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openPreview}
+              disabled={saving}
+              className="flex shrink-0 items-center gap-2 self-start rounded-[10px] border border-[#ffeae0] bg-white px-3 py-2 text-[14px] font-normal leading-[1.4] text-[#363a3f] shadow-[0_0_5px_rgba(243,103,31,0.08)] transition-colors hover:bg-[#fff6f1] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Eye className="size-4 shrink-0" aria-hidden />
+              Vista previa
+            </button>
           </div>
 
           <section className={cn(PORTAL_CARD_CLASSNAME, "flex flex-col gap-6")}>

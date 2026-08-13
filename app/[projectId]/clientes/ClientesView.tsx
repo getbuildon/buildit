@@ -205,7 +205,7 @@ function EditClientDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         overlayClassName={FORM_MODAL_DIALOG.overlay}
-        className={cn(FORM_MODAL_DIALOG.content, "max-w-[calc(100vw-32px)]")}
+        className={FORM_MODAL_DIALOG.content}
         showCloseButton={false}
       >
         <div className={cn(FORM_MODAL_DIALOG.body, "px-4 py-6 sm:px-[33px] sm:py-[41px]")}>

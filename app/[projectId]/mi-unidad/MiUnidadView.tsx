@@ -1,8 +1,10 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { useMemo, useState } from "react"
 import { MI_UNIDAD_LAYOUT } from "@/lib/project/designTokens"
 import type { MiUnidadPageData } from "@/lib/projects/miUnidadTypes"
+import { cn } from "@/lib/utils"
 import { ConstructionMilestonesTimeline } from "./ConstructionMilestonesTimeline"
 import { MiUnidadUnitSelector } from "./MiUnidadUnitSelector"
 import { MiUnidadWeatherWidget } from "./MiUnidadWeatherWidget"
@@ -12,6 +14,8 @@ type MiUnidadViewProps = {
   projectId: string
   data: MiUnidadPageData
   greetingName: string
+  topSlot?: ReactNode
+  className?: string
 }
 
 function formatProjectEndDateLabel(date: string | null): string | null {
@@ -25,7 +29,12 @@ function formatProjectEndDateLabel(date: string | null): string | null {
   return `${capitalizedMonth} ${year}`
 }
 
-export function MiUnidadView({ data, greetingName }: MiUnidadViewProps) {
+export function MiUnidadView({
+  data,
+  greetingName,
+  topSlot,
+  className,
+}: MiUnidadViewProps) {
   const [selectedUnitId, setSelectedUnitId] = useState(data.units[0]?.id ?? "")
 
   const projectEndDateLabel = useMemo(
@@ -35,10 +44,15 @@ export function MiUnidadView({ data, greetingName }: MiUnidadViewProps) {
 
   return (
     <div
-      className="mx-auto -mt-4 flex w-full flex-col gap-8 pb-10 pt-[80px] lg:-mt-6"
+      className={cn(
+        "mx-auto flex w-full flex-col gap-8 pb-10",
+        topSlot ? "pt-6" : "-mt-4 pt-[80px] lg:-mt-6",
+        className,
+      )}
       style={{ maxWidth: MI_UNIDAD_LAYOUT.contentMaxWidth }}
     >
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      {topSlot}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <h1 className="font-recoleta text-[32px] leading-[1.05] text-[#1d293d] sm:text-[36px]">
             Hola {greetingName} 👋
@@ -47,7 +61,7 @@ export function MiUnidadView({ data, greetingName }: MiUnidadViewProps) {
             Seguí el avance de obra en tiempo real.
           </p>
         </div>
-        <MiUnidadWeatherWidget weather={data.weather} />
+        <MiUnidadWeatherWidget weather={data.weather} className="self-start sm:ml-6" />
       </header>
 
       <MiUnidadUnitSelector

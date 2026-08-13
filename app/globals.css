@@ -268,12 +268,63 @@ html:has([data-project-shell]) body {
   will-change: transform, opacity;
 }
 
+@keyframes portal-news-slide-in {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes portal-news-ken-burns {
+  from {
+    transform: scale(1);
+  }
+
+  to {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes portal-news-caption-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.portal-news-slide-active {
+  animation: portal-news-slide-in 700ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.portal-news-slide-active img,
+.portal-news-slide-active .portal-news-slide-fallback {
+  animation: portal-news-ken-burns 9s ease-out forwards;
+}
+
+.portal-news-caption-enter {
+  animation: portal-news-caption-in 560ms cubic-bezier(0.4, 0, 0.2, 1) 120ms both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dialog-overlay,
   .dialog-content-center,
   .dialog-content-sheet,
   .backoffice-callout-enter,
-  .backoffice-callout-exit {
+  .backoffice-callout-exit,
+  .portal-news-slide-active,
+  .portal-news-slide-active img,
+  .portal-news-slide-active .portal-news-slide-fallback,
+  .portal-news-caption-enter {
     animation: none !important;
   }
 }

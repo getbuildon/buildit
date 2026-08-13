@@ -1,21 +1,40 @@
 "use server"
 
 import { createClient } from "@/utils/supabase/server"
-import { getProjectAccessContext } from "@/lib/project/projectAccess"
+import { requireAuthenticatedUser } from "@/lib/authHelpers"
+import {
+  getClientAssignedUnitIds,
+  getProjectAccessContext,
+} from "@/lib/project/projectAccess"
 import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
 import type { MiUnidadAssignedUnit, MiUnidadPageData } from "@/lib/projects/miUnidadTypes"
 import { fetchProjectWeather } from "@/lib/weather/openMeteo"
 import { getPortalClientesData } from "@/app/[projectId]/portal-clientes/actions"
 
+function resolveMiUnidadUnitIds(
+  clientUnitIds: string[],
+  assignedUnitIds: string[] | null,
+): string[] {
+  if (clientUnitIds.length > 0) return clientUnitIds
+  return assignedUnitIds ?? []
+}
+
 export async function getMiUnidadPageData(
   projectId: string,
 ): Promise<MiUnidadPageData | null> {
+  const user = await requireAuthenticatedUser()
   const accessContext = await getProjectAccessContext(projectId)
   if (!accessContext || accessContext.permissions.clientPortal !== true) {
     return null
   }
 
   const supabase = await createClient()
+  const clientUnitIds = await getClientAssignedUnitIds(supabase, projectId, user.id)
+  const unitIds = resolveMiUnidadUnitIds(
+    clientUnitIds,
+    accessContext.assignedUnitIds,
+  )
+
   const [portalData, projectResult] = await Promise.all([
     getPortalClientesData(projectId),
     supabase
@@ -38,7 +57,7 @@ export async function getMiUnidadPageData(
     country: company?.country ?? null,
   })
 
-  const assignedUnitIds = accessContext.assignedUnitIds ?? []
+  const assignedUnitIds = unitIds
   let units: MiUnidadAssignedUnit[] = []
 
   if (assignedUnitIds.length > 0) {

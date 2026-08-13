@@ -1,5 +1,5 @@
 import { assertProjectSectionAccess } from "@/lib/project/projectAccess"
-import { getPortalClientesData } from "./actions"
+import { getPortalClientesData, getPortalClientesPreviewContext } from "./actions"
 import { PortalClientesView } from "./PortalClientesView"
 
 type PageProps = {
@@ -9,7 +9,16 @@ type PageProps = {
 export default async function PortalClientesPage({ params }: PageProps) {
   const { projectId } = await params
   await assertProjectSectionAccess(projectId, "portal-clientes")
-  const data = await getPortalClientesData(projectId)
+  const [data, previewContext] = await Promise.all([
+    getPortalClientesData(projectId),
+    getPortalClientesPreviewContext(projectId),
+  ])
 
-  return <PortalClientesView projectId={projectId} initialData={data} />
+  return (
+    <PortalClientesView
+      projectId={projectId}
+      initialData={data}
+      previewContext={previewContext}
+    />
+  )
 }
