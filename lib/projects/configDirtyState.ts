@@ -85,6 +85,128 @@ export function buildConfigSnapshot(
   }
 }
 
+export function isConfigBasicsDirty(
+  basics: ConfigBasicsState,
+  snapshot: ConfigSavedSnapshot | null,
+): boolean {
+  if (!snapshot) return true
+
+  return (
+    basics.name !== snapshot.basics.name ||
+    basics.location !== snapshot.basics.location ||
+    basics.totalSurface !== snapshot.basics.totalSurface ||
+    basics.startDate !== snapshot.basics.startDate ||
+    basics.endDate !== snapshot.basics.endDate
+  )
+}
+
+export function isConfigFloorsDirty(
+  draft: CreateProjectDraft | null,
+  snapshot: ConfigSavedSnapshot | null,
+): boolean {
+  if (!draft || !snapshot) return true
+  return serializeFloors(draft.floors) !== snapshot.floors
+}
+
+export function isConfigGroupsDirty(
+  draft: CreateProjectDraft | null,
+  snapshot: ConfigSavedSnapshot | null,
+): boolean {
+  if (!draft || !snapshot) return true
+  return serializeGroups(draft.groups) !== snapshot.groups
+}
+
+export function isConfigExclusionsDirty(
+  draft: CreateProjectDraft | null,
+  snapshot: ConfigSavedSnapshot | null,
+): boolean {
+  if (!draft || !snapshot) return true
+  return serializeExclusions(draft.unitTaskExclusions) !== snapshot.exclusions
+}
+
+export type ConfigDirtySections = {
+  basics: boolean
+  floors: boolean
+  groups: boolean
+  exclusions: boolean
+}
+
+export function getConfigDirtySections(
+  basics: ConfigBasicsState,
+  draft: CreateProjectDraft | null,
+  snapshot: ConfigSavedSnapshot | null,
+): ConfigDirtySections {
+  return {
+    basics: isConfigBasicsDirty(basics, snapshot),
+    floors: isConfigFloorsDirty(draft, snapshot),
+    groups: isConfigGroupsDirty(draft, snapshot),
+    exclusions: isConfigExclusionsDirty(draft, snapshot),
+  }
+}
+
+type SnapshotFloor = {
+  id: string
+  units: Array<{ id: string }>
+}
+
+type SnapshotGroup = {
+  rubros: Array<{
+    tasks: Array<{ id: string }>
+  }>
+}
+
+export function buildAssignmentDraftFromSnapshot(
+  seed: CreateProjectDraft,
+  snapshot: ConfigSavedSnapshot,
+  basics: ConfigBasicsState,
+): CreateProjectDraft {
+  const floors = JSON.parse(snapshot.floors) as SnapshotFloor[]
+  const groups = JSON.parse(snapshot.groups) as SnapshotGroup[]
+  const exclusions = JSON.parse(snapshot.exclusions) as Record<string, string[]>
+
+  return {
+    ...seed,
+    projectName: basics.name,
+    location: basics.location,
+    floors: floors.map((floor) => ({
+      id: floor.id,
+      name: "",
+      identifier: "",
+      level: "",
+      units: floor.units.map((unit) => ({
+        id: unit.id,
+        code: "",
+        type: "Departamento" as const,
+        squareMeters: "",
+        roomCount: "2",
+        officeSize: "",
+        planUrl: null,
+        planImage: null,
+        planRemoved: false,
+        renderUrl: null,
+        renderImage: null,
+        renderRemoved: false,
+      })),
+    })),
+    groups: groups.map((group) => ({
+      id: "",
+      name: "",
+      rubros: group.rubros.map((rubro) => ({
+        id: "",
+        name: "",
+        trackingType: "Porcentaje" as const,
+        weightPercent: "",
+        tasks: rubro.tasks.map((task) => ({
+          id: task.id,
+          name: "",
+          weightPercent: "",
+        })),
+      })),
+    })),
+    unitTaskExclusions: exclusions,
+  }
+}
+
 export function isConfigDirty(
   basics: ConfigBasicsState,
   draft: CreateProjectDraft | null,
@@ -95,11 +217,7 @@ export function isConfigDirty(
   const current = buildConfigSnapshot(basics, draft)
 
   return (
-    current.basics.name !== snapshot.basics.name ||
-    current.basics.location !== snapshot.basics.location ||
-    current.basics.totalSurface !== snapshot.basics.totalSurface ||
-    current.basics.startDate !== snapshot.basics.startDate ||
-    current.basics.endDate !== snapshot.basics.endDate ||
+    isConfigBasicsDirty(basics, snapshot) ||
     current.floors !== snapshot.floors ||
     current.groups !== snapshot.groups ||
     current.exclusions !== snapshot.exclusions
@@ -116,12 +234,7 @@ export function getConfigSaveConfirmMessage(
   }
 
   const current = buildConfigSnapshot(basics, draft)
-  const basicsChanged =
-    current.basics.name !== snapshot.basics.name ||
-    current.basics.location !== snapshot.basics.location ||
-    current.basics.totalSurface !== snapshot.basics.totalSurface ||
-    current.basics.startDate !== snapshot.basics.startDate ||
-    current.basics.endDate !== snapshot.basics.endDate
+  const basicsChanged = isConfigBasicsDirty(basics, snapshot)
   const floorsChanged = current.floors !== snapshot.floors
   const groupsChanged = current.groups !== snapshot.groups
   const exclusionsChanged = current.exclusions !== snapshot.exclusions

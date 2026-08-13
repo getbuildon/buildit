@@ -221,10 +221,9 @@ export function ProjectWorkspace({ project, userProfile, children }: ProjectWork
             </div>
           ) : null}
           <div
-            className="mx-auto flex min-h-full w-full flex-col px-4 pt-4 lg:px-6 lg:pt-6"
+            className="mx-auto flex w-full flex-col px-4 pb-4 pt-4 lg:px-6 lg:pb-6 lg:pt-6"
             style={{
               maxWidth: SHELL_LAYOUT.contentMaxWidth,
-              paddingBottom: 0,
             }}
           >
             {children}

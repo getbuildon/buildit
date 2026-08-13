@@ -1,5 +1,7 @@
-import type { CSSProperties, ReactNode } from "react"
+import type { CSSProperties, ReactElement, ReactNode } from "react"
+import { Children, cloneElement, isValidElement } from "react"
 import { cn } from "@/lib/utils"
+import { FieldErrorTooltip } from "@/components/ui/field-error-tooltip"
 import {
   CREATE_PROJECT_COLORS,
   CREATE_PROJECT_LAYOUT,
@@ -7,12 +9,43 @@ import {
 } from "@/lib/projects/createProjectTokens"
 
 type CreateProjectFormFieldProps = {
-  label: string
+  label: ReactNode
   htmlFor?: string
   children: ReactNode
   className?: string
   labelClassName?: string
   labelStyle?: CSSProperties
+  error?: string | null
+  errorDisplay?: "inline" | "tooltip"
+}
+
+export const CREATE_PROJECT_FIELD_ERROR_BORDER_COLOR = "#eb8e90"
+
+export const createProjectFieldErrorInputClassName =
+  "border-2 border-[#eb8e90] focus-visible:border-[#eb8e90] focus-visible:ring-0"
+
+export const createProjectFieldErrorInputStyle = {
+  borderColor: CREATE_PROJECT_FIELD_ERROR_BORDER_COLOR,
+  borderWidth: 2,
+} as const
+
+function applyFieldErrorToChild(child: ReactNode, error?: string | null): ReactNode {
+  if (!error || !isValidElement(child)) return child
+
+  const element = child as ReactElement<{
+    className?: string
+    style?: CSSProperties
+    "aria-invalid"?: boolean
+  }>
+
+  return cloneElement(element, {
+    className: cn(element.props.className, createProjectFieldErrorInputClassName),
+    "aria-invalid": true,
+    style: {
+      ...element.props.style,
+      ...createProjectFieldErrorInputStyle,
+    },
+  })
 }
 
 export function CreateProjectFormField({
@@ -22,17 +55,38 @@ export function CreateProjectFormField({
   className,
   labelClassName,
   labelStyle,
+  error,
+  errorDisplay = "inline",
 }: CreateProjectFormFieldProps) {
+  const showInlineError = Boolean(error) && errorDisplay === "inline"
+  const showTooltipError = Boolean(error) && errorDisplay === "tooltip"
+  const child = Children.only(children)
+
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label
-        htmlFor={htmlFor}
-        className={labelClassName ?? CREATE_PROJECT_TYPE.fieldLabel}
-        style={labelStyle ?? { color: CREATE_PROJECT_COLORS.label }}
-      >
-        {label}
-      </label>
-      {children}
+      <div className="flex items-center justify-between gap-1">
+        <label
+          htmlFor={htmlFor}
+          className={labelClassName ?? CREATE_PROJECT_TYPE.fieldLabel}
+          style={labelStyle ?? { color: CREATE_PROJECT_COLORS.label }}
+        >
+          {label}
+        </label>
+        {showTooltipError && error ? <FieldErrorTooltip message={error} /> : null}
+      </div>
+      {applyFieldErrorToChild(child, error)}
+      {errorDisplay === "inline" ? (
+        <p
+          className={cn(
+            "min-h-4 text-[12px] leading-4",
+            showInlineError ? "text-[#b91c1c]" : "invisible",
+          )}
+          role={showInlineError ? "alert" : undefined}
+          aria-hidden={!showInlineError}
+        >
+          {error ?? "\u00A0"}
+        </p>
+      ) : null}
     </div>
   )
 }

@@ -22,6 +22,7 @@ import {
   syncProjectStructure,
   type StructureFloorSaveInput,
 } from "@/lib/projects/syncProjectStructure"
+import { syncUnitTaskAssignments } from "@/lib/projects/syncUnitTaskAssignments"
 
 export type ProjectBasics = {
   id: string
@@ -46,7 +47,24 @@ export type UpdateProjectBasicsInput = {
 export type UpdateProjectBasicsResult = { ok: true } | { ok: false; error: string }
 
 export type SaveProjectStructureResult =
-  | { ok: true; unitIdByDraftId: Record<string, string> }
+  | {
+      ok: true
+      floorIdByDraftId: Record<string, string>
+      unitIdByDraftId: Record<string, string>
+    }
+  | { ok: false; error: string }
+
+export type SaveProjectRubrosResult =
+  | {
+      ok: true
+      groupIdByDraftId: Record<string, string>
+      rubroIdByDraftId: Record<string, string>
+      taskIdByDraftId: Record<string, string>
+    }
+  | { ok: false; error: string }
+
+export type SetUnitTaskAssignmentsResult =
+  | { ok: true; inserted: number; deleted: number; unchanged: number; skipped?: boolean }
   | { ok: false; error: string }
 
 export type FloorData = {
@@ -317,7 +335,8 @@ export async function getUnitTaskAssignments(
 export async function setUnitTaskAssignments(
   projectId: string,
   assignments: Record<string, string[]>,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+  previousAssignments: Record<string, string[]> = {},
+): Promise<SetUnitTaskAssignmentsResult> {
   const id = projectId.trim()
   if (!id) return { ok: false, error: "Proyecto inválido." }
 
@@ -328,26 +347,14 @@ export async function setUnitTaskAssignments(
   const supabase = await createClient()
 
   try {
-    // Solo unit_task_assignments: no toca progress_entries (avances históricos).
-    await supabase
-      .from("unit_task_assignments")
-      .delete()
-      .eq("project_id", id)
-
-    const rows = Object.entries(assignments).flatMap(([unitId, taskIds]) =>
-      taskIds.map((taskId) => ({
-        project_id: id,
-        unit_id: unitId,
-        rubro_task_id: taskId,
-      })),
+    const stats = await syncUnitTaskAssignments(
+      supabase,
+      id,
+      assignments,
+      previousAssignments,
     )
 
-    if (rows.length > 0) {
-      const { error } = await supabase.from("unit_task_assignments").insert(rows)
-      if (error) throw error
-    }
-
-    return { ok: true }
+    return { ok: true, ...stats }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error al guardar asignaciones."
     return { ok: false, error: message }
@@ -556,13 +563,17 @@ export async function saveProjectStructure(
   if (!result.ok) return result
 
   revalidatePath(`/${id}/configuracion`)
-  return { ok: true, unitIdByDraftId: result.unitIdByDraftId }
+  return {
+    ok: true,
+    floorIdByDraftId: result.floorIdByDraftId,
+    unitIdByDraftId: result.unitIdByDraftId,
+  }
 }
 
 export async function saveProjectRubros(
   projectId: string,
   groups: RubroGroupSaveInput[],
-): Promise<UpdateProjectBasicsResult> {
+): Promise<SaveProjectRubrosResult> {
   const id = projectId.trim()
   if (!id) return { ok: false, error: "Proyecto inválido." }
 
@@ -576,5 +587,10 @@ export async function saveProjectRubros(
   if (!result.ok) return result
 
   revalidatePath(`/${id}/configuracion`)
-  return { ok: true }
+  return {
+    ok: true,
+    groupIdByDraftId: result.groupIdByDraftId,
+    rubroIdByDraftId: result.rubroIdByDraftId,
+    taskIdByDraftId: result.taskIdByDraftId,
+  }
 }

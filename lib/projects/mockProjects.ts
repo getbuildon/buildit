@@ -11,6 +11,7 @@ export const MOCK_USER_PROJECTS: UserProjectListItem[] = [
     units: 38,
     generalProgressPercent: 52,
     weeklyProgressDelta: 7,
+    status: "active",
   },
   {
     projectId: "life-recoleta",
@@ -22,6 +23,7 @@ export const MOCK_USER_PROJECTS: UserProjectListItem[] = [
     units: 42,
     generalProgressPercent: 42,
     weeklyProgressDelta: 3,
+    status: "active",
   },
 ]
 

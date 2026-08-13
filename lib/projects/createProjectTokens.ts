@@ -23,7 +23,7 @@ export const CREATE_PROJECT_COLORS = {
 
 export const CREATE_PROJECT_TYPE = {
   pageTitle: "text-[24px] font-normal leading-[1.05]",
-  pageSubtitle: "text-[16px] font-normal leading-6",
+  pageSubtitle: "text-[16px] font-normal leading-[1.4]",
   backLink: "text-[16px] font-normal leading-6",
   sectionTitle: "text-[20px] font-normal leading-[28px]",
   fieldLabel: "text-[14px] font-normal leading-5",

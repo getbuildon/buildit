@@ -23,7 +23,6 @@ import {
   Plus,
   SquarePen,
   Trash2,
-  Wrench,
   X,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -43,14 +42,28 @@ import {
   type RubroItemDraft,
   type RubroTaskDraft,
 } from "@/lib/projects/createProjectDraft"
-import { RubroIncidenceBadge, RubroIncidenceEditor, validateRubroWeightDraft } from "@/components/projects/new/RubroIncidenceBadge"
-import { getAllRubrosFromGroups, isManualRubroWeightOverLimit, isRubroWeightAuto, parseRubroWeightInput, RUBRO_WEIGHT_OVER_LIMIT_MESSAGE } from "@/lib/projects/rubroWeights"
+import { RubroIncidenceBadge, RubroIncidenceEditor, rubroRowStyles, validateRubroWeightDraft } from "@/components/projects/new/RubroIncidenceBadge"
+import { RubroProgressHelpModal } from "@/components/projects/new/RubroProgressHelpModal"
+import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
+import { getAllRubrosFromGroups, getRubroEffectiveWeightValue, finalizeManualRubroWeightPercent, isManualRubroWeightOverLimit, isRubroWeightAuto, parseRubroWeightInput, RUBRO_WEIGHT_OVER_LIMIT_MESSAGE } from "@/lib/projects/rubroWeights"
 import { cn } from "@/lib/utils"
 import { AnimatedCollapsible } from "@/components/ui/animated-collapsible"
 import {
   newItemHighlightClass,
   useNewItemHighlight,
 } from "@/components/projects/new/useNewItemHighlight"
+
+const RUBRO_STRUCTURE_DELETE_CONFIRM = {
+  title: "Confirmar cambios",
+  description:
+    "Los cambios se verán reflejados en todas las unidades funcionales ¿Deseás continuar?",
+  confirmLabel: "Confirmar",
+} as const
+
+type PendingRubroStructureDelete =
+  | { kind: "group"; groupId: string }
+  | { kind: "rubro"; groupId: string; rubroId: string }
+  | { kind: "task"; groupId: string; rubroId: string; taskId: string }
 
 type SortableTaskItemProps = {
   task: RubroTaskDraft
@@ -102,13 +115,6 @@ function SortableTaskItem({
     >
       {isEditing ? (
         <>
-          <div className="w-3.5 shrink-0" />
-          <span
-            className="shrink-0 text-[12px] font-normal leading-4 tabular-nums"
-            style={{ color: "#572d1c" }}
-          >
-            {rubroNumber}.{index + 1}
-          </span>
           <InlineEditInput
             autoFocus
             value={editingName}
@@ -120,7 +126,7 @@ function SortableTaskItem({
             className="min-w-0 w-full flex-1 basis-0"
             aria-label="Nombre de la tarea"
           />
-          <EditActionIcons
+          <RowSaveCancelActions
             onSave={() => onSaveEditing(groupId, rubroId, task.id)}
             onCancel={onCancelEditing}
           />
@@ -147,22 +153,12 @@ function SortableTaskItem({
           >
             {task.name.trim() || "Tarea sin nombre"}
           </span>
-          <button
-            type="button"
-            onClick={() => onStartEditing(task.id, task.name)}
-            className="inline-flex size-6 shrink-0 items-center justify-center text-[#777b84] transition-opacity hover:opacity-80"
-            aria-label="Editar tarea"
-          >
-            <SquarePen className="size-4" aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={() => onRemove(groupId, rubroId, task.id)}
-            className="inline-flex size-6 shrink-0 items-center justify-center text-[#ce2c31] transition-opacity hover:opacity-80"
-            aria-label="Eliminar tarea"
-          >
-            <Trash2 className="size-3.5" aria-hidden />
-          </button>
+          <RowEditDeleteActions
+            onEdit={() => onStartEditing(task.id, task.name)}
+            onDelete={() => onRemove(groupId, rubroId, task.id)}
+            editLabel="Editar tarea"
+            deleteLabel="Eliminar tarea"
+          />
         </>
       )}
     </div>
@@ -190,7 +186,43 @@ function ExpandToggleIcon({ expanded }: { expanded: boolean }) {
   )
 }
 
-function EditActionIcons({
+const rowActionButtonClassName =
+  "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center transition-opacity hover:opacity-80"
+
+function RowEditDeleteActions({
+  onEdit,
+  onDelete,
+  editLabel,
+  deleteLabel,
+}: {
+  onEdit: () => void
+  onDelete: () => void
+  editLabel: string
+  deleteLabel: string
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-0.5">
+      <button
+        type="button"
+        onClick={onEdit}
+        className={cn(rowActionButtonClassName, "text-[#777b84]")}
+        aria-label={editLabel}
+      >
+        <SquarePen className="size-4" aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        className={cn(rowActionButtonClassName, "text-[#ce2c31]")}
+        aria-label={deleteLabel}
+      >
+        <Trash2 className="size-4" aria-hidden />
+      </button>
+    </div>
+  )
+}
+
+function RowSaveCancelActions({
   onSave,
   onCancel,
 }: {
@@ -198,11 +230,11 @@ function EditActionIcons({
   onCancel: () => void
 }) {
   return (
-    <>
+    <div className="flex shrink-0 items-center gap-0.5">
       <button
         type="button"
         onClick={onSave}
-        className="inline-flex size-6 shrink-0 items-center justify-center transition-opacity hover:opacity-80"
+        className={rowActionButtonClassName}
         aria-label="Guardar"
       >
         <Check className="size-4 text-[#15803d]" aria-hidden />
@@ -210,12 +242,12 @@ function EditActionIcons({
       <button
         type="button"
         onClick={onCancel}
-        className="inline-flex size-6 shrink-0 items-center justify-center transition-opacity hover:opacity-80"
+        className={rowActionButtonClassName}
         aria-label="Cancelar"
       >
         <X className="size-4 text-[#666]" aria-hidden />
       </button>
-    </>
+    </div>
   )
 }
 
@@ -285,13 +317,34 @@ export function CreateProjectTasksStep({
     return keys
   })
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingWeightRubroId, setEditingWeightRubroId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState("")
   const [editingWeightPercent, setEditingWeightPercent] = useState("")
   const [editingWeightAuto, setEditingWeightAuto] = useState(true)
+  const [progressHelpOpen, setProgressHelpOpen] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<PendingRubroStructureDelete | null>(
+    null,
+  )
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const allRubros = getAllRubrosFromGroups(draft.groups)
-  const manualWeightOverLimit = isManualRubroWeightOverLimit(allRubros)
+
+  const getEditingRubroWeightPreview = (rubroId: string) => {
+    return allRubros.map((rubro) =>
+      rubro.id === rubroId
+        ? {
+            ...rubro,
+            weightPercent: editingWeightAuto ? "" : editingWeightPercent,
+          }
+        : rubro,
+    )
+  }
+
+  const rubrosForWeightDisplay = editingWeightRubroId
+    ? getEditingRubroWeightPreview(editingWeightRubroId)
+    : allRubros
+
+  const manualWeightOverLimit = isManualRubroWeightOverLimit(rubrosForWeightDisplay)
 
   const setGroups = (groups: RubroGroupDraft[]) => {
     onChange({ groups })
@@ -312,22 +365,75 @@ export function CreateProjectTasksStep({
   }
 
   const startEditingRubro = (rubro: RubroItemDraft) => {
+    setEditingWeightRubroId(null)
     setEditingId(`rubro-${rubro.id}`)
     setEditingName(rubro.name)
     setEditingWeightPercent(rubro.weightPercent)
     setEditingWeightAuto(isRubroWeightAuto(rubro))
   }
 
-  const getEditingRubroWeightPreview = (rubroId: string) => {
-    return allRubros.map((rubro) =>
-      rubro.id === rubroId
-        ? {
-            ...rubro,
-            weightPercent: editingWeightAuto ? "" : editingWeightPercent,
-          }
-        : rubro,
-    )
+  const startEditingRubroWeight = (
+    rubro: RubroItemDraft,
+    mode?: "auto" | "manual",
+  ) => {
+    setEditingId(null)
+    setEditingWeightRubroId(rubro.id)
+    const nextAuto = mode ? mode === "auto" : isRubroWeightAuto(rubro)
+    setEditingWeightAuto(nextAuto)
+    if (!nextAuto && !rubro.weightPercent.trim()) {
+      setEditingWeightPercent(getRubroEffectiveWeightValue(rubro, allRubros))
+    } else {
+      setEditingWeightPercent(rubro.weightPercent)
+    }
   }
+
+  const persistRubroWeight = (groupId: string, rubroId: string): boolean => {
+    if (!editingWeightAuto) {
+      const fieldError = validateRubroWeightDraft(editingWeightAuto, editingWeightPercent)
+      if (fieldError) return false
+
+      if (isManualRubroWeightOverLimit(getEditingRubroWeightPreview(rubroId))) {
+        return false
+      }
+    }
+
+    const parsedWeight = editingWeightAuto
+      ? ""
+      : finalizeManualRubroWeightPercent(editingWeightPercent)
+
+    updateRubroInGroup(groupId, rubroId, { weightPercent: parsedWeight })
+    return true
+  }
+
+  const saveEditingRubroWeight = (groupId: string, rubroId: string) => {
+    if (persistRubroWeight(groupId, rubroId)) {
+      setEditingWeightRubroId(null)
+    }
+  }
+
+  const syncEditingRubroWeightDraft = (
+    groupId: string,
+    rubroId: string,
+    auto: boolean,
+    percent: string,
+  ) => {
+    updateRubroInGroup(groupId, rubroId, {
+      weightPercent: auto ? "" : percent,
+    })
+  }
+
+  const buildRubroWeightChangeHandlers = (groupId: string, rubroId: string) => ({
+    onWeightPercentChange: (value: string) => {
+      setEditingWeightPercent(value)
+      syncEditingRubroWeightDraft(groupId, rubroId, false, value)
+    },
+    onWeightAutoChange: (auto: boolean) => {
+      setEditingWeightAuto(auto)
+      if (auto) {
+        syncEditingRubroWeightDraft(groupId, rubroId, true, "")
+      }
+    },
+  })
 
   const saveEditingRubro = (groupId: string, rubroId: string) => {
     if (!editingName.trim()) {
@@ -346,13 +452,14 @@ export function CreateProjectTasksStep({
 
     const parsedWeight = editingWeightAuto
       ? ""
-      : String(parseRubroWeightInput(editingWeightPercent) ?? "")
+      : finalizeManualRubroWeightPercent(editingWeightPercent)
 
     updateRubroInGroup(groupId, rubroId, {
       name: editingName,
       weightPercent: parsedWeight,
     })
     setEditingId(null)
+    setEditingWeightRubroId(null)
   }
 
   const startEditingTask = (taskId: string, currentName: string) => {
@@ -371,6 +478,7 @@ export function CreateProjectTasksStep({
 
   const cancelEditing = () => {
     setEditingId(null)
+    setEditingWeightRubroId(null)
     setEditingName("")
     setEditingWeightPercent("")
     setEditingWeightAuto(true)
@@ -554,13 +662,71 @@ export function CreateProjectTasksStep({
     })
   }
 
+  const requestRemoveGroup = (groupId: string) => {
+    setPendingDelete({ kind: "group", groupId })
+  }
+
+  const requestRemoveRubro = (groupId: string, rubroId: string) => {
+    setPendingDelete({ kind: "rubro", groupId, rubroId })
+  }
+
+  const requestRemoveTask = (groupId: string, rubroId: string, taskId: string) => {
+    setPendingDelete({ kind: "task", groupId, rubroId, taskId })
+  }
+
+  const handleConfirmDelete = () => {
+    if (!pendingDelete) return
+
+    cancelEditing()
+
+    switch (pendingDelete.kind) {
+      case "group":
+        removeGroup(pendingDelete.groupId)
+        break
+      case "rubro":
+        removeRubroFromGroup(pendingDelete.groupId, pendingDelete.rubroId)
+        break
+      case "task":
+        removeTaskFromRubro(
+          pendingDelete.groupId,
+          pendingDelete.rubroId,
+          pendingDelete.taskId,
+        )
+        break
+    }
+
+    setPendingDelete(null)
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[14px] leading-[1.4]" style={{ color: "#18191b" }}>
-        Los rubros están organizados en grupos jerárquicos. Puedes agregar,
-        eliminar o editar grupos, rubros y tareas según las necesidades de tu
-        obra.
-      </p>
+      <div className="flex flex-col gap-1">
+        <p className="text-[14px] leading-[1.4] text-[#18191b]">
+          Los rubros están organizados en grupos jerárquicos. Podés agregar, eliminar o editar
+          grupos, rubros y tareas, además de configurar el porcentaje de incidencia que cada rubro
+          tendrá en el avance general de la obra.
+        </p>
+        <button
+          type="button"
+          onClick={() => setProgressHelpOpen(true)}
+          className="w-fit text-left text-[14px] font-medium leading-[1.4] text-[#113264] transition-opacity hover:opacity-80"
+        >
+          ¿Cómo se calcula el avance de la obra?
+        </button>
+      </div>
+
+      <RubroProgressHelpModal open={progressHelpOpen} onOpenChange={setProgressHelpOpen} />
+
+      <ConfirmActionDialog
+        open={pendingDelete != null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null)
+        }}
+        title={RUBRO_STRUCTURE_DELETE_CONFIRM.title}
+        description={RUBRO_STRUCTURE_DELETE_CONFIRM.description}
+        confirmLabel={RUBRO_STRUCTURE_DELETE_CONFIRM.confirmLabel}
+        onConfirm={handleConfirmDelete}
+      />
 
       {draft.workStage === "in_execution" ? <InExecutionTasksCallout /> : null}
 
@@ -637,7 +803,7 @@ export function CreateProjectTasksStep({
                       className="min-w-0 w-full flex-1 basis-0"
                       aria-label="Nombre del grupo"
                     />
-                    <EditActionIcons
+                    <RowSaveCancelActions
                       onSave={() => saveEditingGroup(group.id)}
                       onCancel={cancelEditing}
                     />
@@ -681,23 +847,12 @@ export function CreateProjectTasksStep({
                       </span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => startEditingGroup(group.id, group.name)}
-                      className="inline-flex size-6 shrink-0 items-center justify-center text-[#777b84] transition-opacity hover:opacity-80"
-                      aria-label={`Editar ${group.name}`}
-                    >
-                      <SquarePen className="size-4" aria-hidden />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => removeGroup(group.id)}
-                      className="inline-flex size-6 shrink-0 items-center justify-center text-[#dc3e42] transition-opacity hover:opacity-80"
-                      aria-label={`Eliminar ${group.name}`}
-                    >
-                      <Trash2 className="size-4" aria-hidden />
-                    </button>
+                    <RowEditDeleteActions
+                      onEdit={() => startEditingGroup(group.id, group.name)}
+                      onDelete={() => requestRemoveGroup(group.id)}
+                      editLabel={`Editar ${group.name}`}
+                      deleteLabel={`Eliminar ${group.name}`}
+                    />
                   </>
                 )}
               </div>
@@ -716,48 +871,47 @@ export function CreateProjectTasksStep({
                     )
                     const taskCount = rubro.tasks.length
 
+                    const isEditingRubroName = editingId === `rubro-${rubro.id}`
+                    const isEditingRubroWeight = editingWeightRubroId === rubro.id
+
                     return (
                       <div
                         key={rubro.id}
                         data-new-item-id={rubro.id}
                         className={cn(
-                          "rounded-[10px] border border-[#ffeae0] bg-[#fefcfb]",
+                          rubroRowStyles.card,
                           newItemHighlightClass(isHighlighted(rubro.id)),
                         )}
                       >
                         <div
-                          className={`relative flex min-h-[48px] w-full items-center gap-2 overflow-visible px-3 py-2 ${
+                          className={cn(
+                            rubroRowStyles.header,
                             isRubroExpanded
-                              ? "rounded-t-[10px] border-b border-[#ffeae0]"
-                              : "rounded-[10px]"
-                          }`}
+                              ? rubroRowStyles.headerExpanded
+                              : rubroRowStyles.headerCollapsed,
+                          )}
                         >
-                          {editingId === `rubro-${rubro.id}` ? (
+                          {isEditingRubroName ? (
                             <>
-                              <div className="flex min-w-0 flex-1 basis-0 items-center gap-2">
-                                <InlineEditInput
-                                  autoFocus
-                                  value={editingName}
-                                  onChange={setEditingName}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") saveEditingRubro(group.id, rubro.id)
-                                    if (e.key === "Escape") cancelEditing()
-                                  }}
-                                  className="min-w-0 w-full flex-1 basis-0"
-                                  aria-label="Nombre del rubro"
-                                />
+                              <InlineEditInput
+                                autoFocus
+                                value={editingName}
+                                onChange={setEditingName}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveEditingRubro(group.id, rubro.id)
+                                  if (e.key === "Escape") cancelEditing()
+                                }}
+                                className="h-auto min-w-0 flex-1 rounded-[12px] border-[#ff7433] px-[9px] py-[5px] focus-within:ring-0"
+                                inputClassName="px-0 text-[14px] leading-[1.4]"
+                                aria-label="Nombre del rubro"
+                              />
+                              <div className={rubroRowStyles.rightCluster}>
                                 <RubroIncidenceEditor
                                   weightPercent={editingWeightPercent}
                                   weightAuto={editingWeightAuto}
                                   allRubros={getEditingRubroWeightPreview(rubro.id)}
                                   rubroId={rubro.id}
-                                  onWeightPercentChange={setEditingWeightPercent}
-                                  onWeightAutoChange={(auto) => {
-                                    setEditingWeightAuto(auto)
-                                    if (!auto && !editingWeightPercent.trim()) {
-                                      setEditingWeightPercent("10")
-                                    }
-                                  }}
+                                  {...buildRubroWeightChangeHandlers(group.id, rubro.id)}
                                   hasWeightError={
                                     !editingWeightAuto &&
                                     isManualRubroWeightOverLimit(
@@ -765,83 +919,82 @@ export function CreateProjectTasksStep({
                                     )
                                   }
                                 />
+                                <RowSaveCancelActions
+                                  onSave={() => saveEditingRubro(group.id, rubro.id)}
+                                  onCancel={cancelEditing}
+                                />
                               </div>
-                              <EditActionIcons
-                                onSave={() => saveEditingRubro(group.id, rubro.id)}
-                                onCancel={cancelEditing}
-                              />
                             </>
                           ) : (
                             <>
-                              <button
-                                type="button"
-                                onClick={() => toggleRubro(group.id, rubro.id)}
-                                className="inline-flex shrink-0 items-center justify-center"
-                                aria-expanded={isRubroExpanded}
-                                aria-label={isRubroExpanded ? "Colapsar rubro" : "Expandir rubro"}
-                              >
-                                <ExpandToggleIcon expanded={isRubroExpanded} />
-                              </button>
-
-                              <div className="flex min-w-0 flex-1 items-center gap-2">
-                                <span
-                                  className="flex shrink-0 items-center justify-center rounded-lg px-2 py-0.5 text-[14px] font-normal leading-5"
-                                  style={{ backgroundColor: "#ffd7c2", color: "#d04c00" }}
-                                >
-                                  {rubroNumber}
-                                </span>
-                                <Wrench
-                                  className="size-4 shrink-0 text-[#363a3f]"
-                                  aria-hidden
-                                />
-
+                              <div className={rubroRowStyles.leftCluster}>
                                 <button
                                   type="button"
                                   onClick={() => toggleRubro(group.id, rubro.id)}
-                                  className="min-w-0 shrink text-left"
+                                  className="inline-flex shrink-0 items-center justify-center"
+                                  aria-expanded={isRubroExpanded}
+                                  aria-label={isRubroExpanded ? "Colapsar rubro" : "Expandir rubro"}
                                 >
-                                  <span
-                                    className="truncate text-[16px] font-normal leading-6"
-                                    style={{ color: "#363a3f" }}
-                                  >
-                                    {rubro.name.trim() || "Rubro sin nombre"}
-                                  </span>
+                                  <ExpandToggleIcon expanded={isRubroExpanded} />
                                 </button>
 
-                                <RubroIncidenceBadge
-                                  rubro={rubro}
-                                  allRubros={allRubros}
-                                  hasWeightError={
-                                    manualWeightOverLimit && !isRubroWeightAuto(rubro)
-                                  }
-                                />
+                                <span className={rubroRowStyles.indexBadge}>{rubroNumber}</span>
 
-                                <span
-                                  className="shrink-0 text-[12px] font-normal leading-4"
-                                  style={{ color: "#5a6169" }}
-                                >
-                                  ({taskCount}{" "}
-                                  {taskCount === 1 ? "tarea" : "tareas"})
-                                </span>
+                                <div className={rubroRowStyles.titleGroup}>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleRubro(group.id, rubro.id)}
+                                    className={rubroRowStyles.title}
+                                  >
+                                    {rubro.name.trim() || "Rubro sin nombre"}
+                                  </button>
+
+                                  <span className={rubroRowStyles.taskCount}>
+                                    {taskCount} {taskCount === 1 ? "tarea" : "tareas"}
+                                  </span>
+                                </div>
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => startEditingRubro(rubro)}
-                                className="inline-flex size-6 shrink-0 items-center justify-center text-[#777b84] transition-opacity hover:opacity-80"
-                                aria-label={`Editar ${rubro.name}`}
-                              >
-                                <SquarePen className="size-4" aria-hidden />
-                              </button>
+                              <div className={rubroRowStyles.rightCluster}>
+                                {isEditingRubroWeight ? (
+                                  <RubroIncidenceEditor
+                                    weightPercent={editingWeightPercent}
+                                    weightAuto={editingWeightAuto}
+                                    allRubros={getEditingRubroWeightPreview(rubro.id)}
+                                    rubroId={rubro.id}
+                                    autoFocusPercent={!editingWeightAuto}
+                                    {...buildRubroWeightChangeHandlers(group.id, rubro.id)}
+                                    onBlur={() => saveEditingRubroWeight(group.id, rubro.id)}
+                                    hasWeightError={
+                                      !editingWeightAuto &&
+                                      isManualRubroWeightOverLimit(
+                                        getEditingRubroWeightPreview(rubro.id),
+                                      )
+                                    }
+                                  />
+                                ) : (
+                                  <RubroIncidenceBadge
+                                    rubro={rubro}
+                                    allRubros={rubrosForWeightDisplay}
+                                    hasWeightError={
+                                      manualWeightOverLimit && !isRubroWeightAuto(rubro)
+                                    }
+                                    onActivate={(mode) => startEditingRubroWeight(rubro, mode)}
+                                  />
+                                )}
 
-                              <button
-                                type="button"
-                                onClick={() => removeRubroFromGroup(group.id, rubro.id)}
-                                className="inline-flex size-6 shrink-0 items-center justify-center text-[#ce2c31] transition-opacity hover:opacity-80"
-                                aria-label={`Eliminar ${rubro.name}`}
-                              >
-                                <Trash2 className="size-3.5" aria-hidden />
-                              </button>
+                                <RowEditDeleteActions
+                                  onEdit={() => {
+                                    if (isEditingRubroWeight) {
+                                      saveEditingRubroWeight(group.id, rubro.id)
+                                    }
+                                    startEditingRubro(rubro)
+                                  }}
+                                  onDelete={() => requestRemoveRubro(group.id, rubro.id)}
+                                  editLabel={`Editar ${rubro.name}`}
+                                  deleteLabel={`Eliminar ${rubro.name}`}
+                                />
+                              </div>
                             </>
                           )}
                         </div>
@@ -878,7 +1031,7 @@ export function CreateProjectTasksStep({
                                         onSaveEditing={saveEditingTask}
                                         onCancelEditing={cancelEditing}
                                         onUpdateName={setEditingName}
-                                        onRemove={removeTaskFromRubro}
+                                        onRemove={requestRemoveTask}
                                         isHighlighted={isHighlighted(task.id)}
                                       />
                                     ))}

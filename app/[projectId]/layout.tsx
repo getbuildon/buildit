@@ -1,8 +1,9 @@
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import type { ReactNode } from "react"
 import { ProjectWorkspace } from "@/components/project-shell/ProjectWorkspace"
 import { ProjectShell } from "@/components/project-shell/ProjectShell"
 import { ProjectAccessProvider } from "@/components/project-shell/ProjectAccessProvider"
+import { getProjectSetupStatus } from "@/app/projects/new/actions"
 import { assertProjectRoute } from "@/lib/project/assertProjectRoute"
 import { getProjectAccessContext } from "@/lib/project/projectAccess"
 import { getProjectById } from "@/lib/projects/listUserProjects"
@@ -16,6 +17,12 @@ type ProjectLayoutProps = {
 
 export default async function ProjectLayout({ children, params }: ProjectLayoutProps) {
   const { projectId } = await params
+
+  const setupStatus = await getProjectSetupStatus(projectId)
+  if (setupStatus === "draft") {
+    redirect(`/projects/new?projectId=${projectId}`)
+  }
+
   await assertProjectRoute(projectId)
 
   const [project, profileData, accessContext] = await Promise.all([

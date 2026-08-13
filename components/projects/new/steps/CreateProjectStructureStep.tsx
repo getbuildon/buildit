@@ -1,8 +1,10 @@
 "use client"
 
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Building2, Plus, Trash2, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import {
   Select,
   SelectContent,
@@ -15,8 +17,11 @@ import {
   FLOOR_IDENTIFIER_TOOLTIP,
   UNIT_CODE_TOOLTIP,
 } from "@/components/projects/new/FieldLabelWithTooltip"
+import { StructureSurfaceLimitBanner } from "@/components/projects/new/StructureSurfaceLimitBanner"
 import { StructureUnitAttachUpload } from "@/components/projects/new/StructureUnitAttachUpload"
-import { CreateProjectFormField } from "@/components/projects/new/CreateProjectFormField"
+import { RequestPlanUpgradeModal } from "@/components/team/RequestPlanUpgradeModal"
+import { CreateProjectFormField, createProjectFieldErrorInputClassName, createProjectFieldErrorInputStyle } from "@/components/projects/new/CreateProjectFormField"
+import { FieldErrorTooltip } from "@/components/ui/field-error-tooltip"
 import {
   STRUCTURE_UNIT_TYPES,
   countStructureUnits,
@@ -47,22 +52,70 @@ import {
   OFFICE_SIZE_OPTIONS,
   UNIT_ROOM_COUNT_OPTIONS,
 } from "@/lib/projects/unitTypes"
+import type { StructureFloorFieldErrors, StructureStepFieldErrors, StructureUnitFieldErrors } from "@/lib/projects/createProjectStructureValidation"
+import { getStructureSurfaceLimitState, scrollToStructureSurfaceLimitBanner } from "@/lib/projects/structureSurfaceLimits"
 import { cn } from "@/lib/utils"
 import {
   newItemHighlightClass,
   useNewItemHighlight,
 } from "@/components/projects/new/useNewItemHighlight"
 
+const STRUCTURE_DELETE_CONFIRM = {
+  title: "Confirmar cambios",
+  confirmLabel: "Confirmar",
+  floorDescription:
+    "Al eliminar el piso se eliminan todas las unidades y, con ellas, todas las asignaciones de tareas que tienen. ¿Deseás continuar?",
+  unitDescription:
+    "Al eliminar esta unidad se eliminan todas las asignaciones de tareas que tiene. ¿Deseás continuar?",
+} as const
+
+type PendingStructureDelete =
+  | { kind: "floor"; floorId: string }
+  | { kind: "unit"; floorId: string; unitId: string }
+
+function stripUnitTaskExclusions(
+  exclusions: CreateProjectDraft["unitTaskExclusions"],
+  unitIds: string[],
+): CreateProjectDraft["unitTaskExclusions"] {
+  if (unitIds.length === 0) return exclusions
+
+  const next = { ...exclusions }
+  for (const unitId of unitIds) {
+    delete next[unitId]
+  }
+  return next
+}
+
 type CreateProjectStructureStepProps = {
   draft: CreateProjectDraft
   onChange: (patch: Partial<CreateProjectDraft>) => void
+  fieldErrors?: StructureStepFieldErrors
+  projectId?: string | null
+  planSurfaceMaxM2?: number | null
 }
 
 export function CreateProjectStructureStep({
   draft,
   onChange,
+  fieldErrors = {},
+  projectId = null,
+  planSurfaceMaxM2 = null,
 }: CreateProjectStructureStepProps) {
   const { markAsNew, isHighlighted } = useNewItemHighlight()
+  const [pendingDelete, setPendingDelete] = useState<PendingStructureDelete | null>(null)
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
+  const surfaceLimitState = useMemo(
+    () => getStructureSurfaceLimitState(draft.floors, planSurfaceMaxM2),
+    [draft.floors, planSurfaceMaxM2],
+  )
+  const wasOverSurfaceLimit = useRef(false)
+
+  useEffect(() => {
+    if (surfaceLimitState.isOverLimit && !wasOverSurfaceLimit.current) {
+      scrollToStructureSurfaceLimitBanner()
+    }
+    wasOverSurfaceLimit.current = surfaceLimitState.isOverLimit
+  }, [surfaceLimitState.isOverLimit, surfaceLimitState.unitsSurfaceM2])
   const floorCount = draft.floors.length
   const unitCount = countStructureUnits(draft.floors)
 
@@ -88,7 +141,13 @@ export function CreateProjectStructureStep({
   }
 
   const removeFloor = (floorId: string) => {
-    setFloors(draft.floors.filter((floor) => floor.id !== floorId))
+    const floor = draft.floors.find((item) => item.id === floorId)
+    const unitIds = floor?.units.map((unit) => unit.id) ?? []
+
+    onChange({
+      floors: draft.floors.filter((item) => item.id !== floorId),
+      unitTaskExclusions: stripUnitTaskExclusions(draft.unitTaskExclusions, unitIds),
+    })
   }
 
   const addUnit = (floorId: string) => {
@@ -117,18 +176,55 @@ export function CreateProjectStructureStep({
   }
 
   const removeUnit = (floorId: string, unitId: string) => {
-    const floor = draft.floors.find((f) => f.id === floorId)
-    if (!floor) return
-    updateFloor(floorId, {
-      units: floor.units.filter((unit) => unit.id !== unitId),
+    onChange({
+      floors: draft.floors.map((item) =>
+        item.id === floorId
+          ? { ...item, units: item.units.filter((unit) => unit.id !== unitId) }
+          : item,
+      ),
+      unitTaskExclusions: stripUnitTaskExclusions(draft.unitTaskExclusions, [unitId]),
     })
   }
+
+  const requestRemoveFloor = (floorId: string) => {
+    setPendingDelete({ kind: "floor", floorId })
+  }
+
+  const requestRemoveUnit = (floorId: string, unitId: string) => {
+    setPendingDelete({ kind: "unit", floorId, unitId })
+  }
+
+  const handleConfirmDelete = () => {
+    if (!pendingDelete) return
+
+    if (pendingDelete.kind === "floor") {
+      removeFloor(pendingDelete.floorId)
+    } else {
+      removeUnit(pendingDelete.floorId, pendingDelete.unitId)
+    }
+
+    setPendingDelete(null)
+  }
+
+  const pendingDeleteDescription =
+    pendingDelete?.kind === "floor"
+      ? STRUCTURE_DELETE_CONFIRM.floorDescription
+      : pendingDelete?.kind === "unit"
+        ? STRUCTURE_DELETE_CONFIRM.unitDescription
+        : ""
 
   return (
     <div
       className="flex w-full flex-col gap-4"
       style={{ maxWidth: STRUCTURE_STEP_LAYOUT.contentMaxWidth }}
     >
+      {surfaceLimitState.isOverLimit && surfaceLimitState.planSurfaceMaxM2 != null ? (
+        <StructureSurfaceLimitBanner
+          planSurfaceMaxM2={surfaceLimitState.planSurfaceMaxM2}
+          onUpgradeClick={() => setUpgradeModalOpen(true)}
+        />
+      ) : null}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex flex-col gap-2">
           <p className="text-[14px] font-normal leading-5 text-[#272a2d]">
@@ -182,13 +278,14 @@ export function CreateProjectStructureStep({
                 key={floor.id}
                 floor={floor}
                 isHighlighted={isHighlighted(floor.id)}
+                fieldErrors={fieldErrors[floor.id]}
                 onUpdateFloor={(patch) => updateFloor(floor.id, patch)}
-                onRemoveFloor={() => removeFloor(floor.id)}
+                onRemoveFloor={() => requestRemoveFloor(floor.id)}
                 onAddUnit={() => addUnit(floor.id)}
                 onUpdateUnit={(unitId, patch) =>
                   updateUnit(floor.id, unitId, patch)
                 }
-                onRemoveUnit={(unitId) => removeUnit(floor.id, unitId)}
+                onRemoveUnit={(unitId) => requestRemoveUnit(floor.id, unitId)}
                 isUnitHighlighted={isHighlighted}
               />
             ))}
@@ -197,6 +294,31 @@ export function CreateProjectStructureStep({
       </div>
 
       <StructureProjectSummary floorCount={floorCount} unitCount={unitCount} />
+
+      <ConfirmActionDialog
+        open={pendingDelete != null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null)
+        }}
+        title={STRUCTURE_DELETE_CONFIRM.title}
+        description={pendingDeleteDescription}
+        confirmLabel={STRUCTURE_DELETE_CONFIRM.confirmLabel}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <RequestPlanUpgradeModal
+        projectId={projectId}
+        surfaceLimit={
+          surfaceLimitState.isOverLimit && surfaceLimitState.planSurfaceMaxM2 != null
+            ? {
+                planSurfaceMaxM2: surfaceLimitState.planSurfaceMaxM2,
+                unitsSurfaceM2: surfaceLimitState.unitsSurfaceM2,
+              }
+            : null
+        }
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+      />
     </div>
   )
 }
@@ -246,6 +368,7 @@ function StructureProjectSummary({
 type StructureFloorCardProps = {
   floor: StructureFloorDraft
   isHighlighted: boolean
+  fieldErrors?: StructureFloorFieldErrors
   onUpdateFloor: (patch: Partial<StructureFloorDraft>) => void
   onRemoveFloor: () => void
   onAddUnit: () => void
@@ -257,6 +380,7 @@ type StructureFloorCardProps = {
 function StructureFloorCard({
   floor,
   isHighlighted,
+  fieldErrors,
   onUpdateFloor,
   onRemoveFloor,
   onAddUnit,
@@ -264,9 +388,13 @@ function StructureFloorCard({
   onRemoveUnit,
   isUnitHighlighted,
 }: StructureFloorCardProps) {
+  const nameError = fieldErrors?.name
+  const identifierError = fieldErrors?.identifier
+
   return (
     <div
       data-new-item-id={floor.id}
+      data-structure-floor-id={floor.id}
       className={cn(
         "flex w-full flex-col gap-3 rounded-[10px] bg-white p-3",
         newItemHighlightClass(isHighlighted),
@@ -277,15 +405,17 @@ function StructureFloorCard({
       }}
     >
       <div
-        className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:gap-2.5"
+        className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:gap-2.5"
       >
-        <div className="grid grid-cols-1 gap-2.5 sm:flex sm:min-w-0 sm:flex-1 sm:items-center sm:gap-2.5">
+        <div className="grid grid-cols-1 gap-2.5 sm:flex sm:min-w-0 sm:flex-1 sm:items-start sm:gap-2.5">
         <CreateProjectFormField
           label="Nombre del Piso"
           htmlFor={`floor-name-${floor.id}`}
           className="min-w-0 flex-1 gap-1"
           labelClassName={structureLabelClassName}
           labelStyle={structureFloorLabelStyle}
+          error={nameError}
+          errorDisplay="inline"
         >
           <Input
             id={`floor-name-${floor.id}`}
@@ -298,22 +428,36 @@ function StructureFloorCard({
         </CreateProjectFormField>
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <FieldLabelWithTooltip
-            label="Identificador"
-            tooltip={FLOOR_IDENTIFIER_TOOLTIP}
-            htmlFor={`floor-identifier-${floor.id}`}
-            labelClassName={structureLabelClassName}
-            labelStyle={structureMutedLabelStyle}
-          />
+          <div className="flex items-center justify-between gap-1">
+            <FieldLabelWithTooltip
+              label="Identificador"
+              tooltip={FLOOR_IDENTIFIER_TOOLTIP}
+              htmlFor={`floor-identifier-${floor.id}`}
+              labelClassName={structureLabelClassName}
+              labelStyle={structureMutedLabelStyle}
+            />
+            {identifierError ? <FieldErrorTooltip message={identifierError} /> : null}
+          </div>
           <Input
             id={`floor-identifier-${floor.id}`}
             placeholder="Ej. PB, P01, SS."
             value={floor.identifier}
             maxLength={4}
             onChange={(e) => onUpdateFloor({ identifier: e.target.value })}
-            className={structureFloorInputClassName}
-            style={structureFloorInputStyle}
+            className={cn(
+              structureFloorInputClassName,
+              identifierError && createProjectFieldErrorInputClassName,
+            )}
+            style={{
+              ...structureFloorInputStyle,
+              ...(identifierError ? createProjectFieldErrorInputStyle : {}),
+              borderColor: identifierError
+                ? createProjectFieldErrorInputStyle.borderColor
+                : structureFloorInputStyle.borderColor,
+            }}
+            aria-invalid={Boolean(identifierError)}
           />
+          <div className="min-h-4" aria-hidden />
         </div>
 
         <CreateProjectFormField
@@ -322,6 +466,7 @@ function StructureFloorCard({
           className="min-w-0 flex-1 gap-1"
           labelClassName={structureLabelClassName}
           labelStyle={structureFloorLabelStyle}
+          errorDisplay="inline"
         >
           <Input
             id={`floor-level-${floor.id}`}
@@ -334,7 +479,7 @@ function StructureFloorCard({
         </CreateProjectFormField>
         </div>
 
-        <div className="flex shrink-0 items-center gap-4 sm:px-6">
+        <div className="flex shrink-0 items-center gap-4 self-start sm:mt-5 sm:px-6">
           <button
             type="button"
             onClick={onAddUnit}
@@ -347,7 +492,7 @@ function StructureFloorCard({
           <button
             type="button"
             onClick={onRemoveFloor}
-            className="inline-flex shrink-0 items-center justify-center transition-opacity hover:opacity-80"
+            className="inline-flex shrink-0 cursor-pointer items-center justify-center transition-opacity hover:opacity-80"
             style={{ color: STRUCTURE_STEP_COLORS.delete }}
             aria-label={`Eliminar ${floor.name}`}
           >
@@ -367,6 +512,7 @@ function StructureFloorCard({
               key={unit.id}
               unit={unit}
               isHighlighted={isUnitHighlighted(unit.id)}
+              fieldErrors={fieldErrors?.unitErrors?.[unit.id]}
               onUpdateUnit={(patch) => onUpdateUnit(unit.id, patch)}
               onRemoveUnit={() => onRemoveUnit(unit.id)}
             />
@@ -380,6 +526,7 @@ function StructureFloorCard({
 type StructureUnitRowProps = {
   unit: StructureUnitDraft
   isHighlighted: boolean
+  fieldErrors?: StructureUnitFieldErrors
   onUpdateUnit: (patch: Partial<StructureUnitDraft>) => void
   onRemoveUnit: () => void
 }
@@ -387,9 +534,12 @@ type StructureUnitRowProps = {
 function StructureUnitRow({
   unit,
   isHighlighted,
+  fieldErrors,
   onUpdateUnit,
   onRemoveUnit,
 }: StructureUnitRowProps) {
+  const codeError = fieldErrors?.code
+  const squareMetersError = fieldErrors?.squareMeters
   const variantEnabled = isUnitVariantFieldEnabled(unit.type)
   const variantLabel = getUnitVariantFieldLabel(unit.type)
   const variantField = getUnitVariantField(unit.type)
@@ -398,6 +548,7 @@ function StructureUnitRow({
   return (
     <div
       data-new-item-id={unit.id}
+      data-structure-unit-id={unit.id}
       className={cn(
         "w-full rounded-[4px] px-3 pt-3 pb-3",
         newItemHighlightClass(isHighlighted),
@@ -446,36 +597,62 @@ function StructureUnitRow({
           </div>
 
           <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.compact)}>
-            <FieldLabelWithTooltip
-              label="ID"
-              tooltip={UNIT_CODE_TOOLTIP}
-              htmlFor={`unit-code-${unit.id}`}
-              labelClassName={structureLabelClassName}
-              labelStyle={structureMutedLabelStyle}
-            />
+            <div className="flex items-center justify-between gap-1">
+              <FieldLabelWithTooltip
+                label="ID"
+                tooltip={UNIT_CODE_TOOLTIP}
+                htmlFor={`unit-code-${unit.id}`}
+                labelClassName={structureLabelClassName}
+                labelStyle={structureMutedLabelStyle}
+              />
+              {codeError ? <FieldErrorTooltip message={codeError} /> : null}
+            </div>
             <Input
               id={`unit-code-${unit.id}`}
               placeholder="Ej. 101"
               value={unit.code}
               maxLength={4}
               onChange={(e) => onUpdateUnit({ code: e.target.value })}
-              className={structureUnitInputClassName}
-              style={structureUnitInputStyle}
+              className={cn(
+                structureUnitInputClassName,
+                codeError && createProjectFieldErrorInputClassName,
+              )}
+              style={{
+                ...structureUnitInputStyle,
+                ...(codeError ? createProjectFieldErrorInputStyle : {}),
+                borderColor: codeError
+                  ? createProjectFieldErrorInputStyle.borderColor
+                  : structureUnitInputStyle.borderColor,
+              }}
+              aria-invalid={Boolean(codeError)}
             />
           </div>
 
           <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.compact)}>
-            <span className={structureLabelClassName} style={structureMutedLabelStyle}>
-              m²
-            </span>
+            <div className="flex items-center justify-between gap-1">
+              <span className={structureLabelClassName} style={structureMutedLabelStyle}>
+                m²
+              </span>
+              {squareMetersError ? <FieldErrorTooltip message={squareMetersError} /> : null}
+            </div>
             <Input
               id={`unit-m2-${unit.id}`}
               inputMode="decimal"
               placeholder="Ej. 45"
               value={unit.squareMeters}
               onChange={(e) => onUpdateUnit({ squareMeters: e.target.value })}
-              className={structureUnitInputClassName}
-              style={structureUnitInputStyle}
+              className={cn(
+                structureUnitInputClassName,
+                squareMetersError && createProjectFieldErrorInputClassName,
+              )}
+              style={{
+                ...structureUnitInputStyle,
+                ...(squareMetersError ? createProjectFieldErrorInputStyle : {}),
+                borderColor: squareMetersError
+                  ? createProjectFieldErrorInputStyle.borderColor
+                  : structureUnitInputStyle.borderColor,
+              }}
+              aria-invalid={Boolean(squareMetersError)}
             />
           </div>
 
@@ -577,7 +754,7 @@ function StructureUnitRow({
         <button
           type="button"
           onClick={onRemoveUnit}
-          className="inline-flex size-4 shrink-0 items-center justify-center self-center text-[#ce2c31] transition-opacity hover:opacity-80"
+          className="inline-flex size-4 shrink-0 cursor-pointer items-center justify-center self-center text-[#ce2c31] transition-opacity hover:opacity-80"
           aria-label="Eliminar unidad"
         >
           <X className="size-4" aria-hidden />

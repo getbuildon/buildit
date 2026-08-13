@@ -8,6 +8,10 @@ import { BackButton } from "@/components/ui/BackButton"
 import { useAuth } from "@/context/AuthContextSupabase"
 import { updateEmailClient, updatePasswordClient } from "@/lib/auth/clientAuth"
 import {
+  PASSWORD_REQUIREMENTS_HINT,
+  validateNewPasswordFields,
+} from "@/lib/auth/passwordValidation"
+import {
   compressProfileAvatar,
   uploadProfileAvatar,
 } from "@/lib/profile/profileAvatar.client"
@@ -224,15 +228,15 @@ export function PerfilView({ projectId, showBackButton = false }: PerfilViewProp
       setPasswordFeedback({ type: "error", message: "Ingresá tu contraseña actual." })
       return
     }
-    if (newPwd.length < 8) {
+
+    const passwordValidation = validateNewPasswordFields(newPwd, confirmPwd)
+    if (!passwordValidation.ok) {
       setPasswordFeedback({
         type: "error",
-        message: "La nueva contraseña debe tener al menos 8 caracteres.",
+        message:
+          passwordValidation.errors.password ||
+          passwordValidation.errors.confirmPassword,
       })
-      return
-    }
-    if (newPwd !== confirmPwd) {
-      setPasswordFeedback({ type: "error", message: "Las contraseñas no coinciden." })
       return
     }
 
@@ -481,7 +485,7 @@ export function PerfilView({ projectId, showBackButton = false }: PerfilViewProp
                 disabled={passwordLoading}
               />
               <p className="text-[10px] font-normal leading-[1.4] tracking-[-0.5px] text-[#777b84]">
-                Mínimo 8 caracteres
+                {PASSWORD_REQUIREMENTS_HINT}
               </p>
             </div>
             <PasswordField

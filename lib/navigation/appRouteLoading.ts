@@ -1,4 +1,10 @@
-export type AppRouteLoadingType = "home" | "project" | "backoffice" | "company" | "perfil"
+export type AppRouteLoadingType =
+  | "home"
+  | "project"
+  | "backoffice"
+  | "company"
+  | "perfil"
+  | "create-project"
 
 const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "home",
@@ -32,6 +38,11 @@ export function getAppRouteLoadingType(href: string): AppRouteLoadingType | null
 
   if (path === "/perfil") {
     return "perfil"
+  }
+
+  const basePath = path.split("?")[0]
+  if (basePath === "/projects/new") {
+    return "create-project"
   }
 
   const segments = path.split("/").filter(Boolean)
@@ -73,6 +84,10 @@ export function hasReachedAppRoute(pathname: string, href: string) {
 
   if (targetType === "perfil") {
     return current === target
+  }
+
+  if (targetType === "create-project") {
+    return current.startsWith("/projects/new")
   }
 
   if (targetType === "project") {

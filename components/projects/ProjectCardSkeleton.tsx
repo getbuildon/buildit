@@ -11,12 +11,12 @@ export function ProjectCardSkeleton({ className }: ProjectCardSkeletonProps) {
     <div
       aria-hidden
       className={cn(
-        "block shrink-0 rounded-[16px] border border-white/15 bg-white/10 backdrop-blur-[2px]",
+        "flex h-full shrink-0 flex-col rounded-[16px] border border-white/15 bg-white/10 backdrop-blur-[2px]",
         HOME_LAYOUT.projectCardSize,
         className,
       )}
     >
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-1 flex-col p-6">
         <div className="flex flex-col gap-4">
           <div className="flex h-12 items-start justify-between">
             <Skeleton tone="dark" className="size-12 rounded-[14px]" />
@@ -29,7 +29,7 @@ export function ProjectCardSkeleton({ className }: ProjectCardSkeletonProps) {
           </div>
         </div>
 
-        <div className="flex items-start justify-between border-t border-white/10 pt-3">
+        <div className="mt-auto flex items-start justify-between border-t border-white/10 pt-3">
           <div className="flex flex-col gap-2">
             <Skeleton tone="dark" className="h-3 w-9 rounded-[4px]" />
             <Skeleton tone="dark" className="h-4 w-5 rounded-[4px]" />

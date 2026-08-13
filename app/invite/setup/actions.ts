@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/utils/supabase/admin"
 import { createClient } from "@/utils/supabase/server"
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
+import { getPasswordStrengthError, mapPasswordPolicyError } from "@/lib/auth/passwordValidation"
 import { acceptProjectInvitation } from "@/lib/invitations/projectInvitationService"
 
 export type InvitationSetupData = {
@@ -112,8 +113,9 @@ export async function completeInvitationSetup(
   password: string,
 ): Promise<{ ok: true; projectId: string } | { ok: false; error: string }> {
   const trimmed = password.trim()
-  if (trimmed.length < 8) {
-    return { ok: false, error: "La contraseña debe tener al menos 8 caracteres." }
+  const strengthError = getPasswordStrengthError(trimmed)
+  if (strengthError) {
+    return { ok: false, error: strengthError }
   }
 
   const user = await requireAuthenticatedUser()
@@ -125,7 +127,12 @@ export async function completeInvitationSetup(
     data: { invitation_id: null },
   })
   if (passwordError) {
-    return { ok: false, error: passwordError.message }
+    return {
+      ok: false,
+      error:
+        mapPasswordPolicyError(passwordError.message) ??
+        "No pudimos guardar la contraseña. Intentá de nuevo.",
+    }
   }
 
   const acceptResult = await acceptProjectInvitation(

@@ -59,7 +59,7 @@ export function InfoTooltip({ text, className, iconClassName }: InfoTooltipProps
                 left: position.left,
                 transform: "translateX(-50%)",
               }}
-              className="pointer-events-none fixed z-[9999] w-[240px] rounded-[8px] bg-[#111113] px-3 py-2 text-left text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-white shadow-md"
+              className="pointer-events-none fixed z-[9999] w-[280px] rounded-[8px] bg-[#111113] px-3 py-2 text-left text-[12px] font-normal leading-[1.4] tracking-[-0.36px] whitespace-pre-line text-white shadow-md"
             >
               {text}
             </div>,

@@ -1,8 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+
 import { BackButton } from "@/components/ui/BackButton"
-import { createProjectFromDraft } from "@/app/projects/new/actions"
+import {
+  createProjectFromDraft,
+  loadProjectDraft,
+  saveProjectDraft,
+} from "@/app/projects/new/actions"
 import { CreateProjectStageStep } from "@/components/projects/new/CreateProjectStageStep"
 import { CreateProjectSuccessPanel } from "@/components/projects/new/CreateProjectSuccessPanel"
 import { CreateProjectStepper } from "@/components/projects/new/CreateProjectStepper"
@@ -16,6 +22,7 @@ import { CreateProjectWorkStatusStep } from "@/components/projects/new/steps/Cre
 import {
   getCreateProjectStepConfig,
   getCreateProjectStepperState,
+  getDraftSaveConfirmMessage,
   getNextCreateProjectStepId,
   getPreviousCreateProjectStepId,
   type CreateProjectStepId,
@@ -35,6 +42,25 @@ import {
   CREATE_PROJECT_LAYOUT,
   CREATE_PROJECT_TYPE,
 } from "@/lib/projects/createProjectTokens"
+import {
+  getBasicInfoFieldErrors,
+  type BasicInfoFieldErrors,
+} from "@/lib/projects/createProjectBasicValidation"
+import {
+  getStructureStepFieldErrors,
+  getFirstStructureFieldErrorTarget,
+  hasStructureStepFieldErrors,
+  type StructureStepFieldErrors,
+} from "@/lib/projects/createProjectStructureValidation"
+import { getProjectPlanSurfaceLimit } from "@/lib/projects/getProjectPlanSurfaceLimit"
+import {
+  getProjectPlanSurfaceLimitErrorFromDraft,
+  isTotalSurfaceOverPlanLimit,
+  scrollToStructureSurfaceLimitBanner,
+} from "@/lib/projects/structureSurfaceLimits"
+import { CreateProjectDraftSavedModal } from "@/components/projects/new/CreateProjectDraftSavedModal"
+import { CreateProjectLoadingScreen } from "@/components/projects/new/CreateProjectLoadingScreen"
+import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { cn } from "@/lib/utils"
 
 type CreatedProject = {
@@ -43,34 +69,217 @@ type CreatedProject = {
 }
 
 export function CreateNewProjectView() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialProjectId = searchParams.get("projectId")
+
+  const [draftProjectId, setDraftProjectId] = useState<string | null>(initialProjectId)
   const [phase, setPhase] = useState<"stage" | "wizard">("stage")
   const [activeStepId, setActiveStepId] = useState<CreateProjectStepId>("basic")
   const [draft, setDraft] = useState<CreateProjectDraft>(createEmptyProjectDraft)
   const [coverImage, setCoverImage] = useState<ProjectCoverImageDraft | null>(null)
+  const [existingCoverUrl, setExistingCoverUrl] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSavingDraft, setIsSavingDraft] = useState(false)
+  const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(initialProjectId))
   const [createdProject, setCreatedProject] = useState<CreatedProject | null>(null)
+  const [basicFieldErrors, setBasicFieldErrors] = useState<BasicInfoFieldErrors>({})
+  const [structureFieldErrors, setStructureFieldErrors] = useState<StructureStepFieldErrors>({})
+  const [saveDraftDialogOpen, setSaveDraftDialogOpen] = useState(false)
+  const [showDraftSavedModal, setShowDraftSavedModal] = useState(false)
+  const [planSurfaceMaxM2, setPlanSurfaceMaxM2] = useState<number | null>(null)
 
   const isSuccess = createdProject !== null
 
   const activeStep = getCreateProjectStepConfig(activeStepId)
   const stepperState = getCreateProjectStepperState(activeStepId, draft.workStage)
+  const draftSaveConfirmMessage = useMemo(
+    () => getDraftSaveConfirmMessage(activeStepId),
+    [activeStepId],
+  )
+  const planSurfaceLimitError = useMemo(
+    () => getProjectPlanSurfaceLimitErrorFromDraft(draft, planSurfaceMaxM2),
+    [draft, planSurfaceMaxM2],
+  )
+  const planSurfaceLimitTargetStep = useMemo((): CreateProjectStepId => {
+    if (isTotalSurfaceOverPlanLimit(draft.totalSurface, planSurfaceMaxM2)) {
+      return "basic"
+    }
+    return "structure"
+  }, [draft.totalSurface, planSurfaceMaxM2])
+  const pendingSurfaceBannerScroll = useRef(false)
+  const wasOverSurfaceLimit = useRef(false)
+
+  const focusPlanSurfaceLimit = useCallback(() => {
+    pendingSurfaceBannerScroll.current = true
+    if (activeStepId !== planSurfaceLimitTargetStep) {
+      setActiveStepId(planSurfaceLimitTargetStep)
+      return
+    }
+    scrollToStructureSurfaceLimitBanner()
+    pendingSurfaceBannerScroll.current = false
+  }, [activeStepId, planSurfaceLimitTargetStep])
+
+  useEffect(() => {
+    if (!pendingSurfaceBannerScroll.current) return
+    if (activeStepId !== planSurfaceLimitTargetStep) return
+    scrollToStructureSurfaceLimitBanner({ delayMs: 100 })
+    pendingSurfaceBannerScroll.current = false
+  }, [activeStepId, planSurfaceLimitTargetStep, planSurfaceLimitError])
+
+  useEffect(() => {
+    if (!planSurfaceLimitError) {
+      wasOverSurfaceLimit.current = false
+      return
+    }
+    if (wasOverSurfaceLimit.current) return
+    wasOverSurfaceLimit.current = true
+    if (activeStepId !== planSurfaceLimitTargetStep) {
+      focusPlanSurfaceLimit()
+    }
+  }, [planSurfaceLimitError, activeStepId, planSurfaceLimitTargetStep, focusPlanSurfaceLimit])
+
+  useEffect(() => {
+    if (!draftProjectId) {
+      setPlanSurfaceMaxM2(null)
+      return
+    }
+
+    let cancelled = false
+
+    void getProjectPlanSurfaceLimit(draftProjectId).then((limit) => {
+      if (!cancelled) {
+        setPlanSurfaceMaxM2(limit)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [draftProjectId])
 
   const updateDraft = useCallback((patch: Partial<CreateProjectDraft>) => {
     setDraft((current) => ({ ...current, ...patch }))
     setSubmitError(null)
+    setBasicFieldErrors((current) => {
+      if (Object.keys(current).length === 0) return current
+      const next = { ...current }
+      if ("projectName" in patch) delete next.projectName
+      if ("totalSurface" in patch) delete next.totalSurface
+      if ("startDate" in patch || "endDate" in patch) delete next.endDate
+      return next
+    })
+    if ("floors" in patch) {
+      setStructureFieldErrors({})
+    }
   }, [])
 
   useEffect(() => {
     return () => revokeProjectCoverPreview(coverImage)
   }, [coverImage])
 
+  useEffect(() => {
+    if (!initialProjectId) return
+
+    let cancelled = false
+
+    void loadProjectDraft(initialProjectId).then((result) => {
+      if (cancelled) return
+
+      if (!result.ok) {
+        setSubmitError(result.error)
+        setIsLoadingDraft(false)
+        return
+      }
+
+      setDraftProjectId(result.projectId)
+      setDraft(result.draft)
+      setPhase("stage")
+      setActiveStepId("basic")
+      setExistingCoverUrl(result.coverUrl)
+      setIsLoadingDraft(false)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [initialProjectId])
+
+  const syncDraftProjectUrl = useCallback(
+    (projectId: string) => {
+      setDraftProjectId(projectId)
+      router.replace(`/projects/new?projectId=${projectId}`, { scroll: false })
+    },
+    [router],
+  )
+
+  const handleSaveDraft = async (): Promise<boolean> => {
+    if (planSurfaceLimitError) {
+      setSubmitError(planSurfaceLimitError)
+      focusPlanSurfaceLimit()
+      return false
+    }
+
+    setIsSavingDraft(true)
+    setSubmitError(null)
+
+    try {
+      const result = await saveProjectDraft({
+        draft,
+        phase,
+        activeStepId,
+        projectId: draftProjectId,
+      })
+
+      if (!result.ok) {
+        setSubmitError(result.error)
+        return false
+      }
+
+      if (draftProjectId !== result.projectId) {
+        syncDraftProjectUrl(result.projectId)
+      }
+
+      if (result.companyId !== draft.companyId) {
+        updateDraft({ companyId: result.companyId })
+      }
+
+      if (coverImage) {
+        const uploadResult = await uploadProjectCoverPhoto(result.projectId, coverImage.file)
+        if (!uploadResult.ok) {
+          setSubmitError(uploadResult.error)
+          return false
+        }
+        setExistingCoverUrl(uploadResult.publicUrl)
+      }
+
+      setShowDraftSavedModal(true)
+      return true
+    } finally {
+      setIsSavingDraft(false)
+    }
+  }
+
+  const handleConfirmSaveDraft = async () => {
+    const saved = await handleSaveDraft()
+    if (saved) {
+      setSaveDraftDialogOpen(false)
+    }
+  }
+
   const handleSubmit = async () => {
+    if (planSurfaceLimitError) {
+      setSubmitError(planSurfaceLimitError)
+      focusPlanSurfaceLimit()
+      return
+    }
+
     setIsSubmitting(true)
     setSubmitError(null)
 
     try {
-      const result = await createProjectFromDraft(draft)
+      const result = await createProjectFromDraft(draft, draftProjectId)
 
       if (!result.ok) {
         setSubmitError(result.error)
@@ -83,6 +292,7 @@ export function CreateNewProjectView() {
           setSubmitError(uploadResult.error)
           return
         }
+        setExistingCoverUrl(uploadResult.publicUrl)
       }
 
       const unitAssets = draft.floors.flatMap((floor) => floor.units)
@@ -107,6 +317,41 @@ export function CreateNewProjectView() {
   }
 
   const handleNext = () => {
+    if (activeStepId === "basic") {
+      const errors = getBasicInfoFieldErrors(draft)
+      if (Object.keys(errors).length > 0) {
+        setBasicFieldErrors(errors)
+        setSubmitError(null)
+        return
+      }
+      setBasicFieldErrors({})
+    }
+
+    if (activeStepId === "structure") {
+      const errors = getStructureStepFieldErrors(draft)
+      if (hasStructureStepFieldErrors(errors)) {
+        setStructureFieldErrors(errors)
+        setSubmitError(null)
+        const target = getFirstStructureFieldErrorTarget(errors)
+        if (target) {
+          requestAnimationFrame(() => {
+            const selector = target.unitId
+              ? `[data-structure-unit-id="${target.unitId}"]`
+              : `[data-structure-floor-id="${target.floorId}"]`
+            document.querySelector(selector)?.scrollIntoView({ behavior: "smooth", block: "center" })
+          })
+        }
+        return
+      }
+      setStructureFieldErrors({})
+    }
+
+    if (planSurfaceLimitError) {
+      setSubmitError(planSurfaceLimitError)
+      focusPlanSurfaceLimit()
+      return
+    }
+
     if (activeStepId === "team") {
       void handleSubmit()
       return
@@ -145,10 +390,23 @@ export function CreateNewProjectView() {
             onChange={updateDraft}
             coverImage={coverImage}
             onCoverImageChange={setCoverImage}
+            existingCoverUrl={existingCoverUrl}
+            onExistingCoverRemove={() => setExistingCoverUrl(null)}
+            fieldErrors={basicFieldErrors}
+            projectId={draftProjectId}
+            planSurfaceMaxM2={planSurfaceMaxM2}
           />
         )
       case "structure":
-        return <CreateProjectStructureStep draft={draft} onChange={updateDraft} />
+        return (
+          <CreateProjectStructureStep
+            draft={draft}
+            onChange={updateDraft}
+            fieldErrors={structureFieldErrors}
+            projectId={draftProjectId}
+            planSurfaceMaxM2={planSurfaceMaxM2}
+          />
+        )
       case "tasks":
         return <CreateProjectTasksStep draft={draft} onChange={updateDraft} />
       case "unit-tasks":
@@ -160,6 +418,10 @@ export function CreateNewProjectView() {
       default:
         return null
     }
+  }
+
+  if (isLoadingDraft) {
+    return <CreateProjectLoadingScreen />
   }
 
   if (phase === "stage" && !isSuccess) {
@@ -210,6 +472,7 @@ export function CreateNewProjectView() {
             className={cn(
               "rounded-[16px] border bg-white px-[33px] py-[33px] transition-opacity duration-300",
               isSuccess && "pointer-events-none opacity-40",
+              showDraftSavedModal && "pointer-events-none opacity-40",
             )}
             style={{
               borderColor: CREATE_PROJECT_COLORS.cardBorder,
@@ -245,7 +508,10 @@ export function CreateNewProjectView() {
             canGoBack
             isLastStep={activeStepId === "team"}
             isSubmitting={isSubmitting}
+            isSavingDraft={isSavingDraft}
+            disableContinue={Boolean(planSurfaceLimitError)}
             onBack={handleBack}
+            onSaveDraft={() => setSaveDraftDialogOpen(true)}
             onNext={handleNext}
           />
         ) : null}
@@ -256,6 +522,23 @@ export function CreateNewProjectView() {
             projectName={createdProject.name}
           />
         ) : null}
+
+        <ConfirmActionDialog
+          open={saveDraftDialogOpen}
+          onOpenChange={(open) => {
+            if (isSavingDraft) return
+            setSaveDraftDialogOpen(open)
+          }}
+          title="Guardar borrador"
+          description={draftSaveConfirmMessage}
+          confirmLabel="Confirmar"
+          cancelLabel="Seguir editando"
+          loading={isSavingDraft}
+          loadingLabel="Guardando borrador..."
+          onConfirm={() => void handleConfirmSaveDraft()}
+        />
+
+        <CreateProjectDraftSavedModal open={showDraftSavedModal} />
       </div>
     </div>
   )

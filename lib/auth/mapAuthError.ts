@@ -1,3 +1,5 @@
+import { mapPasswordPolicyError } from "@/lib/auth/passwordValidation"
+
 const AUTH_TIMEOUT_MESSAGE =
   "El servidor de autenticación no respondió a tiempo. Verificá tu conexión e intentá de nuevo."
 
@@ -27,6 +29,10 @@ function isNetworkErrorMessage(message: string): boolean {
 function mapSupabaseMessage(message: string, fallback: string): string {
   const msg = message.toLowerCase()
   if (isNetworkErrorMessage(msg)) return AUTH_NETWORK_MESSAGE
+
+  const passwordError = mapPasswordPolicyError(message)
+  if (passwordError) return passwordError
+
   if (msg.includes("email not confirmed")) {
     return "Confirmá tu correo antes de ingresar. Revisá tu bandeja de entrada."
   }

@@ -5,6 +5,7 @@ import { useState } from "react"
 import { Eye, EyeOff, Lock } from "lucide-react"
 
 import { completeRegisterSetup } from "@/app/register/confirm/actions"
+import { validateNewPasswordFields, PASSWORD_REQUIREMENTS_HINT } from "@/lib/auth/passwordValidation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -39,25 +40,7 @@ export function RegisterConfirmView({
   const greetingName = firstName.trim() || email
 
   const validate = () => {
-    const errors = { password: "", confirmPassword: "" }
-    let ok = true
-
-    if (!password) {
-      errors.password = "La contraseña es requerida"
-      ok = false
-    } else if (password.length < 8) {
-      errors.password = "La contraseña debe tener al menos 8 caracteres"
-      ok = false
-    }
-
-    if (!confirmPassword) {
-      errors.confirmPassword = "Confirmá tu contraseña"
-      ok = false
-    } else if (confirmPassword !== password) {
-      errors.confirmPassword = "Las contraseñas no coinciden"
-      ok = false
-    }
-
+    const { errors, ok } = validateNewPasswordFields(password, confirmPassword)
     setFieldErrors(errors)
     return ok
   }
@@ -161,7 +144,7 @@ export function RegisterConfirmView({
               {fieldErrors.password ? (
                 <p className="text-sm text-red-600">{fieldErrors.password}</p>
               ) : (
-                <p className="text-[12px] leading-[1.4] text-[#777b84]">Mínimo 8 caracteres</p>
+                <p className="text-[12px] leading-[1.4] text-[#777b84]">{PASSWORD_REQUIREMENTS_HINT}</p>
               )}
             </div>
 

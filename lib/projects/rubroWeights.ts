@@ -11,7 +11,7 @@ export function parseRubroWeightInput(value: string): number | null {
   if (!trimmed) return null
 
   const num = Number.parseFloat(trimmed.replace(",", "."))
-  if (!Number.isFinite(num) || num <= 0) return null
+  if (!Number.isFinite(num) || num < 0) return null
 
   return Math.min(100, Math.round(num * 100) / 100)
 }
@@ -40,7 +40,7 @@ export function resolveRubroEffectiveWeights(
   const autoRubroIds: string[] = []
 
   for (const rubro of rubros) {
-    if (rubro.weightPercent != null && rubro.weightPercent > 0) {
+    if (rubro.weightPercent != null) {
       result.set(rubro.id, rubro.weightPercent)
       manualTotal += rubro.weightPercent
     } else {
@@ -98,8 +98,23 @@ export function isRubroWeightAuto(rubro: RubroItemDraft): boolean {
   return parseRubroWeightInput(rubro.weightPercent) == null
 }
 
-export const RUBRO_INCIDENCE_TOOLTIP =
-  "Porcentaje de incidencia del rubro en el avance total de obra."
+/** Normaliza incidencia manual al cerrar edición: vacío → "0". */
+export function finalizeManualRubroWeightPercent(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return "0"
+
+  const parsed = parseRubroWeightInput(trimmed)
+  if (parsed == null) return trimmed
+
+  const rounded = Math.round(parsed * 10) / 10
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+}
+
+export const RUBRO_INCIDENCE_TOOLTIP = `Incidencia del rubro en el avance total de obra.
+
+Auto: el sistema recalcula este porcentaje automáticamente cuando se agregan, eliminan o modifican otros rubros.
+
+Manual: este porcentaje permanecerá fijo aunque cambien los demás rubros.`
 
 export const RUBRO_WEIGHT_OVER_LIMIT_MESSAGE =
   "La suma de los porcentajes manuales supera el 100%. Ajustá los valores para que el total no exceda el 100%."

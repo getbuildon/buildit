@@ -11,6 +11,7 @@ type ProjectRow = {
   location: string | null
   company_id: string
   company_name: string | null
+  status: UserProjectListItem["status"]
 }
 
 async function countFloorsAndUnits(
@@ -44,6 +45,7 @@ function toUserProjectListItem(
     address: project.location?.trim() || "Sin dirección",
     floors: counts.floors,
     units: counts.units,
+    status: project.status,
     generalProgressPercent: progress.generalProgressPercent,
     weeklyProgressDelta: progress.weeklyProgressDelta,
   }
@@ -62,7 +64,7 @@ export async function getProjectById(
 
   const { data: raw, error } = await supabase
     .from("projects")
-    .select("id, name, location, company_id, company:companies(name)")
+    .select("id, name, location, company_id, status, company:companies(name)")
     .eq("id", id)
     .maybeSingle()
 
@@ -76,6 +78,7 @@ export async function getProjectById(
     location: r.location,
     company_id: r.company_id,
     company_name: company?.name ?? null,
+    status: r.status ?? "active",
   }
 
   const counts = await countFloorsAndUnits(supabase, project.id)
@@ -100,6 +103,7 @@ function normalizeProjects(rows: any[]): ProjectRow[] {
         location: item.location,
         company_id: item.company_id,
         company_name: company?.name ?? null,
+        status: item.status ?? "active",
       })
     }
   }
@@ -115,7 +119,7 @@ export async function listUserProjects(): Promise<UserProjectListItem[]> {
   // Proyectos con membresía explícita (todos los roles)
   const { data: memberships } = await supabase
     .from("project_members")
-    .select(`project:projects ( id, name, location, company_id, company:companies ( name ) )`)
+    .select(`project:projects ( id, name, location, company_id, status, company:companies ( name ) )`)
     .eq("user_id", user.id)
     .eq("is_active", true)
 
@@ -137,6 +141,7 @@ export async function listUserProjects(): Promise<UserProjectListItem[]> {
           name,
           location,
           company_id,
+          status,
           company:companies ( name )
         )
       )`,
@@ -162,7 +167,7 @@ export async function listUserProjects(): Promise<UserProjectListItem[]> {
     const companyIds = companyMemberships.map((cm) => cm.company_id)
     const { data: rawProjects } = await supabase
       .from("projects")
-      .select("id, name, location, company_id, company:companies ( name )")
+      .select("id, name, location, company_id, status, company:companies ( name )")
       .in("company_id", companyIds)
 
     companyProjects = normalizeProjects(rawProjects || [])

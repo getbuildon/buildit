@@ -24,12 +24,38 @@ type ExistingRubrosState = {
   rubroIds: Set<string>
   taskIds: Set<string>
   taskNames: Map<string, string>
+  rubroTrackingTypeIds: Map<string, string>
 }
 
 type IncomingIds = {
   groupIds: Set<string>
   rubroIds: Set<string>
   taskIds: Set<string>
+}
+
+type PlannedTask = {
+  taskIndex: number
+  draftId?: string
+  taskId?: string
+  taskName: string
+  default_weight: number | null
+}
+
+type PlannedRubro = {
+  rubroIndex: number
+  draftId?: string
+  rubroId?: string
+  rubroName: string
+  weight_percent: number | null
+  tasks: PlannedTask[]
+}
+
+type PlannedGroup = {
+  groupIndex: number
+  draftId?: string
+  groupId?: string
+  groupName: string
+  rubros: PlannedRubro[]
 }
 
 function isPersistedId(id: string | undefined, knownIds: Set<string>): id is string {
@@ -65,6 +91,7 @@ async function loadExistingRubrosState(
       id,
       rubros (
         id,
+        tracking_type_id,
         rubro_tasks (id, name)
       )
     `,
@@ -77,11 +104,13 @@ async function loadExistingRubrosState(
   const rubroIds = new Set<string>()
   const taskIds = new Set<string>()
   const taskNames = new Map<string, string>()
+  const rubroTrackingTypeIds = new Map<string, string>()
 
   for (const group of groups ?? []) {
     groupIds.add(group.id)
-    for (const rubro of (group.rubros as Array<{ id: string; rubro_tasks: Array<{ id: string; name: string }> }>) ?? []) {
+    for (const rubro of (group.rubros as Array<{ id: string; tracking_type_id: string; rubro_tasks: Array<{ id: string; name: string }> }>) ?? []) {
       rubroIds.add(rubro.id)
+      rubroTrackingTypeIds.set(rubro.id, rubro.tracking_type_id)
       for (const task of rubro.rubro_tasks ?? []) {
         taskIds.add(task.id)
         taskNames.set(task.id, task.name)
@@ -89,7 +118,7 @@ async function loadExistingRubrosState(
     }
   }
 
-  return { groupIds, rubroIds, taskIds, taskNames }
+  return { groupIds, rubroIds, taskIds, taskNames, rubroTrackingTypeIds }
 }
 
 function collectIncomingIds(
@@ -121,6 +150,59 @@ function collectIncomingIds(
   }
 
   return incoming
+}
+
+function buildPlannedGroups(
+  groups: RubroGroupSaveInput[],
+  existing: ExistingRubrosState,
+): PlannedGroup[] {
+  const planned: PlannedGroup[] = []
+
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+    const group = groups[groupIndex]
+    const groupName = group.name.trim()
+    if (!groupName) continue
+
+    const rubros: PlannedRubro[] = []
+
+    for (let rubroIndex = 0; rubroIndex < group.rubros.length; rubroIndex++) {
+      const rubro = group.rubros[rubroIndex]
+      const tasks: PlannedTask[] = []
+
+      for (let taskIndex = 0; taskIndex < rubro.tasks.length; taskIndex++) {
+        const task = rubro.tasks[taskIndex]
+        const taskName = task.name.trim()
+        if (!taskName) continue
+
+        tasks.push({
+          taskIndex,
+          draftId: task.id,
+          taskId: isPersistedId(task.id, existing.taskIds) ? task.id : undefined,
+          taskName,
+          default_weight: task.default_weight ?? null,
+        })
+      }
+
+      rubros.push({
+        rubroIndex,
+        draftId: rubro.id,
+        rubroId: isPersistedId(rubro.id, existing.rubroIds) ? rubro.id : undefined,
+        rubroName: rubro.name.trim() || "Nuevo rubro",
+        weight_percent: rubro.weight_percent ?? null,
+        tasks,
+      })
+    }
+
+    planned.push({
+      groupIndex,
+      draftId: group.id,
+      groupId: isPersistedId(group.id, existing.groupIds) ? group.id : undefined,
+      groupName,
+      rubros,
+    })
+  }
+
+  return planned
 }
 
 async function assertRemovableTasks(
@@ -182,11 +264,300 @@ async function assignNewTasksToAllUnits(
   if (assignError) throw assignError
 }
 
+async function upsertGroups(
+  supabase: SupabaseClient,
+  projectId: string,
+  plannedGroups: PlannedGroup[],
+): Promise<void> {
+  const updates = plannedGroups
+    .filter((group): group is PlannedGroup & { groupId: string } => !!group.groupId)
+    .map((group) => ({
+      id: group.groupId,
+      project_id: projectId,
+      name: group.groupName,
+      sort_order: group.groupIndex,
+    }))
+
+  if (updates.length > 0) {
+    const { error } = await supabase.from("rubro_groups").upsert(updates)
+    if (error) throw error
+  }
+
+  const inserts = plannedGroups.filter((group) => !group.groupId)
+  if (inserts.length === 0) return
+
+  const { data: insertedGroups, error: insertError } = await supabase
+    .from("rubro_groups")
+    .insert(
+      inserts.map((group) => ({
+        project_id: projectId,
+        name: group.groupName,
+        sort_order: group.groupIndex,
+      })),
+    )
+    .select("id")
+
+  if (insertError || !insertedGroups) {
+    throw insertError ?? new Error("Error al crear grupos de rubros")
+  }
+
+  if (insertedGroups.length !== inserts.length) {
+    throw new Error("Error al crear grupos de rubros")
+  }
+
+  for (let index = 0; index < inserts.length; index++) {
+    inserts[index].groupId = insertedGroups[index].id
+  }
+}
+
+async function upsertRubros(
+  supabase: SupabaseClient,
+  projectId: string,
+  plannedGroups: PlannedGroup[],
+  defaultTrackingTypeId: string,
+  existing: ExistingRubrosState,
+): Promise<void> {
+  const updates: Array<{
+    id: string
+    project_id: string
+    group_id: string
+    name: string
+    sort_order: number
+    weight_percent: number | null
+    tracking_type_id: string
+    tracking_scope: "unit"
+  }> = []
+
+  const inserts: Array<{
+    plannedRubro: PlannedRubro
+    groupId: string
+    sort_order: number
+  }> = []
+
+  for (const group of plannedGroups) {
+    if (!group.groupId) {
+      throw new Error("Grupo de rubros sin ID persistido")
+    }
+
+    for (const rubro of group.rubros) {
+      if (rubro.rubroId) {
+        updates.push({
+          id: rubro.rubroId,
+          project_id: projectId,
+          group_id: group.groupId,
+          name: rubro.rubroName,
+          sort_order: rubro.rubroIndex,
+          weight_percent: rubro.weight_percent,
+          tracking_type_id:
+            existing.rubroTrackingTypeIds.get(rubro.rubroId) ?? defaultTrackingTypeId,
+          tracking_scope: "unit",
+        })
+      } else {
+        inserts.push({
+          plannedRubro: rubro,
+          groupId: group.groupId,
+          sort_order: rubro.rubroIndex,
+        })
+      }
+    }
+  }
+
+  if (updates.length > 0) {
+    const { error } = await supabase.from("rubros").upsert(updates, { onConflict: "id" })
+    if (error) throw error
+  }
+
+  if (inserts.length === 0) return
+
+  const { data: insertedRubros, error: insertError } = await supabase
+    .from("rubros")
+    .insert(
+      inserts.map(({ plannedRubro, groupId, sort_order }) => ({
+        project_id: projectId,
+        group_id: groupId,
+        name: plannedRubro.rubroName,
+        tracking_scope: "unit",
+        sort_order,
+        tracking_type_id: defaultTrackingTypeId,
+        weight_percent: plannedRubro.weight_percent,
+      })),
+    )
+    .select("id")
+
+  if (insertError || !insertedRubros) {
+    throw insertError ?? new Error("Error al crear rubros")
+  }
+
+  if (insertedRubros.length !== inserts.length) {
+    throw new Error("Error al crear rubros")
+  }
+
+  for (let index = 0; index < inserts.length; index++) {
+    inserts[index].plannedRubro.rubroId = insertedRubros[index].id
+  }
+}
+
+async function upsertTasks(
+  supabase: SupabaseClient,
+  projectId: string,
+  plannedGroups: PlannedGroup[],
+): Promise<string[]> {
+  const updates: Array<{
+    id: string
+    project_id: string
+    rubro_id: string
+    name: string
+    weight_percent: number | null
+    sort_order: number
+  }> = []
+
+  const inserts: Array<{
+    plannedTask: PlannedTask
+    rubroId: string
+    sort_order: number
+  }> = []
+
+  for (const group of plannedGroups) {
+    for (const rubro of group.rubros) {
+      if (!rubro.rubroId) {
+        throw new Error("Rubro sin ID persistido")
+      }
+
+      for (const task of rubro.tasks) {
+        if (task.taskId) {
+          updates.push({
+            id: task.taskId,
+            project_id: projectId,
+            rubro_id: rubro.rubroId,
+            name: task.taskName,
+            weight_percent: task.default_weight,
+            sort_order: task.taskIndex,
+          })
+        } else {
+          inserts.push({
+            plannedTask: task,
+            rubroId: rubro.rubroId,
+            sort_order: task.taskIndex,
+          })
+        }
+      }
+    }
+  }
+
+  if (updates.length > 0) {
+    const { error } = await supabase.from("rubro_tasks").upsert(updates)
+    if (error) throw error
+  }
+
+  if (inserts.length === 0) return []
+
+  const { data: insertedTasks, error: insertError } = await supabase
+    .from("rubro_tasks")
+    .insert(
+      inserts.map(({ plannedTask, rubroId, sort_order }) => ({
+        project_id: projectId,
+        rubro_id: rubroId,
+        name: plannedTask.taskName,
+        description: null,
+        weight_percent: plannedTask.default_weight,
+        sort_order,
+      })),
+    )
+    .select("id")
+
+  if (insertError || !insertedTasks) {
+    throw insertError ?? new Error("Error al crear tareas")
+  }
+
+  if (insertedTasks.length !== inserts.length) {
+    throw new Error("Error al crear tareas")
+  }
+
+  for (let index = 0; index < inserts.length; index++) {
+    inserts[index].plannedTask.taskId = insertedTasks[index].id
+  }
+
+  return insertedTasks.map((task) => task.id)
+}
+
+function collectRubrosIdMaps(plannedGroups: PlannedGroup[]): {
+  groupIdByDraftId: Record<string, string>
+  rubroIdByDraftId: Record<string, string>
+  taskIdByDraftId: Record<string, string>
+} {
+  const groupIdByDraftId: Record<string, string> = {}
+  const rubroIdByDraftId: Record<string, string> = {}
+  const taskIdByDraftId: Record<string, string> = {}
+
+  for (const group of plannedGroups) {
+    if (group.draftId && group.groupId) {
+      groupIdByDraftId[group.draftId] = group.groupId
+    }
+
+    for (const rubro of group.rubros) {
+      if (rubro.draftId && rubro.rubroId) {
+        rubroIdByDraftId[rubro.draftId] = rubro.rubroId
+      }
+
+      for (const task of rubro.tasks) {
+        if (task.draftId && task.taskId) {
+          taskIdByDraftId[task.draftId] = task.taskId
+        }
+      }
+    }
+  }
+
+  return { groupIdByDraftId, rubroIdByDraftId, taskIdByDraftId }
+}
+
+async function deleteRemovedRubros(
+  supabase: SupabaseClient,
+  projectId: string,
+  tasksToDelete: string[],
+  rubrosToDelete: string[],
+  groupsToDelete: string[],
+): Promise<void> {
+  if (tasksToDelete.length > 0) {
+    const { error } = await supabase
+      .from("rubro_tasks")
+      .delete()
+      .eq("project_id", projectId)
+      .in("id", tasksToDelete)
+    if (error) throw error
+  }
+
+  if (rubrosToDelete.length > 0) {
+    const { error } = await supabase
+      .from("rubros")
+      .delete()
+      .eq("project_id", projectId)
+      .in("id", rubrosToDelete)
+    if (error) throw error
+  }
+
+  if (groupsToDelete.length > 0) {
+    const { error } = await supabase
+      .from("rubro_groups")
+      .delete()
+      .eq("project_id", projectId)
+      .in("id", groupsToDelete)
+    if (error) throw error
+  }
+}
+
 export async function syncProjectRubros(
   supabase: SupabaseClient,
   projectId: string,
   groups: RubroGroupSaveInput[],
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<
+  | {
+      ok: true
+      groupIdByDraftId: Record<string, string>
+      rubroIdByDraftId: Record<string, string>
+      taskIdByDraftId: Record<string, string>
+    }
+  | { ok: false; error: string }
+> {
   try {
     const [{ data: trackingTypes }, existing] = await Promise.all([
       supabase.from("task_tracking_types").select("id").eq("slug", "porcentaje").limit(1),
@@ -199,6 +570,7 @@ export async function syncProjectRubros(
 
     const defaultTrackingTypeId = trackingTypes[0].id
     const incoming = collectIncomingIds(groups, existing)
+    const plannedGroups = buildPlannedGroups(groups, existing)
 
     const tasksToDelete = [...existing.taskIds].filter((id) => !incoming.taskIds.has(id))
     const rubrosToDelete = [...existing.rubroIds].filter((id) => !incoming.rubroIds.has(id))
@@ -212,141 +584,22 @@ export async function syncProjectRubros(
     )
     if (removalError) return { ok: false, error: removalError }
 
-    const newTaskIds: string[] = []
+    await upsertGroups(supabase, projectId, plannedGroups)
+    await upsertRubros(supabase, projectId, plannedGroups, defaultTrackingTypeId, existing)
+    const newTaskIds = await upsertTasks(supabase, projectId, plannedGroups)
 
-    for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
-      const group = groups[groupIndex]
-      const groupName = group.name.trim()
-      if (!groupName) continue
-
-      let groupId: string
-      if (isPersistedId(group.id, existing.groupIds)) {
-        groupId = group.id
-        const { error: groupUpdateError } = await supabase
-          .from("rubro_groups")
-          .update({ name: groupName, sort_order: groupIndex })
-          .eq("id", groupId)
-          .eq("project_id", projectId)
-        if (groupUpdateError) throw groupUpdateError
-      } else {
-        const { data: insertedGroup, error: groupInsertError } = await supabase
-          .from("rubro_groups")
-          .insert({ project_id: projectId, name: groupName, sort_order: groupIndex })
-          .select("id")
-          .single()
-        if (groupInsertError || !insertedGroup) {
-          throw groupInsertError ?? new Error("Error al crear grupo de rubros")
-        }
-        groupId = insertedGroup.id
-      }
-
-      for (let rubroIndex = 0; rubroIndex < group.rubros.length; rubroIndex++) {
-        const rubro = group.rubros[rubroIndex]
-        const rubroName = rubro.name.trim() || "Nuevo rubro"
-        let rubroId: string
-
-        if (isPersistedId(rubro.id, existing.rubroIds)) {
-          rubroId = rubro.id
-          const { error: rubroUpdateError } = await supabase
-            .from("rubros")
-            .update({
-              name: rubroName,
-              sort_order: rubroIndex,
-              group_id: groupId,
-              weight_percent: rubro.weight_percent ?? null,
-            })
-            .eq("id", rubroId)
-            .eq("project_id", projectId)
-          if (rubroUpdateError) throw rubroUpdateError
-        } else {
-          const { data: insertedRubro, error: rubroInsertError } = await supabase
-            .from("rubros")
-            .insert({
-              project_id: projectId,
-              group_id: groupId,
-              name: rubroName,
-              tracking_scope: "unit",
-              sort_order: rubroIndex,
-              tracking_type_id: defaultTrackingTypeId,
-              weight_percent: rubro.weight_percent ?? null,
-            })
-            .select("id")
-            .single()
-          if (rubroInsertError || !insertedRubro) {
-            throw rubroInsertError ?? new Error("Error al crear rubro")
-          }
-          rubroId = insertedRubro.id
-        }
-
-        for (let taskIndex = 0; taskIndex < rubro.tasks.length; taskIndex++) {
-          const task = rubro.tasks[taskIndex]
-          const taskName = task.name.trim()
-          if (!taskName) continue
-
-          if (isPersistedId(task.id, existing.taskIds)) {
-            const { error: taskUpdateError } = await supabase
-              .from("rubro_tasks")
-              .update({
-                name: taskName,
-                weight_percent: task.default_weight ?? null,
-                sort_order: taskIndex,
-                rubro_id: rubroId,
-              })
-              .eq("id", task.id)
-              .eq("project_id", projectId)
-            if (taskUpdateError) throw taskUpdateError
-          } else {
-            const { data: insertedTask, error: taskInsertError } = await supabase
-              .from("rubro_tasks")
-              .insert({
-                project_id: projectId,
-                rubro_id: rubroId,
-                name: taskName,
-                description: null,
-                weight_percent: task.default_weight ?? null,
-                sort_order: taskIndex,
-              })
-              .select("id")
-              .single()
-            if (taskInsertError || !insertedTask) {
-              throw taskInsertError ?? new Error("Error al crear tarea")
-            }
-            newTaskIds.push(insertedTask.id)
-          }
-        }
-      }
-    }
-
-    if (tasksToDelete.length > 0) {
-      const { error: deleteTasksError } = await supabase
-        .from("rubro_tasks")
-        .delete()
-        .eq("project_id", projectId)
-        .in("id", tasksToDelete)
-      if (deleteTasksError) throw deleteTasksError
-    }
-
-    if (rubrosToDelete.length > 0) {
-      const { error: deleteRubrosError } = await supabase
-        .from("rubros")
-        .delete()
-        .eq("project_id", projectId)
-        .in("id", rubrosToDelete)
-      if (deleteRubrosError) throw deleteRubrosError
-    }
-
-    if (groupsToDelete.length > 0) {
-      const { error: deleteGroupsError } = await supabase
-        .from("rubro_groups")
-        .delete()
-        .eq("project_id", projectId)
-        .in("id", groupsToDelete)
-      if (deleteGroupsError) throw deleteGroupsError
-    }
+    await deleteRemovedRubros(
+      supabase,
+      projectId,
+      tasksToDelete,
+      rubrosToDelete,
+      groupsToDelete,
+    )
 
     await assignNewTasksToAllUnits(supabase, projectId, newTaskIds)
 
-    return { ok: true }
+    const idMaps = collectRubrosIdMaps(plannedGroups)
+    return { ok: true, ...idMaps }
   } catch (err) {
     return { ok: false, error: mapSupabaseError(err, "Error al guardar rubros") }
   }

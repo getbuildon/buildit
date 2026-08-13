@@ -19,7 +19,11 @@ export type StructureFloorSaveInput = {
 }
 
 export type SyncProjectStructureResult =
-  | { ok: true; unitIdByDraftId: Record<string, string> }
+  | {
+      ok: true
+      floorIdByDraftId: Record<string, string>
+      unitIdByDraftId: Record<string, string>
+    }
   | { ok: false; error: string }
 
 type ExistingStructureState = {
@@ -32,6 +36,27 @@ type ExistingStructureState = {
 type IncomingStructureIds = {
   floorIds: Set<string>
   unitIds: Set<string>
+}
+
+type PlannedUnit = {
+  draftId?: string
+  unitId?: string
+  code: string
+  name: string | null
+  unit_type: string | null
+  room_count: number | null
+  area_m2: number | null
+  sortOrder: number
+}
+
+type PlannedFloor = {
+  floorIndex: number
+  draftId?: string
+  floorId?: string
+  name: string
+  identifier: string | null
+  level: string | null
+  units: PlannedUnit[]
 }
 
 function isPersistedId(id: string | undefined, knownIds: Set<string>): id is string {
@@ -111,6 +136,30 @@ function collectIncomingStructureIds(
   }
 
   return incoming
+}
+
+function buildPlannedFloors(
+  floors: StructureFloorSaveInput[],
+  existing: ExistingStructureState,
+): PlannedFloor[] {
+  return floors.map((floor, floorIndex) => ({
+    floorIndex,
+    draftId: floor.id,
+    floorId: isPersistedId(floor.id, existing.floorIds) ? floor.id : undefined,
+    name: floor.name,
+    identifier: floor.identifier,
+    level: floor.level,
+    units: floor.units.map((unit, unitIndex) => ({
+      draftId: unit.id,
+      unitId: isPersistedId(unit.id, existing.unitIds) ? unit.id : undefined,
+      code: unit.code,
+      name: unit.name,
+      unit_type: unit.unit_type,
+      room_count: unit.room_count,
+      area_m2: unit.area_m2,
+      sortOrder: unitIndex,
+    })),
+  }))
 }
 
 async function assertRemovableUnits(
@@ -219,6 +268,204 @@ function resolveUnitTypeId(
   return unitTypeId
 }
 
+async function upsertFloors(
+  supabase: SupabaseClient,
+  projectId: string,
+  plannedFloors: PlannedFloor[],
+): Promise<void> {
+  const updates = plannedFloors
+    .filter((floor): floor is PlannedFloor & { floorId: string } => !!floor.floorId)
+    .map((floor) => ({
+      id: floor.floorId,
+      project_id: projectId,
+      name: floor.name,
+      identifier: floor.identifier,
+      level: floor.level,
+      sort_order: floor.floorIndex,
+    }))
+
+  if (updates.length > 0) {
+    const { error } = await supabase
+      .from("project_floors")
+      .upsert(updates, { onConflict: "id" })
+    if (error) throw error
+  }
+
+  const inserts = plannedFloors.filter((floor) => !floor.floorId)
+  if (inserts.length === 0) return
+
+  const { data: insertedFloors, error: insertError } = await supabase
+    .from("project_floors")
+    .insert(
+      inserts.map((floor) => ({
+        project_id: projectId,
+        name: floor.name,
+        identifier: floor.identifier,
+        level: floor.level,
+        sort_order: floor.floorIndex,
+      })),
+    )
+    .select("id")
+
+  if (insertError || !insertedFloors) {
+    throw insertError ?? new Error("Error al crear pisos")
+  }
+
+  if (insertedFloors.length !== inserts.length) {
+    throw new Error("Error al crear pisos")
+  }
+
+  for (let index = 0; index < inserts.length; index++) {
+    inserts[index].floorId = insertedFloors[index].id
+  }
+}
+
+function collectFloorIdByDraftId(plannedFloors: PlannedFloor[]): Record<string, string> {
+  const floorIdByDraftId: Record<string, string> = {}
+
+  for (const floor of plannedFloors) {
+    if (floor.draftId && floor.floorId) {
+      floorIdByDraftId[floor.draftId] = floor.floorId
+    }
+  }
+
+  return floorIdByDraftId
+}
+
+async function upsertUnits(
+  supabase: SupabaseClient,
+  projectId: string,
+  plannedFloors: PlannedFloor[],
+  unitTypeMap: Map<string, string>,
+): Promise<{ unitIdByDraftId: Record<string, string>; newUnitIds: string[] }> {
+  const unitIdByDraftId: Record<string, string> = {}
+  const newUnitIds: string[] = []
+
+  const updates: Array<{
+    id: string
+    project_id: string
+    floor_id: string
+    code: string
+    name: string | null
+    unit_type_id: string
+    unit_type: string | null
+    room_count: number | null
+    square_meters: number | null
+    sort_order: number
+  }> = []
+
+  const inserts: Array<{
+    plannedUnit: PlannedUnit
+    floorId: string
+    unitTypeId: string
+  }> = []
+
+  for (const floor of plannedFloors) {
+    if (!floor.floorId) {
+      throw new Error("Piso sin ID persistido")
+    }
+
+    for (const unit of floor.units) {
+      const unitTypeId = resolveUnitTypeId(unit.unit_type, unitTypeMap)
+
+      if (unit.unitId) {
+        updates.push({
+          id: unit.unitId,
+          project_id: projectId,
+          floor_id: floor.floorId,
+          code: unit.code,
+          name: unit.name,
+          unit_type_id: unitTypeId,
+          unit_type: unit.unit_type,
+          room_count: unit.room_count,
+          square_meters: unit.area_m2,
+          sort_order: unit.sortOrder,
+        })
+        if (unit.draftId) {
+          unitIdByDraftId[unit.draftId] = unit.unitId
+        }
+      } else {
+        inserts.push({
+          plannedUnit: unit,
+          floorId: floor.floorId,
+          unitTypeId,
+        })
+      }
+    }
+  }
+
+  if (updates.length > 0) {
+    const { error } = await supabase
+      .from("project_units")
+      .upsert(updates, { onConflict: "id" })
+    if (error) throw error
+  }
+
+  if (inserts.length > 0) {
+    const { data: insertedUnits, error: insertError } = await supabase
+      .from("project_units")
+      .insert(
+        inserts.map(({ plannedUnit, floorId, unitTypeId }) => ({
+          project_id: projectId,
+          floor_id: floorId,
+          code: plannedUnit.code,
+          name: plannedUnit.name,
+          unit_type_id: unitTypeId,
+          unit_type: plannedUnit.unit_type,
+          room_count: plannedUnit.room_count,
+          square_meters: plannedUnit.area_m2,
+          sort_order: plannedUnit.sortOrder,
+        })),
+      )
+      .select("id")
+
+    if (insertError || !insertedUnits) {
+      throw insertError ?? new Error("Error al crear unidades")
+    }
+
+    if (insertedUnits.length !== inserts.length) {
+      throw new Error("Error al crear unidades")
+    }
+
+    for (let index = 0; index < inserts.length; index++) {
+      const insertedId = insertedUnits[index].id
+      const { plannedUnit } = inserts[index]
+      plannedUnit.unitId = insertedId
+      newUnitIds.push(insertedId)
+      if (plannedUnit.draftId) {
+        unitIdByDraftId[plannedUnit.draftId] = insertedId
+      }
+    }
+  }
+
+  return { unitIdByDraftId, newUnitIds }
+}
+
+async function deleteRemovedStructure(
+  supabase: SupabaseClient,
+  projectId: string,
+  unitsToDelete: string[],
+  floorsToDelete: string[],
+): Promise<void> {
+  if (unitsToDelete.length > 0) {
+    const { error } = await supabase
+      .from("project_units")
+      .delete()
+      .eq("project_id", projectId)
+      .in("id", unitsToDelete)
+    if (error) throw error
+  }
+
+  if (floorsToDelete.length > 0) {
+    const { error } = await supabase
+      .from("project_floors")
+      .delete()
+      .eq("project_id", projectId)
+      .in("id", floorsToDelete)
+    if (error) throw error
+  }
+}
+
 export async function syncProjectStructure(
   supabase: SupabaseClient,
   projectId: string,
@@ -236,6 +483,7 @@ export async function syncProjectStructure(
     }
 
     const unitTypeMap = new Map(unitTypes.map((ut) => [ut.label, ut.id]))
+    const plannedFloors = buildPlannedFloors(floors, existing)
     const incoming = collectIncomingStructureIds(floors, existing)
 
     const unitsToDelete = [...existing.unitIds].filter((id) => !incoming.unitIds.has(id))
@@ -257,111 +505,22 @@ export async function syncProjectStructure(
     )
     if (floorRemovalError) return { ok: false, error: floorRemovalError }
 
-    const newUnitIds: string[] = []
-    const unitIdByDraftId: Record<string, string> = {}
+    await upsertFloors(supabase, projectId, plannedFloors)
+    const { unitIdByDraftId, newUnitIds } = await upsertUnits(
+      supabase,
+      projectId,
+      plannedFloors,
+      unitTypeMap,
+    )
 
-    for (let floorIndex = 0; floorIndex < floors.length; floorIndex++) {
-      const floor = floors[floorIndex]
-
-      let floorId: string
-      if (isPersistedId(floor.id, existing.floorIds)) {
-        floorId = floor.id
-        const { error: floorUpdateError } = await supabase
-          .from("project_floors")
-          .update({
-            name: floor.name,
-            identifier: floor.identifier,
-            level: floor.level,
-            sort_order: floorIndex,
-          })
-          .eq("id", floorId)
-          .eq("project_id", projectId)
-        if (floorUpdateError) throw floorUpdateError
-      } else {
-        const { data: insertedFloor, error: floorInsertError } = await supabase
-          .from("project_floors")
-          .insert({
-            project_id: projectId,
-            name: floor.name,
-            identifier: floor.identifier,
-            level: floor.level,
-            sort_order: floorIndex,
-          })
-          .select("id")
-          .single()
-        if (floorInsertError || !insertedFloor) {
-          throw floorInsertError ?? new Error(`Error al crear piso "${floor.name}"`)
-        }
-        floorId = insertedFloor.id
-      }
-
-      for (let unitIndex = 0; unitIndex < floor.units.length; unitIndex++) {
-        const unit = floor.units[unitIndex]
-        const unitTypeId = resolveUnitTypeId(unit.unit_type, unitTypeMap)
-
-        if (isPersistedId(unit.id, existing.unitIds)) {
-          const { error: unitUpdateError } = await supabase
-            .from("project_units")
-            .update({
-              floor_id: floorId,
-              code: unit.code,
-              name: unit.name,
-              unit_type_id: unitTypeId,
-              unit_type: unit.unit_type,
-              room_count: unit.room_count,
-              square_meters: unit.area_m2,
-              sort_order: unitIndex,
-            })
-            .eq("id", unit.id)
-            .eq("project_id", projectId)
-          if (unitUpdateError) throw unitUpdateError
-          if (unit.id) unitIdByDraftId[unit.id] = unit.id
-        } else {
-          const { data: insertedUnit, error: unitInsertError } = await supabase
-            .from("project_units")
-            .insert({
-              project_id: projectId,
-              floor_id: floorId,
-              code: unit.code,
-              name: unit.name,
-              unit_type_id: unitTypeId,
-              unit_type: unit.unit_type,
-              room_count: unit.room_count,
-              square_meters: unit.area_m2,
-              sort_order: unitIndex,
-            })
-            .select("id")
-            .single()
-          if (unitInsertError || !insertedUnit) {
-            throw unitInsertError ?? new Error(`Error al crear unidad "${unit.code}"`)
-          }
-          newUnitIds.push(insertedUnit.id)
-          if (unit.id) unitIdByDraftId[unit.id] = insertedUnit.id
-        }
-      }
-    }
-
-    if (unitsToDelete.length > 0) {
-      const { error: deleteUnitsError } = await supabase
-        .from("project_units")
-        .delete()
-        .eq("project_id", projectId)
-        .in("id", unitsToDelete)
-      if (deleteUnitsError) throw deleteUnitsError
-    }
-
-    if (floorsToDelete.length > 0) {
-      const { error: deleteFloorsError } = await supabase
-        .from("project_floors")
-        .delete()
-        .eq("project_id", projectId)
-        .in("id", floorsToDelete)
-      if (deleteFloorsError) throw deleteFloorsError
-    }
-
+    await deleteRemovedStructure(supabase, projectId, unitsToDelete, floorsToDelete)
     await assignAllTasksToNewUnits(supabase, projectId, newUnitIds)
 
-    return { ok: true, unitIdByDraftId }
+    return {
+      ok: true,
+      floorIdByDraftId: collectFloorIdByDraftId(plannedFloors),
+      unitIdByDraftId,
+    }
   } catch (err) {
     return { ok: false, error: mapSupabaseError(err, "Error al guardar estructura") }
   }

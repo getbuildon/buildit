@@ -44,7 +44,7 @@ export const CREATE_PROJECT_STEPS: CreateProjectStepConfig[] = [
     id: "tasks",
     label: "Rubros y Tareas",
     icon: Wrench,
-    sectionTitle: "Rubros y Checklists",
+    sectionTitle: "Rubros y Tareas",
   },
   {
     id: "unit-tasks",
@@ -168,5 +168,24 @@ export function getCreateProjectStepperState(
     steps,
     activeStepperIndex: getVisibleStepperIndex(activeStepId, workStage),
     partialConnectorAfterIndex: null,
+  }
+}
+
+export function getDraftSaveConfirmMessage(activeStepId: CreateProjectStepId): string {
+  switch (activeStepId) {
+    case "basic":
+      return "Se guardarán los datos básicos del borrador. Podrás retomar la configuración cuando quieras. ¿Deseás continuar?"
+    case "structure":
+      return "Se guardará la estructura del edificio en el borrador. Podrás retomar la configuración cuando quieras. ¿Deseás continuar?"
+    case "tasks":
+      return "Se guardarán los rubros y tareas en el borrador. Podrás retomar la configuración cuando quieras. ¿Deseás continuar?"
+    case "unit-tasks":
+      return "Se guardará la asignación de tareas por unidad en el borrador. Podrás retomar la configuración cuando quieras. ¿Deseás continuar?"
+    case "work-status":
+      return "Se guardará el estado de obra en el borrador. Podrás retomar la configuración cuando quieras. ¿Deseás continuar?"
+    case "team":
+      return "Se guardará el equipo de trabajo en el borrador. Podrás retomar la configuración cuando quieras. ¿Deseás continuar?"
+    default:
+      return "Se guardará el borrador del proyecto con el progreso actual. Podrás retomar la configuración cuando quieras. ¿Deseás continuar?"
   }
 }

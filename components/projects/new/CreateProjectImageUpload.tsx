@@ -16,12 +16,16 @@ import { cn } from "@/lib/utils"
 type CreateProjectImageUploadProps = {
   value: ProjectCoverImageDraft | null
   onChange: (value: ProjectCoverImageDraft | null) => void
+  existingCoverUrl?: string | null
+  onExistingCoverRemove?: () => void
   disabled?: boolean
 }
 
 export function CreateProjectImageUpload({
   value,
   onChange,
+  existingCoverUrl = null,
+  onExistingCoverRemove,
   disabled = false,
 }: CreateProjectImageUploadProps) {
   const inputId = useId()
@@ -89,8 +93,12 @@ export function CreateProjectImageUpload({
   const handleRemove = () => {
     revokeProjectCoverPreview(value)
     onChange(null)
+    onExistingCoverRemove?.()
     setError(null)
   }
+
+  const previewUrl = value?.previewUrl ?? existingCoverUrl
+  const previewAlt = value?.fileName ?? "Imagen del proyecto"
 
   const openFilePicker = () => {
     if (disabled || processing) return
@@ -116,7 +124,7 @@ export function CreateProjectImageUpload({
         onChange={handleSelectFiles}
       />
 
-      {value ? (
+      {previewUrl ? (
         <div
           className="relative h-[132px] overflow-hidden rounded-[10px] border border-[#edeef0] bg-[#f5f6f7]"
           onDragOver={handleDragOver}
@@ -125,8 +133,8 @@ export function CreateProjectImageUpload({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={value.previewUrl}
-            alt={value.fileName}
+            src={previewUrl}
+            alt={previewAlt}
             className="size-full object-cover"
           />
           {!disabled ? (

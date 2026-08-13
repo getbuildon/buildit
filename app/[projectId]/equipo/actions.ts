@@ -6,6 +6,10 @@ import { requireAuthenticatedUser } from "@/lib/authHelpers"
 import { checkProjectPermission } from "@/lib/project/projectAccess"
 import { assertCanAddProjectSeat, loadTeamSeatSummary } from "@/lib/company/projectSubscriptionLimits"
 import type { TeamSeatSummary } from "@/lib/company/subscriptionTypes"
+import { buildPlanUpgradeRequestEmail } from "@/lib/email/buildPlanUpgradeRequestEmail"
+import { getLandingLeadNotificationRecipients } from "@/lib/email/parseCommaSeparatedEmails"
+import { renderLandingLeadEmail } from "@/lib/email/renderLandingLeadEmail"
+import { getPublicEmailSendError, sendTransactionalEmail } from "@/lib/email/sendTransactionalEmail"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
 import { PROJECT_ROLE_SLUG } from "@/lib/projects/catalogSlugs"
 import type { ProjectTeamRole, ProjectUserType } from "@/lib/projects/createProjectDraft"
@@ -403,5 +407,122 @@ export async function revokeTeamInvitation(
     .eq("project_id", projectId)
 
   if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
+export async function submitPlanUpgradeRequest(
+  projectId: string,
+  data:
+    | { kind: "userType"; userType: ProjectUserType; comments?: string }
+    | {
+        kind: "surface"
+        planSurfaceMaxM2: number
+        unitsSurfaceM2: number
+        comments?: string
+      },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const permission = await checkProjectPermission(projectId, "addUsers")
+  if (!permission.ok) return permission
+
+  const user = await requireAuthenticatedUser()
+  const supabase = await createClient()
+
+  const [projectRes, seatSummary, profileRes, subscriptionRes] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("name, company:companies ( name )")
+      .eq("id", projectId)
+      .maybeSingle(),
+    data.kind === "userType" ? loadTeamSeatSummary(supabase, projectId) : Promise.resolve(null),
+    supabase
+      .from("profiles")
+      .select("first_name, last_name, email")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("project_subscriptions")
+      .select("plan:subscription_plans ( name )")
+      .eq("project_id", projectId)
+      .eq("status", "active")
+      .maybeSingle(),
+  ])
+
+  if (!projectRes.data) {
+    return { ok: false, error: "No se encontró el proyecto." }
+  }
+
+  if (data.kind === "userType" && !seatSummary) {
+    return { ok: false, error: "Este proyecto no tiene un plan activo con límites." }
+  }
+
+  const company = Array.isArray(projectRes.data.company)
+    ? projectRes.data.company[0]
+    : projectRes.data.company
+  const plan = Array.isArray(subscriptionRes.data?.plan)
+    ? subscriptionRes.data?.plan[0]
+    : subscriptionRes.data?.plan
+
+  const requesterName = [
+    profileRes.data?.first_name?.trim(),
+    profileRes.data?.last_name?.trim(),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim() || user.email || "Usuario sin nombre"
+
+  const emailContent =
+    data.kind === "surface"
+      ? buildPlanUpgradeRequestEmail({
+          kind: "surface",
+          requesterName,
+          requesterEmail: profileRes.data?.email ?? user.email ?? "—",
+          companyName: company?.name?.trim() || "—",
+          projectName: projectRes.data.name,
+          planName: plan?.name?.trim() || "—",
+          planSurfaceMaxM2: data.planSurfaceMaxM2,
+          unitsSurfaceM2: data.unitsSurfaceM2,
+          comments: data.comments,
+        })
+      : buildPlanUpgradeRequestEmail({
+          kind: "userType",
+          requesterName,
+          requesterEmail: profileRes.data?.email ?? user.email ?? "—",
+          companyName: company?.name?.trim() || "—",
+          projectName: projectRes.data.name,
+          planName: plan?.name?.trim() || "—",
+          userType: data.userType,
+          seatSummary: seatSummary as TeamSeatSummary,
+          comments: data.comments,
+        })
+
+  const recipients = getLandingLeadNotificationRecipients()
+  if (recipients.length === 0) {
+    return {
+      ok: false,
+      error: "No hay destinatarios configurados (BACKOFFICE_ALLOWED_EMAILS).",
+    }
+  }
+
+  const html = renderLandingLeadEmail({
+    emailTitle: emailContent.emailTitle,
+    heading: emailContent.heading,
+    intro: emailContent.intro,
+    rows: emailContent.rows,
+  })
+
+  const sendResult = await sendTransactionalEmail({
+    to: recipients,
+    subject: emailContent.subject,
+    html,
+  })
+
+  if (!sendResult.ok) {
+    console.error("[equipo/plan-upgrade] Error al enviar email:", sendResult.error)
+    return {
+      ok: false,
+      error: getPublicEmailSendError(sendResult.error, sendResult.code),
+    }
+  }
+
   return { ok: true }
 }

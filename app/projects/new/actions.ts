@@ -9,19 +9,40 @@ import type {
   ProjectTeamRole,
   ProjectUserType,
 } from "@/lib/projects/createProjectDraft"
-import {
-  validateProjectSeatAllocation,
-} from "@/lib/company/projectSubscriptionLimits"
-import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
+import type { CreateProjectStepId } from "@/lib/projects/createProjectSteps"
 import { PROJECT_ROLE_SLUG, USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
-import { unitTypeToDbFields } from "@/lib/projects/unitTypes"
 import {
-  getTaskInitialStatus,
-  mapInitialWorkStatusToDb,
-} from "@/lib/projects/initialWorkStatus"
+  assertDraftProjectAccess,
+  ensureProjectCreatorMembership,
+  getProjectFieldUpdates,
+  persistProjectFromDraft,
+  requireAuthenticatedUserId,
+  resolveProjectCompanyId,
+} from "@/lib/projects/persistProjectFromDraft"
+import { buildDraftFromProjectDb } from "@/lib/projects/buildDraftFromProjectDb"
+import { mergeProjectSetupDraft } from "@/lib/projects/mergeProjectSetupDraft"
+import {
+  serializeSetupDraft,
+  type StoredProjectSetupDraft,
+} from "@/lib/projects/storedProjectSetupDraft"
 
 export type CreateProjectResult =
   | { ok: true; projectId: string; unitIdByDraftId: Record<string, string> }
+  | { ok: false; error: string }
+
+export type SaveProjectDraftResult =
+  | { ok: true; projectId: string; companyId: string }
+  | { ok: false; error: string }
+
+export type LoadProjectDraftResult =
+  | {
+      ok: true
+      projectId: string
+      draft: CreateProjectDraft
+      phase: "stage" | "wizard"
+      activeStepId: CreateProjectStepId
+      coverUrl: string | null
+    }
   | { ok: false; error: string }
 
 export async function getCompanyProjectMembers(
@@ -102,429 +123,265 @@ export async function getCompanyProjectMembers(
   return result
 }
 
-function parseOptionalNumber(value: string): number | null {
-  const trimmed = value.trim()
-  if (!trimmed) return null
+export async function saveProjectDraft(input: {
+  draft: CreateProjectDraft
+  phase: "stage" | "wizard"
+  activeStepId: CreateProjectStepId
+  projectId?: string | null
+}): Promise<SaveProjectDraftResult> {
+  const userId = await requireAuthenticatedUserId()
+  const supabase = await createClient()
+  const storedDraft = serializeSetupDraft({
+    draft: input.draft,
+    phase: input.phase,
+    activeStepId: input.activeStepId,
+  })
 
-  let cleaned = trimmed.replace(/\s*m2\s*$/i, "").trim()
-  if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
-    cleaned = cleaned.replace(/\./g, "")
-  } else {
-    cleaned = cleaned.replace(",", ".")
+  let projectId = input.projectId?.trim() || null
+  let companyId = input.draft.companyId
+
+  if (projectId) {
+    const access = await assertDraftProjectAccess(supabase, userId, projectId)
+    if (!access.ok) {
+      return { ok: false, error: access.error }
+    }
+
+    if (!companyId && access.project.company_id) {
+      companyId = access.project.company_id
+    }
+
+    const { error: updateError } = await supabase
+      .from("projects")
+      .update({
+        ...getProjectFieldUpdates(input.draft),
+        company_id: companyId,
+        setup_draft: storedDraft,
+      })
+      .eq("id", projectId)
+
+    if (updateError) {
+      return { ok: false, error: updateError.message }
+    }
+
+    return { ok: true, projectId, companyId: companyId! }
   }
 
-  const parsed = Number(cleaned)
-  return Number.isFinite(parsed) ? parsed : null
+  const companyResult = await resolveProjectCompanyId(supabase, userId, {
+    ...input.draft,
+    companyId,
+  })
+  if (!companyResult.ok) {
+    return { ok: false, error: companyResult.error }
+  }
+
+  companyId = companyResult.companyId
+
+  const { data: project, error: insertError } = await supabase
+    .from("projects")
+    .insert({
+      ...getProjectFieldUpdates(input.draft),
+      status: "draft",
+      company_id: companyId,
+      created_by: userId,
+      setup_draft: storedDraft,
+    })
+    .select("id")
+    .single()
+
+  if (insertError || !project) {
+    return { ok: false, error: insertError?.message ?? "No se pudo guardar el borrador." }
+  }
+
+  const savedProjectId = project.id
+
+  const membershipResult = await ensureProjectCreatorMembership(
+    supabase,
+    userId,
+    savedProjectId,
+    companyId,
+  )
+  if (!membershipResult.ok) {
+    await supabase.from("projects").delete().eq("id", savedProjectId)
+    return { ok: false, error: membershipResult.error }
+  }
+
+  return { ok: true, projectId: savedProjectId, companyId }
 }
 
-function parseOptionalDate(value: string): string | null {
-  const trimmed = value.trim()
-  return trimmed || null
+export async function loadProjectDraft(
+  projectId: string,
+): Promise<LoadProjectDraftResult> {
+  const userId = await requireAuthenticatedUserId()
+  const supabase = await createClient()
+  const id = projectId.trim()
+
+  const access = await assertDraftProjectAccess(supabase, userId, id)
+  if (!access.ok) {
+    return { ok: false, error: access.error }
+  }
+
+  const { data: project, error } = await supabase
+    .from("projects")
+    .select(
+      `
+      id,
+      setup_draft,
+      cover_url,
+      company_id,
+      name,
+      location,
+      start_date,
+      end_date,
+      total_surface_m2,
+      building_type,
+      companies ( name )
+    `,
+    )
+    .eq("id", id)
+    .maybeSingle()
+
+  if (error || !project) {
+    return { ok: false, error: "No se pudo cargar el borrador." }
+  }
+
+  const companyRaw = project.companies as { name: string } | { name: string }[] | null
+  const companyName = companyRaw
+    ? Array.isArray(companyRaw)
+      ? (companyRaw[0]?.name ?? null)
+      : companyRaw.name
+    : null
+
+  const { draft: dbDraft, hasDbFloors, hasDbRubros, hasDbTeam } =
+    await buildDraftFromProjectDb(id, {
+      name: project.name,
+      location: project.location,
+      start_date: project.start_date,
+      end_date: project.end_date,
+      total_surface_m2: project.total_surface_m2,
+      company_id: project.company_id,
+      building_type: project.building_type,
+      companyName,
+    })
+
+  const merged = mergeProjectSetupDraft({
+    setupDraft: project.setup_draft as StoredProjectSetupDraft | null,
+    dbDraft,
+    hasDbFloors,
+    hasDbRubros,
+    hasDbTeam,
+  })
+
+  return {
+    ok: true,
+    projectId: project.id,
+    draft: merged.draft,
+    phase: merged.phase,
+    activeStepId: merged.activeStepId,
+    coverUrl: project.cover_url,
+  }
 }
 
 export async function createProjectFromDraft(
   draft: CreateProjectDraft,
+  draftProjectId?: string | null,
 ): Promise<CreateProjectResult> {
   const name = draft.projectName.trim()
   if (!name) {
     return { ok: false, error: "El nombre del proyecto es obligatorio." }
   }
 
-  const user = await requireAuthenticatedUser()
+  const userId = await requireAuthenticatedUserId()
   const supabase = await createClient()
-
-  let projectId: string | null = null
+  const existingDraftId = draftProjectId?.trim() || null
 
   try {
-    const catalog = await loadProjectCatalogIds(supabase)
+    let resolvedProjectId: string
+    let companyId = draft.companyId
 
-    let companyId: string
+    if (existingDraftId) {
+      const access = await assertDraftProjectAccess(supabase, userId, existingDraftId)
+      if (!access.ok) {
+        return { ok: false, error: access.error }
+      }
 
-    if (draft.companyId) {
-      // Usar empresa existente seleccionada
-      companyId = draft.companyId
+      if (!companyId && access.project.company_id) {
+        companyId = access.project.company_id
+      }
+
+      const { error: updateError } = await supabase
+        .from("projects")
+        .update({
+          ...getProjectFieldUpdates(draft),
+          company_id: companyId,
+          status: "active",
+          setup_draft: null,
+        })
+        .eq("id", existingDraftId)
+
+      if (updateError) {
+        return { ok: false, error: updateError.message }
+      }
+
+      resolvedProjectId = existingDraftId
     } else {
-      // Crear nueva empresa con el nombre ingresado
-      const companyName = draft.companyName.trim() || `Mi Empresa - ${user.id.slice(0, 8)}`
-      const { data: newCompany, error: companyError } = await supabase
-        .from("companies")
-        .insert({ name: companyName })
-        .select("id")
-        .single()
-
-      if (companyError || !newCompany) {
-        return { ok: false, error: companyError?.message ?? "No se pudo crear la empresa." }
+      const companyResult = await resolveProjectCompanyId(supabase, userId, draft)
+      if (!companyResult.ok) {
+        return { ok: false, error: companyResult.error }
       }
 
-      companyId = newCompany.id
+      companyId = companyResult.companyId
 
-      const { error: memberError } = await supabase.from("company_members").insert({
-        company_id: companyId,
-        user_id: user.id,
-        role: "owner",
-        status: "active",
-      })
-
-      if (memberError) throw memberError
-    }
-
-    const { data: project, error: projectError } = await supabase
-      .from("projects")
-      .insert({
-        name,
-        location: draft.location.trim() || null,
-        total_surface_m2: parseOptionalNumber(draft.totalSurface),
-        start_date: parseOptionalDate(draft.startDate),
-        end_date: parseOptionalDate(draft.endDate),
-        status: "active",
-        company_id: companyId,
-        building_type: draft.workStage,
-        created_by: user.id,
-      })
-      .select("id")
-      .single()
-
-    if (projectError || !project) {
-      return {
-        ok: false,
-        error: projectError?.message ?? "No se pudo crear la obra.",
-      }
-    }
-
-    projectId = project.id
-
-    // Obtener roles de empresa para determinar user_type de cada admin/owner
-    const adminClient = createAdminClient()
-    const { data: companyAdmins } = await adminClient
-      .from("company_members")
-      .select("user_id, role")
-      .eq("company_id", companyId)
-      .in("role", ["admin", "owner"])
-
-    const creatorCompanyRole = companyAdmins?.find((cm) => cm.user_id === user.id)?.role
-    const creatorUserType: ProjectUserType =
-      creatorCompanyRole === "owner" ? "Owner" : "Admin"
-
-    const coAdmins = (companyAdmins ?? []).filter((cm) => cm.user_id !== user.id)
-    const plannedUserTypes: ProjectUserType[] = [
-      creatorUserType,
-      ...coAdmins.map((cm) => (cm.role === "owner" ? "Owner" : "Admin")),
-      ...draft.teamMembers.map((member) => member.userType),
-    ]
-
-    const seatValidation = await validateProjectSeatAllocation(
-      supabase,
-      project.id,
-      plannedUserTypes,
-    )
-    if (!seatValidation.ok) {
-      throw new Error(seatValidation.error)
-    }
-
-    const creatorUserTypeId = catalog.userTypeIds[creatorUserType]
-
-    const { error: memberError } = await supabase.from("project_members").insert({
-      project_id: projectId,
-      user_id: user.id,
-      role_id: catalog.roleIds.Administrador,
-      user_type_id: creatorUserTypeId,
-      is_active: true,
-    })
-
-    if (memberError) throw memberError
-
-    // Agregar automáticamente a los demás admins/owners de la empresa
-    if (coAdmins.length > 0) {
-      const { error: coAdminError } = await adminClient
-        .from("project_members")
-        .insert(
-          coAdmins.map((cm) => ({
-            project_id: projectId,
-            user_id: cm.user_id,
-            role_id: catalog.roleIds.Administrador,
-            user_type_id:
-              cm.role === "owner"
-                ? catalog.userTypeIds.Owner
-                : catalog.userTypeIds.Admin,
-            is_active: true,
-          })),
-        )
-      if (coAdminError) throw coAdminError
-    }
-
-    // Mapeos draft ID → DB ID para construir asignaciones y avances al final
-    const draftToDbUnitId = new Map<string, string>()
-    const draftToDbTaskId = new Map<string, string>()
-    const draftToDbRubroId = new Map<string, string>()
-    const unitToFloorDbId = new Map<string, string>()
-
-    if (draft.floors.length > 0) {
-      const floorRows = draft.floors.map((floor, index) => ({
-        project_id: projectId,
-        name: floor.name.trim() || `Piso ${index + 1}`,
-        identifier: floor.identifier.trim().slice(0, 4) || null,
-        level: floor.level.trim() || null,
-        sort_order: index,
-      }))
-
-      const { data: floors, error: floorsError } = await supabase
-        .from("project_floors")
-        .insert(floorRows)
-        .select("id")
-
-      if (floorsError || !floors) {
-        throw floorsError ?? new Error("No se pudieron guardar los pisos.")
-      }
-
-      const unitDraftIds: string[] = []
-      const unitRows: {
-        project_id: string
-        floor_id: string
-        unit_type_id: string
-        unit_type: string
-        code: string | null
-        name: string | null
-        square_meters: number | null
-        room_count: number | null
-        sort_order: number
-      }[] = []
-
-      draft.floors.forEach((floor, floorIndex) => {
-        const floorId = floors[floorIndex]?.id
-        if (!floorId) return
-        floor.units.forEach((unit, unitIndex) => {
-          const { room_count, name } = unitTypeToDbFields({
-            type: unit.type,
-            roomCount: unit.roomCount,
-            officeSize: unit.officeSize,
-          })
-
-          unitDraftIds.push(unit.id)
-          unitRows.push({
-            project_id: projectId!,
-            floor_id: floorId,
-            unit_type_id: catalog.unitTypeIds[unit.type],
-            unit_type: unit.type,
-            code: unit.code.trim().slice(0, 4) || null,
-            name,
-            square_meters: parseOptionalNumber(unit.squareMeters),
-            room_count,
-            sort_order: unitIndex,
-          })
-        })
-      })
-
-      if (unitRows.length > 0) {
-        const { data: insertedUnits, error: unitsError } = await supabase
-          .from("project_units")
-          .insert(unitRows)
-          .select("id")
-        if (unitsError) throw unitsError
-        unitDraftIds.forEach((draftId, i) => {
-          const dbId = insertedUnits?.[i]?.id
-          if (dbId) draftToDbUnitId.set(draftId, dbId)
-        })
-
-        draft.floors.forEach((floor, floorIndex) => {
-          const floorDbId = floors[floorIndex]?.id
-          if (!floorDbId) return
-          floor.units.forEach((unit) => {
-            unitToFloorDbId.set(unit.id, floorDbId)
-          })
-        })
-      }
-    }
-
-    let groupSort = 0
-    for (const group of draft.groups) {
-      const groupName = group.name.trim()
-      if (!groupName) continue
-
-      const { data: insertedGroup, error: groupError } = await supabase
-        .from("rubro_groups")
+      const { data: project, error: projectError } = await supabase
+        .from("projects")
         .insert({
-          project_id: projectId,
-          name: groupName,
-          sort_order: groupSort++,
+          ...getProjectFieldUpdates(draft),
+          status: "active",
+          company_id: companyId,
+          created_by: userId,
         })
         .select("id")
         .single()
 
-      if (groupError || !insertedGroup) {
-        throw groupError ?? new Error("No se pudo guardar un grupo de rubros.")
+      if (projectError || !project) {
+        return {
+          ok: false,
+          error: projectError?.message ?? "No se pudo crear la obra.",
+        }
       }
 
-      let rubroSort = 0
-      for (const rubro of group.rubros) {
-        const rubroName = rubro.name.trim()
-        if (!rubroName) continue
+      resolvedProjectId = project.id
 
-        const { data: insertedRubro, error: rubroError } = await supabase
-          .from("rubros")
-          .insert({
-            project_id: projectId,
-            group_id: insertedGroup.id,
-            name: rubroName,
-            tracking_type_id: catalog.trackingTypeIds[rubro.trackingType],
-            sort_order: rubroSort++,
-            weight_percent: parseOptionalNumber(rubro.weightPercent),
-          })
-          .select("id")
-          .single()
-
-        if (rubroError || !insertedRubro) {
-          throw rubroError ?? new Error("No se pudo guardar un rubro.")
-        }
-
-        draftToDbRubroId.set(rubro.id, insertedRubro.id)
-
-        const validTasks = rubro.tasks
-          .map((task, taskIndex) => {
-            const taskName = task.name.trim()
-            if (!taskName) return null
-            return {
-              draftId: task.id,
-              row: {
-                project_id: projectId,
-                rubro_id: insertedRubro.id,
-                name: taskName,
-                weight_percent: parseOptionalNumber(task.weightPercent),
-                sort_order: taskIndex,
-              },
-            }
-          })
-          .filter((t): t is NonNullable<typeof t> => t !== null)
-
-        if (validTasks.length > 0) {
-          const { data: insertedTasks, error: tasksError } = await supabase
-            .from("rubro_tasks")
-            .insert(validTasks.map((t) => t.row))
-            .select("id")
-          if (tasksError) throw tasksError
-          validTasks.forEach((t, i) => {
-            const dbId = insertedTasks?.[i]?.id
-            if (dbId) draftToDbTaskId.set(t.draftId, dbId)
-          })
-        }
+      const membershipResult = await ensureProjectCreatorMembership(
+        supabase,
+        userId,
+        resolvedProjectId,
+        companyId,
+      )
+      if (!membershipResult.ok) {
+        throw new Error(membershipResult.error)
       }
     }
 
-    // Crear asignaciones de tareas por unidad
-    if (draftToDbUnitId.size > 0 && draftToDbTaskId.size > 0) {
-      const assignmentRows: {
-        project_id: string
-        unit_id: string
-        rubro_task_id: string
-      }[] = []
+    const persistResult = await persistProjectFromDraft(
+      supabase,
+      userId,
+      resolvedProjectId,
+      draft,
+    )
 
-      for (const [draftUnitId, dbUnitId] of draftToDbUnitId) {
-        const excludedTaskIds = new Set(draft.unitTaskExclusions[draftUnitId] ?? [])
-        for (const [draftTaskId, dbTaskId] of draftToDbTaskId) {
-          if (!excludedTaskIds.has(draftTaskId)) {
-            assignmentRows.push({
-              project_id: projectId!,
-              unit_id: dbUnitId,
-              rubro_task_id: dbTaskId,
-            })
-          }
-        }
+    if (!persistResult.ok) {
+      if (!existingDraftId) {
+        await supabase.from("projects").delete().eq("id", resolvedProjectId)
       }
-
-      if (assignmentRows.length > 0) {
-        const { error: assignmentsError } = await supabase
-          .from("unit_task_assignments")
-          .insert(assignmentRows)
-        if (assignmentsError) throw assignmentsError
-      }
-    }
-
-    if (draft.workStage === "in_execution" && draftToDbUnitId.size > 0) {
-      const now = new Date().toISOString()
-      const progressRows: {
-        project_id: string
-        floor_id: string | null
-        unit_id: string
-        category_id: string
-        task_id: string
-        created_by: string
-        status: "submitted" | "rejected" | "draft"
-        progress_state: "pending" | "in_progress" | "completed"
-        submitted_at: string | null
-      }[] = []
-
-      for (const [draftUnitId, dbUnitId] of draftToDbUnitId) {
-        const excludedTaskIds = new Set(draft.unitTaskExclusions[draftUnitId] ?? [])
-        const floorDbId = unitToFloorDbId.get(draftUnitId) ?? null
-
-        for (const group of draft.groups) {
-          for (const rubro of group.rubros) {
-            const dbRubroId = draftToDbRubroId.get(rubro.id)
-            if (!dbRubroId) continue
-
-            for (const task of rubro.tasks) {
-              if (!task.name.trim()) continue
-              if (excludedTaskIds.has(task.id)) continue
-
-              const initialStatus = getTaskInitialStatus(task.id, draft.taskInitialStatuses)
-              if (initialStatus === "pending") continue
-
-              const dbTaskId = draftToDbTaskId.get(task.id)
-              if (!dbTaskId) continue
-
-              const mapped = mapInitialWorkStatusToDb(initialStatus)
-              progressRows.push({
-                project_id: projectId!,
-                floor_id: floorDbId,
-                unit_id: dbUnitId,
-                category_id: dbRubroId,
-                task_id: dbTaskId,
-                created_by: user.id,
-                status: mapped.status,
-                progress_state: mapped.progress_state,
-                submitted_at: mapped.status === "draft" ? null : now,
-              })
-            }
-          }
-        }
-      }
-
-      if (progressRows.length > 0) {
-        const { error: progressError } = await supabase
-          .from("progress_entries")
-          .insert(progressRows)
-        if (progressError) throw progressError
-      }
-    }
-
-    if (draft.teamMembers.length > 0) {
-      const invitationRows = draft.teamMembers.map((member) => ({
-        project_id: projectId,
-        email: member.email.trim().toLowerCase(),
-        first_name: member.firstName.trim(),
-        last_name: member.lastName.trim(),
-        user_type_id: catalog.userTypeIds[member.userType],
-        role_id: catalog.roleIds[member.role],
-        status: "pending" as const,
-        invited_by: user.id,
-      }))
-
-      const { error: invitationsError } = await supabase
-        .from("project_invitations")
-        .insert(invitationRows)
-
-      if (invitationsError) throw invitationsError
+      return { ok: false, error: persistResult.error }
     }
 
     return {
       ok: true,
-      projectId: projectId!,
-      unitIdByDraftId: Object.fromEntries(draftToDbUnitId),
+      projectId: resolvedProjectId,
+      unitIdByDraftId: persistResult.unitIdByDraftId,
     }
   } catch (cause) {
-    if (projectId) {
-      await supabase.from("projects").delete().eq("id", projectId)
-    }
-
     const message =
       cause instanceof Error
         ? cause.message
@@ -532,4 +389,15 @@ export async function createProjectFromDraft(
 
     return { ok: false, error: message }
   }
+}
+
+export async function getProjectSetupStatus(projectId: string) {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("projects")
+    .select("status")
+    .eq("id", projectId.trim())
+    .maybeSingle()
+
+  return data?.status ?? null
 }

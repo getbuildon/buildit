@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
 import type { ProjectUserType } from "@/lib/projects/createProjectDraft"
-import type { ProjectSeatBucket, ProjectSeatLimits, ProjectSeatUsage, TeamSeatSummary, ClientSeatSummary } from "@/lib/company/subscriptionTypes"
+import type { ProjectSeatBucket, ProjectSeatLimits, ProjectSeatUsage, TeamSeatSummary, ClientSeatSummary, ProjectPlanSurfaceLimit } from "@/lib/company/subscriptionTypes"
 
 const ADMIN_SLUGS = new Set([USER_TYPE_SLUG.Owner, USER_TYPE_SLUG.Admin])
 const SUPERVISOR_SLUG = USER_TYPE_SLUG.Supervisor
@@ -13,6 +13,15 @@ const BUCKET_LABELS: Record<ProjectSeatBucket, string> = {
   supervisors: "supervisores",
   operators: "operadores",
   clients: "clientes",
+}
+
+const BUCKET_USER_TYPE_LABELS: Record<
+  Exclude<ProjectSeatBucket, "clients">,
+  string
+> = {
+  admins: "Admin",
+  supervisors: "Supervisor",
+  operators: "Operador",
 }
 
 export function seatBucketForUserType(userType: ProjectUserType): ProjectSeatBucket {
@@ -34,6 +43,36 @@ export function formatSubscriptionLimitError(
   limit: number,
 ): string {
   return `El plan actual permite hasta ${limit} ${BUCKET_LABELS[bucket]}. Mejorá el plan para agregar más.`
+}
+
+export function getUserTypeLimitDisplayLabel(userType: ProjectUserType): string {
+  if (userType === "Owner") return "Owner"
+  return userType
+}
+
+export function isTeamSeatBucketAtLimit(
+  summary: TeamSeatSummary,
+  bucket: keyof TeamSeatSummary["usage"],
+): boolean {
+  return summary.usage[bucket] >= summary.limits[bucket]
+}
+
+export function isUserTypeAtSeatLimit(
+  summary: TeamSeatSummary | null,
+  userType: ProjectUserType | "",
+): boolean {
+  if (!summary || !userType || userType === "Cliente") return false
+
+  const bucket = seatBucketForUserType(userType)
+  if (bucket === "clients") return false
+
+  return isTeamSeatBucketAtLimit(summary, bucket)
+}
+
+export function getSeatBucketUserTypeLabel(
+  bucket: Exclude<ProjectSeatBucket, "clients">,
+): string {
+  return BUCKET_USER_TYPE_LABELS[bucket]
 }
 
 function bucketForUserTypeSlug(slug: string | undefined): ProjectSeatBucket | null {
@@ -130,6 +169,45 @@ export async function loadProjectSeatLimits(
     supervisors: plan.max_supervisors,
     operators: plan.max_operators,
     clients: plan.max_clients,
+  }
+}
+
+type PlanSurfaceSubscriptionRow = {
+  plan: {
+    name: string
+    surface_label: string
+    surface_max_m2: number | null
+  } | null
+}
+
+export async function loadProjectPlanSurfaceLimit(
+  supabase: SupabaseClient,
+  projectId: string,
+): Promise<ProjectPlanSurfaceLimit | null> {
+  const { data, error } = await supabase
+    .from("project_subscriptions")
+    .select(
+      `
+      plan:subscription_plans (
+        name,
+        surface_label,
+        surface_max_m2
+      )
+    `,
+    )
+    .eq("project_id", projectId)
+    .eq("status", "active")
+    .maybeSingle()
+
+  if (error) throw error
+
+  const plan = (data as PlanSurfaceSubscriptionRow | null)?.plan
+  if (!plan?.surface_max_m2 || plan.surface_max_m2 <= 0) return null
+
+  return {
+    surfaceMaxM2: plan.surface_max_m2,
+    surfaceLabel: plan.surface_label,
+    planName: plan.name,
   }
 }
 

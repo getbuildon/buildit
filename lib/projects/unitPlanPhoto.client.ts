@@ -139,33 +139,98 @@ export async function clearUnitRenderPhoto(
   )
 }
 
+export type UnitAssetUploadUpdates = Record<
+  string,
+  {
+    planUrl?: string | null
+    renderUrl?: string | null
+    clearPlan?: boolean
+    clearRender?: boolean
+  }
+>
+
 type UnitAssetDraft = {
   id: string
-  planImage: UnitRenderImageDraft | null
-  renderImage: UnitRenderImageDraft | null
+  planImage?: UnitRenderImageDraft | null
+  renderImage?: UnitRenderImageDraft | null
+  planRemoved?: boolean
+  renderRemoved?: boolean
 }
 
 export async function uploadUnitAssetsFromDraft(
   projectId: string,
   draftUnitIdToDbId: Record<string, string>,
   units: UnitAssetDraft[],
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; assetUpdates: UnitAssetUploadUpdates }
+  | { ok: false; error: string }
+> {
+  const assetUpdates: UnitAssetUploadUpdates = {}
+
   for (const unit of units) {
     const dbUnitId = draftUnitIdToDbId[unit.id]
     if (!dbUnitId) continue
 
-    if (unit.planImage) {
+    if (unit.planImage?.file) {
       const result = await uploadUnitPlanPhoto(projectId, dbUnitId, unit.planImage.file)
       if (!result.ok) return result
+      assetUpdates[unit.id] = {
+        ...(assetUpdates[unit.id] ?? {}),
+        planUrl: result.publicUrl,
+      }
     }
 
-    if (unit.renderImage) {
+    if (unit.renderImage?.file) {
       const result = await uploadUnitRenderPhoto(projectId, dbUnitId, unit.renderImage.file)
       if (!result.ok) return result
+      assetUpdates[unit.id] = {
+        ...(assetUpdates[unit.id] ?? {}),
+        renderUrl: result.publicUrl,
+      }
     }
   }
 
-  return { ok: true }
+  return { ok: true, assetUpdates }
+}
+
+export async function clearUnitAssetsFromDraft(
+  projectId: string,
+  draftUnitIdToDbId: Record<string, string>,
+  units: UnitAssetDraft[],
+): Promise<
+  | { ok: true; assetUpdates: UnitAssetUploadUpdates; clearedAssets: number }
+  | { ok: false; error: string }
+> {
+  const assetUpdates: UnitAssetUploadUpdates = {}
+  let clearedAssets = 0
+
+  for (const unit of units) {
+    const dbUnitId = draftUnitIdToDbId[unit.id] ?? unit.id
+
+    if (unit.planRemoved) {
+      const clearResult = await clearUnitPlanPhoto(projectId, dbUnitId)
+      clearedAssets += 1
+      if (!clearResult.ok) return clearResult
+      assetUpdates[unit.id] = {
+        ...(assetUpdates[unit.id] ?? {}),
+        planUrl: null,
+        clearPlan: true,
+      }
+    }
+
+    if (unit.renderRemoved) {
+      const clearResult = await clearUnitRenderPhoto(projectId, dbUnitId)
+      clearedAssets += 1
+      if (!clearResult.ok) return clearResult
+      assetUpdates[unit.id] = {
+        ...(assetUpdates[unit.id] ?? {}),
+        renderUrl: null,
+        clearRender: true,
+      }
+    }
+  }
+
+  return { ok: true, assetUpdates, clearedAssets }
 }
 
 /** @deprecated Use uploadUnitAssetsFromDraft */

@@ -1,6 +1,7 @@
 "use server"
 
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
+import { getPasswordStrengthError, mapPasswordPolicyError } from "@/lib/auth/passwordValidation"
 import { createClient } from "@/utils/supabase/server"
 
 export type CompleteRegisterSetupResult =
@@ -13,8 +14,9 @@ export async function completeRegisterSetup(
   await requireAuthenticatedUser()
 
   const trimmed = password.trim()
-  if (trimmed.length < 8) {
-    return { ok: false, error: "La contraseña debe tener al menos 8 caracteres." }
+  const strengthError = getPasswordStrengthError(trimmed)
+  if (strengthError) {
+    return { ok: false, error: strengthError }
   }
 
   const supabase = await createClient()
@@ -24,7 +26,10 @@ export async function completeRegisterSetup(
   })
 
   if (error) {
-    return { ok: false, error: error.message }
+    return {
+      ok: false,
+      error: mapPasswordPolicyError(error.message) ?? "No pudimos guardar la contraseña. Intentá de nuevo.",
+    }
   }
 
   return { ok: true }

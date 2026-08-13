@@ -6,6 +6,7 @@ export type UserProjectListItem = {
   address: string
   floors: number
   units: number
+  status: "draft" | "active" | "paused" | "completed" | "archived"
   /** Progreso general del proyecto (promedio de unidades). */
   generalProgressPercent: number
   /** Variación del progreso respecto a hace 7 días. */

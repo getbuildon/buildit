@@ -12,6 +12,7 @@ import {
   signInWithGoogleClient,
   signUpClient,
 } from "@/lib/auth/clientAuth"
+import { validateNewPasswordFields, PASSWORD_REQUIREMENTS_HINT } from "@/lib/auth/passwordValidation"
 import { BRAND_NAME } from "@/lib/brand"
 import { AuthHealthBanner } from "@/components/auth/AuthHealthBanner"
 
@@ -44,21 +45,10 @@ function RegisterPage() {
       ok = false
     }
 
-    if (!password) {
-      errors.password = "La contraseña es requerida"
-      ok = false
-    } else if (password.length < 8) {
-      errors.password = "La contraseña debe tener al menos 8 caracteres"
-      ok = false
-    }
-
-    if (!confirmPassword) {
-      errors.confirmPassword = "Confirmá tu contraseña"
-      ok = false
-    } else if (confirmPassword !== password) {
-      errors.confirmPassword = "Las contraseñas no coinciden"
-      ok = false
-    }
+    const passwordValidation = validateNewPasswordFields(password, confirmPassword)
+    errors.password = passwordValidation.errors.password
+    errors.confirmPassword = passwordValidation.errors.confirmPassword
+    if (!passwordValidation.ok) ok = false
 
     setFieldErrors(errors)
     return ok
@@ -186,7 +176,11 @@ function RegisterPage() {
             />
             {fieldErrors.password ? (
               <p className="text-sm text-destructive">{fieldErrors.password}</p>
-            ) : null}
+            ) : (
+              <p className="text-[12px] leading-[1.4] text-muted-foreground">
+                {PASSWORD_REQUIREMENTS_HINT}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

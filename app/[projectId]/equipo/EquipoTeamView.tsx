@@ -41,7 +41,10 @@ import {
   type ProjectTeamInvitation,
 } from "./actions"
 import { TeamSeatSummarySubtitle } from "@/components/team/TeamSeatSummarySubtitle"
+import { TeamSeatLimitBanner } from "@/components/team/TeamSeatLimitBanner"
+import { RequestPlanUpgradeModal } from "@/components/team/RequestPlanUpgradeModal"
 import type { TeamSeatSummary } from "@/lib/company/subscriptionTypes"
+import { isUserTypeAtSeatLimit } from "@/lib/company/projectSubscriptionLimits"
 import {
   PROJECT_USER_TYPES,
   USER_TYPE_ROLES,
@@ -117,6 +120,7 @@ function FormSelect({
   placeholder,
   options,
   disabled,
+  hasError,
   onChange,
 }: {
   id: string
@@ -124,6 +128,7 @@ function FormSelect({
   placeholder: string
   options: readonly string[]
   disabled?: boolean
+  hasError?: boolean
   onChange: (value: string) => void
 }) {
   return (
@@ -132,7 +137,14 @@ function FormSelect({
       onValueChange={onChange}
       disabled={disabled}
     >
-      <SelectTrigger id={id} aria-label={placeholder} className={formSelectTriggerClassName}>
+      <SelectTrigger
+        id={id}
+        aria-label={placeholder}
+        className={cn(
+          formSelectTriggerClassName,
+          hasError && "border-[#eb8e90] focus:border-[#eb8e90]",
+        )}
+      >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent position="popper">
@@ -151,6 +163,8 @@ function EditMemberDialog({
   open,
   onOpenChange,
   onSave,
+  seatSummary,
+  onRequestUpgrade,
 }: {
   member: ProjectTeamMember | null
   open: boolean
@@ -159,6 +173,8 @@ function EditMemberDialog({
     userType: ProjectUserType,
     role: ProjectTeamRole,
   ) => Promise<{ ok: boolean; error?: string }>
+  seatSummary: TeamSeatSummary | null
+  onRequestUpgrade: (userType: ProjectUserType) => void
 }) {
   const [editUserType, setEditUserType] = useState<ProjectUserType>(PROJECT_USER_TYPES[0])
   const [editRole, setEditRole] = useState<ProjectTeamRole>(
@@ -216,6 +232,12 @@ function EditMemberDialog({
 
   if (!member) return null
 
+  const currentUserType = (PROJECT_USER_TYPES.find((t) => t === member.userTypeLabel) ??
+    PROJECT_USER_TYPES[0]) as ProjectUserType
+  const isEditTypeAtLimit =
+    isUserTypeAtSeatLimit(seatSummary, editUserType) &&
+    editUserType !== currentUserType
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -258,6 +280,7 @@ function EditMemberDialog({
                   value={editUserType}
                   placeholder="Tipo de usuario"
                   options={PROJECT_USER_TYPES}
+                  hasError={isEditTypeAtLimit}
                   onChange={(v) => {
                     const nextType = v as ProjectUserType
                     setEditUserType(nextType)
@@ -286,6 +309,13 @@ function EditMemberDialog({
               </div>
             </div>
 
+            {isEditTypeAtLimit ? (
+              <TeamSeatLimitBanner
+                userType={editUserType}
+                onUpgradeClick={() => onRequestUpgrade(editUserType)}
+              />
+            ) : null}
+
             {editError ? (
               <p className="text-[13px] leading-5 text-[#dc2626]">{editError}</p>
             ) : null}
@@ -304,7 +334,7 @@ function EditMemberDialog({
               type="button"
               variant="brand"
               onClick={() => void handleSave()}
-              disabled={isSaving}
+              disabled={isSaving || isEditTypeAtLimit}
               className={FORM_MODAL_DIALOG.confirmBtn}
             >
               {isSaving ? (
@@ -548,6 +578,10 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
   const [isRemoving, setIsRemoving] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [permisosOpen, setPermisosOpen] = useState(true)
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
+  const [upgradeModalUserType, setUpgradeModalUserType] = useState<ProjectUserType | null>(
+    null,
+  )
   const canAddUsers = useProjectPermission("addUsers")
   const canEditPermissions = useProjectPermission("editPermissions")
 
@@ -702,6 +736,13 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       ? members.find((member) => member.memberId === removingMemberId) ?? null
       : null
 
+  const isSelectedTypeAtLimit = isUserTypeAtSeatLimit(seatSummary, userType)
+
+  const openUpgradeModal = (nextUserType: ProjectUserType) => {
+    setUpgradeModalUserType(nextUserType)
+    setUpgradeModalOpen(true)
+  }
+
   return (
     <div
       className="flex flex-col gap-4 py-4 sm:gap-6 sm:py-6"
@@ -777,6 +818,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
               value={userType}
               placeholder="Tipo de usuario"
               options={PROJECT_USER_TYPES}
+              hasError={isSelectedTypeAtLimit}
               onChange={(v) => {
                 setUserType(v as ProjectUserType)
                 setRole("")
@@ -817,13 +859,19 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
               variant="brand"
               size="brand"
               onClick={() => void handleAddMember()}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isSelectedTypeAtLimit}
               className="w-full shrink-0 px-6 text-[14px] font-normal leading-5 sm:w-auto"
             >
               <Plus className="size-4" aria-hidden />
               {isSubmitting ? "Invitando..." : "Agregar miembro"}
             </Button>
           </div>
+          {isSelectedTypeAtLimit && userType ? (
+            <TeamSeatLimitBanner
+              userType={userType}
+              onUpgradeClick={() => openUpgradeModal(userType)}
+            />
+          ) : null}
           {formError ? (
             <p className="text-[13px] leading-5 text-[#dc2626]">{formError}</p>
           ) : null}
@@ -990,6 +1038,8 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
         onOpenChange={(open) => {
           if (!open) setEditingMemberId(null)
         }}
+        seatSummary={seatSummary}
+        onRequestUpgrade={openUpgradeModal}
         onSave={(userType, role) => {
           if (!editingMember) return Promise.resolve({ ok: false as const })
           return handleUpdateMember(editingMember.memberId, userType, role)
@@ -1012,6 +1062,13 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
         loading={isRemoving}
         loadingLabel="Eliminando..."
         onConfirm={handleConfirmRemove}
+      />
+
+      <RequestPlanUpgradeModal
+        projectId={projectId}
+        userType={upgradeModalUserType}
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
       />
     </div>
   )

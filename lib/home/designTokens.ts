@@ -13,6 +13,8 @@ export const HOME_COLORS = {
   progressBadgeBg: "#ecfdf5",
   progressTrack: "#e2e8f0",
   progressFill: "#ff7433",
+  draftBadgeBg: "#e6f4fe",
+  draftBadgeText: "#113264",
   addCardSubtext: "#b3b3b3",
 } as const
 

@@ -34,3 +34,9 @@ export type ClientSeatSummary = {
   usage: number
   limit: number
 }
+
+export type ProjectPlanSurfaceLimit = {
+  surfaceMaxM2: number
+  surfaceLabel: string
+  planName: string
+}

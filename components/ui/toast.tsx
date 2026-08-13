@@ -57,7 +57,7 @@ function ToastViewport({
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 top-6 z-[100] flex flex-col items-center gap-2 px-6"
+      className="pointer-events-none fixed top-6 right-4 z-[100] flex flex-col items-end gap-2 sm:right-6"
     >
       {toasts.map((toast) => {
         const styles = variantStyles[toast.variant]
@@ -67,7 +67,7 @@ function ToastViewport({
             key={toast.id}
             role="status"
             className={cn(
-              "pointer-events-auto flex w-full max-w-[747px] items-center gap-3 rounded-[10px] border px-4 py-3 shadow-[0_4px_16px_rgba(24,25,27,0.08)]",
+              "pointer-events-auto flex w-auto max-w-[min(747px,calc(100vw-2rem))] items-center gap-3 rounded-[10px] border px-4 py-3 shadow-[0_4px_16px_rgba(24,25,27,0.08)] sm:max-w-[747px]",
               styles.container,
             )}
           >

@@ -1,23 +1,34 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Building2, Check, ChevronDown, MapPin, Plus } from "lucide-react"
+import { useEffect, useMemo, useRef } from "react"
+import { MapPin } from "lucide-react"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { CreateProjectImageUpload } from "@/components/projects/new/CreateProjectImageUpload"
+import { PlanSurfaceLimitNotice } from "@/components/projects/new/PlanSurfaceLimitNotice"
 import {
   CreateProjectFormField,
   createProjectDatePickerClassName,
+  createProjectFieldErrorInputClassName,
+  createProjectFieldErrorInputStyle,
   createProjectInputClassName,
   createProjectInputStyle,
 } from "@/components/projects/new/CreateProjectFormField"
+import type { BasicInfoFieldErrors } from "@/lib/projects/createProjectBasicValidation"
+import { addDaysToDraftDate } from "@/lib/projects/createProjectBasicValidation"
 import {
   formatDraftDateString,
   parseDraftDateString,
   type CreateProjectDraft,
 } from "@/lib/projects/createProjectDraft"
 import type { ProjectCoverImageDraft } from "@/lib/projects/projectCoverPhoto.client"
-import { getUserCompanies, type CompanyData } from "@/lib/company/getCompanies"
+import {
+  isTotalSurfaceOverPlanLimit,
+  parseTotalSurfaceM2,
+  scrollToStructureSurfaceLimitBanner,
+} from "@/lib/projects/structureSurfaceLimits"
+import { normalizeTotalSurfaceInput } from "@/lib/projects/totalSurfaceInput"
+import { getUserCompanies } from "@/lib/company/getCompanies"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -25,6 +36,11 @@ type Props = {
   onChange: (patch: Partial<CreateProjectDraft>) => void
   coverImage: ProjectCoverImageDraft | null
   onCoverImageChange: (value: ProjectCoverImageDraft | null) => void
+  existingCoverUrl?: string | null
+  onExistingCoverRemove?: () => void
+  fieldErrors?: BasicInfoFieldErrors
+  projectId?: string | null
+  planSurfaceMaxM2?: number | null
 }
 
 export function CreateProjectBasicInfoStep({
@@ -32,136 +48,58 @@ export function CreateProjectBasicInfoStep({
   onChange,
   coverImage,
   onCoverImageChange,
+  existingCoverUrl = null,
+  onExistingCoverRemove,
+  fieldErrors = {},
+  projectId = null,
+  planSurfaceMaxM2 = null,
 }: Props) {
-  const [companies, setCompanies] = useState<CompanyData[]>([])
-  const [loadingCompanies, setLoadingCompanies] = useState(true)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [showNewCompanyInput, setShowNewCompanyInput] = useState(false)
-
   useEffect(() => {
-    getUserCompanies().then((data) => {
-      setCompanies(data)
-      if (data.length > 0 && !draft.companyId) {
-        onChange({ companyId: data[0].id, companyName: data[0].name })
-      }
-      setLoadingCompanies(false)
-    })
-  }, [])
+    let cancelled = false
 
-  const selectedCompany = draft.companyId
-    ? companies.find((c) => c.id === draft.companyId)
-    : null
+    void getUserCompanies().then((data) => {
+      if (cancelled || data.length === 0 || draft.companyId) return
+      onChange({ companyId: data[0].id, companyName: data[0].name })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [draft.companyId, onChange])
 
   const startDate = parseDraftDateString(draft.startDate)
   const endDate = parseDraftDateString(draft.endDate)
+  const minEndDate = startDate ? addDaysToDraftDate(startDate, 1) : undefined
+  const maxStartDate = endDate ? addDaysToDraftDate(endDate, -1) : undefined
+  const totalSurfaceOverPlan = useMemo(
+    () => isTotalSurfaceOverPlanLimit(draft.totalSurface, planSurfaceMaxM2),
+    [draft.totalSurface, planSurfaceMaxM2],
+  )
+  const wasOverPlanLimit = useRef(false)
 
-  const displayLabel = selectedCompany
-    ? selectedCompany.name
-    : showNewCompanyInput
-      ? ""
-      : "Seleccionar empresa..."
-
-  function handleSelectCompany(company: CompanyData) {
-    onChange({ companyId: company.id, companyName: company.name })
-    setShowNewCompanyInput(false)
-    setDropdownOpen(false)
-  }
-
-  function handleNewCompany() {
-    onChange({ companyId: null, companyName: "" })
-    setShowNewCompanyInput(true)
-    setDropdownOpen(false)
-  }
+  useEffect(() => {
+    if (totalSurfaceOverPlan && !wasOverPlanLimit.current) {
+      scrollToStructureSurfaceLimitBanner()
+    }
+    wasOverPlanLimit.current = totalSurfaceOverPlan
+  }, [totalSurfaceOverPlan])
 
   return (
     <div className="flex flex-col gap-4">
-      <CreateProjectFormField label="Empresa" htmlFor="project-company">
-        {!showNewCompanyInput ? (
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setDropdownOpen((v) => !v)}
-              className={cn(
-                createProjectInputClassName,
-                "flex items-center justify-between gap-2 cursor-pointer",
-              )}
-              style={createProjectInputStyle}
-            >
-              <span className="flex items-center gap-2 truncate">
-                <Building2 className="size-4 shrink-0 text-[#777b84]" />
-                <span className={selectedCompany ? "text-[#18191b]" : "text-[#777b84]"}>
-                  {loadingCompanies ? "Cargando..." : displayLabel}
-                </span>
-              </span>
-              <ChevronDown
-                className={cn("size-4 shrink-0 text-[#777b84] transition-transform", dropdownOpen && "rotate-180")}
-              />
-            </button>
-
-            {dropdownOpen && (
-              <div className="absolute top-full left-0 z-50 mt-1 w-full overflow-hidden rounded-[10px] border border-[#edeef0] bg-white shadow-lg">
-                {companies.map((company) => (
-                  <button
-                    key={company.id}
-                    type="button"
-                    onClick={() => handleSelectCompany(company)}
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-[14px] hover:bg-[#f9f9fb]"
-                  >
-                    <Building2 className="size-4 shrink-0 text-[#777b84]" />
-                    <span className="flex-1 truncate text-[#18191b]">{company.name}</span>
-                    {draft.companyId === company.id && (
-                      <Check className="size-4 shrink-0 text-[#ff7433]" />
-                    )}
-                  </button>
-                ))}
-                <div className="border-t border-[#edeef0]">
-                  <button
-                    type="button"
-                    onClick={handleNewCompany}
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-[14px] font-medium text-[#ff7433] hover:bg-[#fff5f1]"
-                  >
-                    <Plus className="size-4 shrink-0" />
-                    Nueva empresa
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <div className="relative">
-              <Building2
-                className="pointer-events-none absolute top-[13px] left-3 size-4 text-[#777b84]"
-                aria-hidden
-              />
-              <Input
-                id="project-company"
-                autoFocus
-                placeholder="Nombre de la empresa"
-                value={draft.companyName}
-                onChange={(e) => onChange({ companyName: e.target.value })}
-                className={cn(createProjectInputClassName, "pl-10")}
-                style={createProjectInputStyle}
-              />
-            </div>
-            {companies.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setShowNewCompanyInput(false)
-                  if (companies[0]) handleSelectCompany(companies[0])
-                }}
-                className="self-start text-[13px] text-[#ff7433] hover:underline"
-              >
-                ← Seleccionar empresa existente
-              </button>
-            )}
-          </div>
-        )}
-      </CreateProjectFormField>
+      {totalSurfaceOverPlan && planSurfaceMaxM2 != null ? (
+        <PlanSurfaceLimitNotice
+          planSurfaceMaxM2={planSurfaceMaxM2}
+          projectId={projectId}
+          reportedSurfaceM2={parseTotalSurfaceM2(draft.totalSurface) ?? 0}
+        />
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <CreateProjectFormField label="Nombre del proyecto" htmlFor="project-name">
+        <CreateProjectFormField
+          label="Nombre del proyecto"
+          htmlFor="project-name"
+          error={fieldErrors.projectName}
+        >
           <Input
             id="project-name"
             name="project-name"
@@ -170,18 +108,31 @@ export function CreateProjectBasicInfoStep({
             onChange={(e) => onChange({ projectName: e.target.value })}
             className={createProjectInputClassName}
             style={createProjectInputStyle}
+            aria-invalid={Boolean(fieldErrors.projectName)}
           />
         </CreateProjectFormField>
 
-        <CreateProjectFormField label="Superficie total" htmlFor="project-total-surface">
+        <CreateProjectFormField
+          label="Superficie total (m²)"
+          htmlFor="project-total-surface"
+          error={fieldErrors.totalSurface}
+        >
           <Input
             id="project-total-surface"
             name="project-total-surface"
-            placeholder="Ej: 2.000 m2"
+            inputMode="numeric"
+            placeholder="Ej: 2.000"
             value={draft.totalSurface}
-            onChange={(e) => onChange({ totalSurface: e.target.value })}
-            className={createProjectInputClassName}
-            style={createProjectInputStyle}
+            onChange={(e) => onChange({ totalSurface: normalizeTotalSurfaceInput(e.target.value) })}
+            className={cn(
+              createProjectInputClassName,
+              totalSurfaceOverPlan && createProjectFieldErrorInputClassName,
+            )}
+            style={{
+              ...createProjectInputStyle,
+              ...(totalSurfaceOverPlan ? createProjectFieldErrorInputStyle : {}),
+            }}
+            aria-invalid={Boolean(fieldErrors.totalSurface || totalSurfaceOverPlan)}
           />
         </CreateProjectFormField>
       </div>
@@ -209,44 +160,35 @@ export function CreateProjectBasicInfoStep({
           <DatePicker
             id="project-start"
             value={startDate}
-            onChange={(date) => {
-              const nextStartDate = formatDraftDateString(date)
-              const patch: Partial<CreateProjectDraft> = { startDate: nextStartDate }
-
-              if (date && endDate && date > endDate) {
-                patch.endDate = nextStartDate
-              }
-
-              onChange(patch)
-            }}
-            toDate={endDate}
+            onChange={(date) => onChange({ startDate: formatDraftDateString(date) })}
+            toDate={maxStartDate}
             placeholder="Seleccionar fecha"
             className={createProjectDatePickerClassName}
           />
         </CreateProjectFormField>
 
-        <CreateProjectFormField label="Fecha de finalización estimada" htmlFor="project-end">
+        <CreateProjectFormField
+          label="Fecha de finalización estimada"
+          htmlFor="project-end"
+          error={fieldErrors.endDate}
+        >
           <DatePicker
             id="project-end"
             value={endDate}
-            onChange={(date) => {
-              const nextEndDate = formatDraftDateString(date)
-              const patch: Partial<CreateProjectDraft> = { endDate: nextEndDate }
-
-              if (date && startDate && date < startDate) {
-                patch.startDate = nextEndDate
-              }
-
-              onChange(patch)
-            }}
-            fromDate={startDate}
+            onChange={(date) => onChange({ endDate: formatDraftDateString(date) })}
+            fromDate={minEndDate}
             placeholder="Seleccionar fecha"
             className={createProjectDatePickerClassName}
           />
         </CreateProjectFormField>
       </div>
 
-      <CreateProjectImageUpload value={coverImage} onChange={onCoverImageChange} />
+      <CreateProjectImageUpload
+        value={coverImage}
+        onChange={onCoverImageChange}
+        existingCoverUrl={existingCoverUrl}
+        onExistingCoverRemove={onExistingCoverRemove}
+      />
     </div>
   )
 }
