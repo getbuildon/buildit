@@ -22,6 +22,7 @@ import { StructureUnitAttachUpload } from "@/components/projects/new/StructureUn
 import { RequestPlanUpgradeModal } from "@/components/team/RequestPlanUpgradeModal"
 import { CreateProjectFormField, createProjectFieldErrorInputClassName, createProjectFieldErrorInputStyle } from "@/components/projects/new/CreateProjectFormField"
 import { FieldErrorTooltip } from "@/components/ui/field-error-tooltip"
+import { normalizeTotalSurfaceInput } from "@/lib/projects/totalSurfaceInput"
 import {
   STRUCTURE_UNIT_TYPES,
   countStructureUnits,
@@ -637,10 +638,12 @@ function StructureUnitRow({
             </div>
             <Input
               id={`unit-m2-${unit.id}`}
-              inputMode="decimal"
+              inputMode="numeric"
               placeholder="Ej. 45"
               value={unit.squareMeters}
-              onChange={(e) => onUpdateUnit({ squareMeters: e.target.value })}
+              onChange={(e) =>
+                onUpdateUnit({ squareMeters: normalizeTotalSurfaceInput(e.target.value) })
+              }
               className={cn(
                 structureUnitInputClassName,
                 squareMetersError && createProjectFieldErrorInputClassName,

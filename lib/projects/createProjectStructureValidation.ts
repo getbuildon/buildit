@@ -1,4 +1,5 @@
 import type { CreateProjectDraft } from "@/lib/projects/createProjectDraft"
+import { extractTotalSurfaceDigits } from "@/lib/projects/totalSurfaceInput"
 
 export type StructureUnitFieldErrors = {
   code?: string
@@ -14,10 +15,10 @@ export type StructureFloorFieldErrors = {
 export type StructureStepFieldErrors = Record<string, StructureFloorFieldErrors>
 
 export function hasUnitSquareMetersValue(value: string): boolean {
-  const trimmed = value.trim()
-  if (!trimmed) return false
+  const digits = extractTotalSurfaceDigits(value)
+  if (!digits) return false
 
-  const parsed = Number(trimmed.replace(",", "."))
+  const parsed = Number(digits)
   return Number.isFinite(parsed) && parsed > 0
 }
 

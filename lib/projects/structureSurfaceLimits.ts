@@ -14,10 +14,10 @@ export function parseTotalSurfaceM2(value: string): number | null {
 }
 
 export function parseUnitSquareMeters(value: string): number {
-  const trimmed = value.trim()
-  if (!trimmed) return 0
+  const digits = extractTotalSurfaceDigits(value)
+  if (!digits) return 0
 
-  const parsed = Number(trimmed.replace(",", "."))
+  const parsed = Number(digits)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
 }
 

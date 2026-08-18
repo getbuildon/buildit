@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
+import { formatTotalSurfaceFromNumber } from "@/lib/projects/totalSurfaceInput"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
 import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
 import {
@@ -367,8 +368,7 @@ function normalizeOptional(value: string): string | null {
 }
 
 function formatTotalSurfaceM2(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return ""
-  return String(value)
+  return formatTotalSurfaceFromNumber(value)
 }
 
 function parseOptionalNumber(value: string): number | null {

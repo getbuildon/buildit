@@ -11,6 +11,7 @@ import {
   dbFieldsToUnitDraft,
   normalizeUnitType,
 } from "@/lib/projects/unitTypes"
+import { formatTotalSurfaceFromNumber } from "@/lib/projects/totalSurfaceInput"
 
 /**
  * Reglas de asignación unidad ↔ tarea (unit_task_assignments):
@@ -202,7 +203,7 @@ export function buildConfigDraftFromProjectData(input: {
                   id: unit.id,
                   code: unit.code || "",
                   type: normalizedType,
-                  squareMeters: unit.area_m2?.toString() || "",
+                  squareMeters: formatTotalSurfaceFromNumber(unit.area_m2),
                   roomCount: variants.roomCount,
                   officeSize: variants.officeSize,
                   planUrl: unit.plan_url ?? null,

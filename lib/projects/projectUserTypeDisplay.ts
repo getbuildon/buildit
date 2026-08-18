@@ -81,6 +81,7 @@ export function decodeTeamRoleSelection(
     separatorIndex + TEAM_ROLE_SELECTION_SEPARATOR.length,
   ) as ProjectTeamRole
 
+  if (userType === "Owner") return null
   if (!PROJECT_TEAM_SELECTABLE_USER_TYPES.includes(userType)) return null
   if (!USER_TYPE_ROLES[userType].includes(role)) return null
 
