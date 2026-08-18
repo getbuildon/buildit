@@ -4,20 +4,24 @@ export type ProjectWeatherSnapshot = {
   description: string
 }
 
+type GeocodingResult = {
+  name: string
+  country?: string
+  latitude: number
+  longitude: number
+}
+
 type GeocodingResponse = {
-  results?: Array<{
-    name: string
-    country?: string
-    latitude: number
-    longitude: number
-  }>
+  results?: GeocodingResult[]
+}
+
+type ForecastCurrent = {
+  temperature_2m?: number
+  weather_code?: number
 }
 
 type ForecastResponse = {
-  current?: {
-    temperature_2m?: number
-    weather_code?: number
-  }
+  current?: ForecastCurrent
 }
 
 const WEATHER_CODE_LABELS: Record<number, string> = {
@@ -127,7 +131,7 @@ function formatCityLabel(name: string): string {
 async function geocodePlace(
   query: string,
   countryCode?: string,
-): Promise<GeocodingResponse["results"][number] | null> {
+): Promise<GeocodingResult | null> {
   const geocodingUrl = new URL("https://geocoding-api.open-meteo.com/v1/search")
   geocodingUrl.searchParams.set("name", query)
   geocodingUrl.searchParams.set("count", "1")
@@ -151,7 +155,7 @@ async function geocodePlace(
 async function fetchForecast(
   latitude: number,
   longitude: number,
-): Promise<ForecastResponse["current"] | null> {
+): Promise<ForecastCurrent | null> {
   const forecastUrl = new URL("https://api.open-meteo.com/v1/forecast")
   forecastUrl.searchParams.set("latitude", String(latitude))
   forecastUrl.searchParams.set("longitude", String(longitude))
