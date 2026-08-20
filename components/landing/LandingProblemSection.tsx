@@ -21,9 +21,9 @@ function ProblemCard({
   return (
     <article
       data-problem-card
-      className="w-full bg-white ring-1 ring-[#edeef0] ring-inset"
+      className="relative w-full border border-solid border-[#edeef0] bg-white drop-shadow-[0px_-10px_3.85px_rgba(0,0,0,0.04)] not-last:-mb-5"
     >
-      <div className="flex items-start gap-5 px-[33px] py-[49px]">
+      <div className="flex items-start gap-5 px-[33px] py-[57px]">
         <div className="grid size-11 shrink-0 place-items-center rounded-[14px] bg-white shadow-[0px_1px_1.5px_rgba(0,0,0,0.1),0px_1px_1px_rgba(0,0,0,0.1)]">
           <Image
             src={iconSrc}
@@ -134,7 +134,7 @@ export function LandingProblemSection() {
             </LandingReveal>
           </div>
 
-          <div className="flex min-w-0 flex-col gap-5 overflow-visible">
+          <div className="flex min-w-0 flex-col overflow-visible">
             {PROBLEM_ITEMS.map((item) => (
               <ProblemCard
                 key={item.id}
