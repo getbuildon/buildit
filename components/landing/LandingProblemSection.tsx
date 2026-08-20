@@ -55,7 +55,7 @@ function ProblemCard({
   )
 }
 
-const PROBLEM_SCROLL_END_PX = 800
+const PROBLEM_SCROLL_END_PX = 710
 
 export function LandingProblemSection() {
   const wrapRef = useRef<HTMLElement>(null)
