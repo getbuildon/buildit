@@ -3,6 +3,7 @@
 import { useRef, useState } from "react"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
 
 import { SolutionSlideCardDesktop } from "@/components/landing/SolutionSlideCardDesktop"
 import {
@@ -16,13 +17,18 @@ import {
   DESKTOP_SLIDER_GAP_PX,
   DESKTOP_SLIDE_DURATION_S,
   DESKTOP_SLIDE_EASE,
+  DESKTOP_SLIDE_SCROLL_PX,
   DESKTOP_TAB_WIDTH_PX,
   getSliderPinEdge,
   railOpacityForWidth,
+  scrollProgressForIndex,
+  slideIndexFromProgress,
   type SliderPinEdge,
 } from "@/lib/landing/solutionDesktopSlider"
 import { SOLUTION_SLIDES, type SolutionSlide } from "@/lib/landing/solutionSlides"
 import { cn } from "@/lib/utils"
+
+gsap.registerPlugin(ScrollTrigger)
 
 function pinLayer(node: HTMLElement, edge: SliderPinEdge) {
   if (edge === "left") {
@@ -91,9 +97,69 @@ function SolutionCollapsedTab({
 
 export function LandingSolutionsDesktop() {
   const [activeIndex, setActiveIndex] = useState(0)
+  const pinRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const prevIndexRef = useRef(0)
   const didAnimate = useRef(false)
+  const scrollTriggerRef = useRef<ScrollTrigger | null>(null)
+
+  const goToSlide = (index: number) => {
+    if (index === activeIndex) return
+
+    setActiveIndex(index)
+
+    const trigger = scrollTriggerRef.current
+    if (!trigger?.isActive) return
+
+    const progress = scrollProgressForIndex(index, SOLUTION_SLIDES.length)
+    trigger.scroll(trigger.start + (trigger.end - trigger.start) * progress)
+  }
+
+  useGSAP(
+    () => {
+      const pin = pinRef.current
+      if (!pin) return
+
+      const media = gsap.matchMedia()
+
+      media.add(
+        "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
+        () => {
+          const trigger = ScrollTrigger.create({
+            trigger: pin,
+            pin: true,
+            start: "top top",
+            end: `+=${SOLUTION_SLIDES.length * DESKTOP_SLIDE_SCROLL_PX}`,
+            anticipatePin: 1,
+            pinSpacing: true,
+            invalidateOnRefresh: true,
+            onUpdate: (self) => {
+              const nextIndex = slideIndexFromProgress(
+                self.progress,
+                SOLUTION_SLIDES.length,
+              )
+
+              setActiveIndex((current) =>
+                current === nextIndex ? current : nextIndex,
+              )
+            },
+          })
+
+          scrollTriggerRef.current = trigger
+
+          return () => {
+            if (scrollTriggerRef.current === trigger) {
+              scrollTriggerRef.current = null
+            }
+            trigger.kill()
+          }
+        },
+      )
+
+      return () => media.revert()
+    },
+    { scope: pinRef },
+  )
 
   useGSAP(
     () => {
@@ -170,8 +236,9 @@ export function LandingSolutionsDesktop() {
   )
 
   return (
+    <div ref={pinRef} data-solutions-pin className="relative bg-[#272a2d]">
     <div
-      className="relative"
+      className="relative overflow-x-clip"
       style={{
         paddingTop: DESKTOP_SECTION_TOP_PX,
         paddingBottom: DESKTOP_SECTION_BOTTOM_PX,
@@ -230,15 +297,14 @@ export function LandingSolutionsDesktop() {
                 <SolutionCollapsedTab
                   slide={slide}
                   isActive={isActive}
-                  onSelect={() => {
-                    if (index !== activeIndex) setActiveIndex(index)
-                  }}
+                  onSelect={() => goToSlide(index)}
                 />
               </div>
             )
           })}
         </div>
       </div>
+    </div>
     </div>
   )
 }

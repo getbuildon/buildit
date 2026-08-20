@@ -1,5 +1,6 @@
 export const DESKTOP_SLIDE_DURATION_S = 0.72
 export const DESKTOP_SLIDE_EASE = "power3.inOut"
+export const DESKTOP_SLIDE_SCROLL_PX = 920
 
 /** Figma node 2211:3203 */
 export const DESKTOP_SECTION_TOP_PX = 112
@@ -41,4 +42,16 @@ export function railOpacityForWidth(width: number) {
 
   const progress = (width - DESKTOP_TAB_WIDTH_PX) / span
   return 1 - Math.min(1, Math.max(0, progress))
+}
+
+export function slideIndexFromProgress(progress: number, count: number) {
+  if (count <= 1) return 0
+
+  return Math.min(count - 1, Math.max(0, Math.floor(progress * count)))
+}
+
+export function scrollProgressForIndex(index: number, count: number) {
+  if (count <= 0) return 0
+
+  return (index + 0.5) / count
 }

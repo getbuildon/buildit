@@ -140,6 +140,10 @@ html:has([data-project-shell]) body {
   max-width: 100%;
 }
 
+.landing-page .pin-spacer:has([data-solutions-pin]) {
+  background: #272a2d;
+}
+
 @keyframes dialog-overlay-in {
   from {
     opacity: 0;
