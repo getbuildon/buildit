@@ -23,6 +23,7 @@ import type { BillingPeriod, PricingPlan } from "@/lib/landing/pricingPlans"
 import {
   getDefaultSurfaceTierId,
   getPlanDisplayPrice,
+  getPlanPricePeriodLabel,
 } from "@/lib/landing/pricingPlans"
 import { cn } from "@/lib/utils"
 
@@ -67,6 +68,7 @@ export function PricingPlanCard({
 
   const isDark = plan.theme === "dark"
   const price = getPlanDisplayPrice(plan, billing, surfaceTierId)
+  const pricePeriodLabel = getPlanPricePeriodLabel(billing)
   const isQuote = Boolean(plan.priceLabel)
   const hasSurfaceTiers = Boolean(plan.surfaceTiers?.length)
 
@@ -121,7 +123,7 @@ export function PricingPlanCard({
               isDark ? "text-[#afb3ba]" : "text-[#5a6169]",
             )}
           >
-            usd/mes
+            {pricePeriodLabel}
           </p>
         ) : null}
       </div>

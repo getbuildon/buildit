@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 
+import { LandingReveal } from "@/components/landing/LandingReveal"
 import { useLandingActions } from "@/components/landing/LandingActionsProvider"
 
 export function LandingHeroDesktop() {
@@ -68,48 +69,56 @@ export function LandingHeroDesktop() {
 
         <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-full max-w-[1440px]">
           <div className="absolute left-1/2 top-[606px] z-20 w-[calc(100%-48px)] max-w-[1160px] -translate-x-1/2 px-4 lg:w-[calc(100%-64px)] lg:px-8">
-            <Image
-              src="/landing/hero/desktop/dashboard-main.png"
-              alt="Panel de BuildOn mostrando el avance de obra de un proyecto"
-              width={1096}
-              height={635}
-              priority
-              className="h-auto w-full object-cover object-top shadow-[0px_48px_120px_0px_rgba(0,0,0,0.4)]"
-              sizes="(max-width: 1440px) 80vw, 1096px"
-            />
+            <LandingReveal direction="up">
+              <Image
+                src="/landing/hero/desktop/dashboard-main.png"
+                alt="Panel de BuildOn mostrando el avance de obra de un proyecto"
+                width={1096}
+                height={635}
+                priority
+                className="h-auto w-full object-cover object-top shadow-[0px_48px_120px_0px_rgba(0,0,0,0.4)]"
+                sizes="(max-width: 1440px) 80vw, 1096px"
+              />
+            </LandingReveal>
           </div>
 
           <div className="absolute left-[4.8%] top-[801px] z-30 hidden w-[20.6%] min-w-[180px] max-w-[297px] lg:block">
-            <Image
-              src="/landing/hero/desktop/task-panel.png"
-              alt=""
-              width={297}
-              height={312}
-              className="h-auto w-full object-cover object-top shadow-[0px_48px_120px_0px_rgba(0,0,0,0.15)]"
-              sizes="297px"
-            />
+            <LandingReveal direction="left">
+              <Image
+                src="/landing/hero/desktop/task-panel.png"
+                alt=""
+                width={297}
+                height={312}
+                className="h-auto w-full object-cover object-top shadow-[0px_48px_120px_0px_rgba(0,0,0,0.15)]"
+                sizes="297px"
+              />
+            </LandingReveal>
           </div>
 
           <div className="absolute right-[4.8%] top-[816px] z-30 hidden w-[27.6%] min-w-[220px] max-w-[398px] xl:block">
-            <Image
-              src="/landing/hero/desktop/phone-card.png"
-              alt="Certificación de tareas en BuildOn"
-              width={398}
-              height={274}
-              className="h-auto w-full object-cover object-top shadow-[0px_48px_120px_0px_rgba(0,0,0,0.15)]"
-              sizes="398px"
-            />
+            <LandingReveal direction="right">
+              <Image
+                src="/landing/hero/desktop/phone-card.png"
+                alt="Certificación de tareas en BuildOn"
+                width={398}
+                height={274}
+                className="h-auto w-full object-cover object-top shadow-[0px_48px_120px_0px_rgba(0,0,0,0.15)]"
+                sizes="398px"
+              />
+            </LandingReveal>
           </div>
 
           <div className="absolute left-1/2 top-[1195px] z-30 hidden w-[39.7%] min-w-[320px] max-w-[571px] -translate-x-1/2 xl:block">
-            <Image
-              src="/landing/hero/desktop/unit-bar.png"
-              alt="Detalle de unidad con progreso en BuildOn"
-              width={571}
-              height={117}
-              className="h-auto w-full object-cover object-top shadow-[-9px_54px_109.5px_0px_rgba(0,0,0,0.15)]"
-              sizes="571px"
-            />
+            <LandingReveal direction="up">
+              <Image
+                src="/landing/hero/desktop/unit-bar.png"
+                alt="Detalle de unidad con progreso en BuildOn"
+                width={571}
+                height={117}
+                className="h-auto w-full object-cover object-top shadow-[-9px_54px_109.5px_0px_rgba(0,0,0,0.15)]"
+                sizes="571px"
+              />
+            </LandingReveal>
           </div>
         </div>
       </div>

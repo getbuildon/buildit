@@ -46,7 +46,7 @@ import {
   sanitizePhoneInput,
 } from "@/lib/landing/phoneInput"
 import type { BillingPeriod, PricingPlan } from "@/lib/landing/pricingPlans"
-import { getPlanDisplayPrice } from "@/lib/landing/pricingPlans"
+import { getPlanDisplayPrice, getPlanPricePeriodLabel } from "@/lib/landing/pricingPlans"
 import { submitLandingLead } from "@/lib/landing/submitLandingLead"
 import { useIsDesktopViewport } from "@/lib/landing/useIsDesktopViewport"
 import { cn } from "@/lib/utils"
@@ -194,6 +194,7 @@ export function PricingContractModal({
   if (!plan) return null
 
   const price = getPlanDisplayPrice(plan, billing, surfaceTierId)
+  const pricePeriodLabel = getPlanPricePeriodLabel(billing)
   const isQuote = Boolean(plan.priceLabel)
   const surfaceSummary = getPlanSurfaceSummary(plan, surfaceTierId)
   const phoneDialOption = getPhoneDialOption(form.phoneDialCode)
@@ -348,7 +349,7 @@ export function PricingContractModal({
                   </p>
                   {!isQuote ? (
                     <p className="text-xs leading-[1.4] tracking-[-0.36px] text-[#afb3ba]">
-                      usd/mes
+                      {pricePeriodLabel}
                     </p>
                   ) : null}
                 </div>

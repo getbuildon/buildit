@@ -172,13 +172,19 @@ export function formatPlanPrice(amount: number): string {
   return `$${amount.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
 }
 
+export function getPlanPricePeriodLabel(billing: BillingPeriod): string {
+  return billing === "annual" ? "usd/año" : "usd/mes"
+}
+
 export function getTierDisplayPrice(
   tier: SurfaceTier,
   billing: BillingPeriod,
 ): string {
-  const price =
-    billing === "annual" ? tier.annualMonthlyPrice : tier.monthlyPrice
-  return formatPlanPrice(price)
+  if (billing === "annual") {
+    return formatPlanPrice(tier.annualMonthlyPrice * 12)
+  }
+
+  return formatPlanPrice(tier.monthlyPrice)
 }
 
 export function getPlanDisplayPrice(
@@ -200,7 +206,10 @@ export function getPlanDisplayPrice(
   const price =
     billing === "annual" ? plan.annualMonthlyPrice : plan.monthlyPrice
 
-  return price != null ? formatPlanPrice(price) : null
+  if (price == null) return null
+
+  const amount = billing === "annual" ? price * 12 : price
+  return formatPlanPrice(amount)
 }
 
 export function getDefaultSurfaceTierId(plan: PricingPlan): string | undefined {
