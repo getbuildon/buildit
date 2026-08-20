@@ -43,28 +43,37 @@ export function LandingReveal({
 
       const from = LANDING_REVEAL_FROM[direction]
 
-      gsap.fromTo(
-        node,
-        { x: from.x, y: from.y, opacity: 0 },
-        {
+      gsap.set(node, { x: from.x, y: from.y, opacity: 0 })
+
+      const play = () => {
+        gsap.to(node, {
           x: 0,
           y: 0,
           opacity: 1,
           duration: LANDING_REVEAL_DEFAULTS.duration,
           delay,
           ease: LANDING_REVEAL_DEFAULTS.ease,
-          immediateRender: true,
-          ...(immediate
-            ? {}
-            : {
-                scrollTrigger: {
-                  trigger: node,
-                  start,
-                  once: true,
-                },
-              }),
+          overwrite: "auto",
+        })
+      }
+
+      if (immediate) {
+        play()
+        return
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return
+          play()
+          observer.disconnect()
         },
+        { rootMargin: "0px 0px -12% 0px", threshold: 0.12 },
       )
+
+      observer.observe(node)
+
+      return () => observer.disconnect()
     },
     { scope: ref, dependencies: [delay, direction, immediate, start] },
   )
