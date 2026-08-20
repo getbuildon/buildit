@@ -2,9 +2,9 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { CircleUserRound } from "lucide-react"
 
 import { useLandingActions } from "@/components/landing/LandingActionsProvider"
+import { LandingLoginMenu } from "@/components/landing/LandingLoginMenu"
 import { handleLandingNavClick } from "@/lib/landing/handleLandingNavClick"
 import { LANDING_HEADER_NAV_LINKS } from "@/lib/landing/headerNavLinks"
 
@@ -42,13 +42,7 @@ export function LandingHeaderDesktop() {
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 lg:gap-3">
-        <Link
-          href="/login"
-          className="inline-flex items-center gap-1 rounded-[14px] px-3 py-2.5 text-sm leading-[1.4] text-[#272a2d] transition-colors hover:bg-[#fff6f1]"
-        >
-          <CircleUserRound className="size-4" strokeWidth={1.75} />
-          Iniciar sesión
-        </Link>
+        <LandingLoginMenu />
 
         <div className="flex items-center gap-2">
           <button

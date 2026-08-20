@@ -6,6 +6,7 @@ import { LogOut, User } from "lucide-react"
 import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import { useAuth } from "@/context/AuthContextSupabase"
 import { UserAvatar } from "@/components/user/UserAvatar"
+import { postLogoutPath } from "@/lib/auth/postLogout"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
 
 type CompanyUserMenuDropdownProps = {
@@ -45,8 +46,9 @@ export function CompanyUserMenuDropdown({
 
   const handleLogout = async () => {
     onClose()
+    const nextPath = postLogoutPath()
     await logOut()
-    router.replace("/login")
+    router.replace(nextPath)
     router.refresh()
   }
 

@@ -1,4 +1,5 @@
 import type { ProjectNavIconId } from "@/components/project-shell/ProjectNavIcons"
+import type { LoginAudience } from "@/lib/auth/loginAudience"
 import {
   isNavSegmentAllowed,
   type ProjectPermissions,
@@ -23,8 +24,16 @@ export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
 
 export function getAllowedProjectNavItems(
   permissions: ProjectPermissions,
+  audience: LoginAudience = "equipo",
 ): ProjectNavItem[] {
-  return PROJECT_NAV_ITEMS.filter((item) => isNavSegmentAllowed(permissions, item.segment))
+  if (audience === "cliente") {
+    return PROJECT_NAV_ITEMS.filter((item) => item.segment === "mi-unidad")
+  }
+
+  return PROJECT_NAV_ITEMS.filter(
+    (item) =>
+      item.segment !== "mi-unidad" && isNavSegmentAllowed(permissions, item.segment),
+  )
 }
 
 export function isProjectNavActive(

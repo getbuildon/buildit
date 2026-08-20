@@ -13,7 +13,7 @@ export default async function InviteSetupPage({ searchParams }: PageProps) {
   const id = invitationId?.trim()
 
   if (!id) {
-    redirect("/login")
+    redirect("/acceso-equipo")
   }
 
   const supabase = await createClient()
@@ -22,7 +22,7 @@ export default async function InviteSetupPage({ searchParams }: PageProps) {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect(`/login?next=${encodeURIComponent(`/invite/setup?invitation=${id}`)}`)
+    redirect(`/acceso-equipo?next=${encodeURIComponent(`/invite/setup?invitation=${id}`)}`)
   }
 
   const setupData = await getInvitationSetupData(id)
@@ -37,7 +37,7 @@ export default async function InviteSetupPage({ searchParams }: PageProps) {
             invitación nuevamente o pedí una nueva invitación al administrador del proyecto.
           </p>
           <Link
-            href="/login"
+            href="/acceso-equipo"
             className="mt-6 inline-flex text-[14px] text-[#ff7433] underline underline-offset-2"
           >
             Ir al inicio de sesión

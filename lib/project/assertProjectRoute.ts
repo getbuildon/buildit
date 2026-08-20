@@ -3,6 +3,7 @@
 import { notFound } from "next/navigation"
 
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
+import { getClientAssignedUnitIds } from "@/lib/project/projectAccess"
 import { isReservedProjectRouteSegment } from "@/lib/project/reservedRouteSegments"
 import { createClient } from "@/utils/supabase/server"
 
@@ -51,6 +52,9 @@ export async function assertProjectRoute(projectId: string) {
 
     if (companyAccess) return { projectId: id }
   }
+
+  const clientUnitIds = await getClientAssignedUnitIds(supabase, id, user.id)
+  if (clientUnitIds.length > 0) return { projectId: id }
 
   notFound()
 }

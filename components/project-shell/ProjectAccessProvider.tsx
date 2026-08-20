@@ -44,6 +44,9 @@ export function useStrictProjectPermission(permission: ProjectPermissionKey): bo
 }
 
 export function useCanViewUnit(unitId: string): boolean {
-  const { permissions, assignedUnitIds } = useProjectAccess()
+  const { permissions, assignedUnitIds, loginAudience } = useProjectAccess()
+  if (loginAudience === "cliente") {
+    return assignedUnitIds?.includes(unitId) ?? false
+  }
   return canViewDetailedProgressForUnit(permissions, unitId, assignedUnitIds)
 }

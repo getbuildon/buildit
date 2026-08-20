@@ -14,12 +14,41 @@ import {
   AUTH_FORM_SHELL_CLASSNAME,
 } from "./authFormStyles"
 
+type AuthHeroCopy = {
+  title: string
+  highlight?: string
+  subtitle: string
+}
+
 type AuthSplitLayoutProps = {
   children: ReactNode
   belowCard?: ReactNode
+  hero?: AuthHeroCopy
 }
 
-function AuthDesktopHero() {
+const DEFAULT_HERO: AuthHeroCopy = {
+  title: "Seguimiento de obra claro, centralizado y en tiempo real.",
+  highlight: "centralizado",
+  subtitle:
+    "Gestiona tus proyectos de construcción con total visibilidad. Monitorea avances, coordina equipos y mantén informados a tus clientes desde una sola plataforma.",
+}
+
+function renderHeroTitle(copy: AuthHeroCopy, accent: string, className: string) {
+  if (!copy.highlight || !copy.title.includes(copy.highlight)) {
+    return <h1 className={className}>{copy.title}</h1>
+  }
+
+  const [before, after] = copy.title.split(copy.highlight)
+  return (
+    <h1 className={className}>
+      {before}
+      <span style={{ color: accent }}>{copy.highlight}</span>
+      {after}
+    </h1>
+  )
+}
+
+function AuthDesktopHero({ hero }: { hero: AuthHeroCopy }) {
   return (
     <section className="relative hidden min-h-dvh overflow-hidden lg:flex lg:flex-col">
       <div className="absolute inset-0">
@@ -49,21 +78,16 @@ function AuthDesktopHero() {
           />
 
           <div className="flex max-w-xl flex-col gap-4 xl:max-w-2xl xl:gap-6">
-            <h1
-              className="font-recoleta text-[34px] font-normal leading-[1.08] xl:text-[52px] xl:leading-[1.06] 2xl:text-[64px] 2xl:leading-[67.2px]"
-              style={{ color: LOGIN_COLORS.heroText }}
-            >
-              Seguimiento de obra claro,{" "}
-              <span style={{ color: LOGIN_ACCENT }}>centralizado</span> y en tiempo
-              real.
-            </h1>
+            {renderHeroTitle(
+              hero,
+              LOGIN_ACCENT,
+              "font-recoleta text-[34px] font-normal leading-[1.08] text-[#fefcfb] xl:text-[52px] xl:leading-[1.06] 2xl:text-[64px] 2xl:leading-[67.2px]",
+            )}
             <p
               className="max-w-lg text-base leading-relaxed tracking-[0.2px] xl:text-lg xl:leading-7 xl:tracking-[0.4px] 2xl:text-[20px] 2xl:leading-[28px]"
               style={{ color: LOGIN_COLORS.heroText }}
             >
-              Gestiona tus proyectos de construcción con total visibilidad. Monitorea
-              avances, coordina equipos y mantén informados a tus clientes desde una
-              sola plataforma.
+              {hero.subtitle}
             </p>
           </div>
         </div>
@@ -76,7 +100,7 @@ function AuthDesktopHero() {
   )
 }
 
-function AuthTabletIntro() {
+function AuthTabletIntro({ hero }: { hero: AuthHeroCopy }) {
   return (
     <div className="mb-6 hidden w-full text-center md:block lg:hidden">
       <Image
@@ -87,8 +111,7 @@ function AuthTabletIntro() {
         className="mx-auto mb-5 h-9 w-auto"
       />
       <p className="font-recoleta text-[28px] leading-[1.12] text-white sm:text-[32px]">
-        Seguimiento de obra{" "}
-        <span className="text-[#212225]">centralizado</span> en tiempo real.
+        {hero.title}
       </p>
     </div>
   )
@@ -106,11 +129,15 @@ function AuthMobileLogo() {
   )
 }
 
-export function AuthSplitLayout({ children, belowCard }: AuthSplitLayoutProps) {
+export function AuthSplitLayout({
+  children,
+  belowCard,
+  hero = DEFAULT_HERO,
+}: AuthSplitLayoutProps) {
   return (
     <div className="relative min-h-dvh" style={{ backgroundColor: LOGIN_BG }}>
       <main className="grid min-h-dvh lg:grid-cols-[minmax(0,902fr)_minmax(0,997fr)]">
-        <AuthDesktopHero />
+        <AuthDesktopHero hero={hero} />
 
         <section className="relative flex min-h-dvh flex-col overflow-x-hidden overflow-y-auto lg:min-h-0">
           <Image
@@ -123,7 +150,7 @@ export function AuthSplitLayout({ children, belowCard }: AuthSplitLayoutProps) {
           />
 
           <div className="relative mx-auto flex w-full flex-1 flex-col justify-center px-4 py-8 sm:px-6 sm:py-10 md:py-12 lg:py-12">
-            <AuthTabletIntro />
+            <AuthTabletIntro hero={hero} />
             <AuthMobileLogo />
 
             <div className={AUTH_FORM_SHELL_CLASSNAME}>{children}</div>

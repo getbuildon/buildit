@@ -30,9 +30,9 @@ export function ProjectNavLinks({
   linkClassName,
 }: ProjectNavLinksProps) {
   const pathname = usePathname()
-  const { permissions } = useProjectAccess()
+  const { permissions, loginAudience } = useProjectAccess()
   const { navigate, pendingHref } = useProjectNavigation()
-  const navItems = getAllowedProjectNavItems(permissions)
+  const navItems = getAllowedProjectNavItems(permissions, loginAudience)
 
   return (
     <nav className={cn("flex flex-col", className)} style={{ gap: "4px" }}>

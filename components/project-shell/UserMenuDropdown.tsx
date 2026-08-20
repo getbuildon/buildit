@@ -9,6 +9,7 @@ import {
 } from "@/components/project-shell/ProjectProfileMenuIcons"
 import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import { useAuth } from "@/context/AuthContextSupabase"
+import { postLogoutPath } from "@/lib/auth/postLogout"
 import { projectHref } from "@/lib/project/routes"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
 import { cn } from "@/lib/utils"
@@ -59,8 +60,9 @@ export function UserMenuDropdown({
 
   const handleLogout = async () => {
     onClose()
+    const nextPath = postLogoutPath()
     await logOut()
-    router.replace("/login")
+    router.replace(nextPath)
     router.refresh()
   }
 

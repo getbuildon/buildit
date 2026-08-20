@@ -6,6 +6,7 @@ import { ChevronDown, LogOut, UserCircle } from "lucide-react"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import { useAuth } from "@/context/AuthContextSupabase"
+import { postLogoutPath } from "@/lib/auth/postLogout"
 import { cn } from "@/lib/utils"
 
 type UserMenuProps = {
@@ -45,8 +46,9 @@ export function UserMenu({
 
   const handleLogout = async () => {
     setIsOpen(false)
+    const nextPath = postLogoutPath()
     await logOut()
-    router.replace("/login")
+    router.replace(nextPath)
     router.refresh()
   }
 

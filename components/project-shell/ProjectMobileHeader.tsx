@@ -19,6 +19,7 @@ import {
   ANIMATED_COLLAPSE_DURATION_MS,
 } from "@/components/ui/animated-collapsible"
 import { useAuth } from "@/context/AuthContextSupabase"
+import { postLogoutPath } from "@/lib/auth/postLogout"
 import { projectHref } from "@/lib/project/routes"
 import type { UserProjectListItem } from "@/lib/projects/types"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
@@ -85,8 +86,9 @@ export function ProjectMobileHeader({
 
   const handleLogout = async () => {
     closeMenu()
+    const nextPath = postLogoutPath()
     await logOut()
-    router.replace("/login")
+    router.replace(nextPath)
     router.refresh()
   }
 

@@ -3,11 +3,15 @@
 import Link from "next/link"
 
 import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
+import { useProjectAccess } from "@/components/project-shell/ProjectAccessProvider"
 import { cn } from "@/lib/utils"
 
 /** Figma node 1180:1343 — botón cambiar obra (24×24, bg #edeef0, icon 16×16 #afb3ba). */
 export function SidebarSwitchProjectButton({ className }: { className?: string }) {
   const { navigate } = useAppRouteNavigation()
+  const { loginAudience } = useProjectAccess()
+
+  if (loginAudience === "cliente") return null
 
   return (
     <Link

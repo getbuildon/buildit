@@ -14,7 +14,7 @@ export default async function RegisterConfirmPage() {
 
   if (!user) {
     redirect(
-      `/login?next=${encodeURIComponent(REGISTER_CONFIRM_PATH)}`,
+      `/acceso-equipo?next=${encodeURIComponent(REGISTER_CONFIRM_PATH)}`,
     )
   }
 
@@ -37,7 +37,7 @@ export default async function RegisterConfirmPage() {
             invitación nuevamente o pedí ayuda al administrador.
           </p>
           <Link
-            href="/login"
+            href="/acceso-equipo"
             className="mt-6 inline-flex text-[14px] text-[#ff7433] underline underline-offset-2"
           >
             Ir al inicio de sesión

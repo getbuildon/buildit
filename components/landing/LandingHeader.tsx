@@ -86,7 +86,7 @@ export function LandingHeader() {
         ref={headerRef}
         data-landing-header
         className={cn(
-          "fixed inset-x-0 top-0 z-50 bg-background",
+          "fixed inset-x-0 top-0 z-50 bg-[#e2e0df]",
           isScrolled && "shadow-[0_4px_16px_rgba(24,25,27,0.08)]",
         )}
         style={{

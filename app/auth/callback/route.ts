@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
 
   if (!config) {
-    return NextResponse.redirect(`${origin}/login?error=config`)
+    return NextResponse.redirect(`${origin}/acceso-equipo?error=config`)
   }
 
   const code = searchParams.get("code")
@@ -42,5 +42,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=callback`)
+  return NextResponse.redirect(`${origin}/acceso-equipo?error=callback`)
 }

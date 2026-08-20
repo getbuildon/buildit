@@ -119,7 +119,7 @@ function RegisterPage() {
           <h1 className="text-2xl font-bold">Crear cuenta</h1>
           <p className="text-sm text-muted-foreground">
             Placeholder hasta recibir diseño de Figma.{" "}
-            <Link href="/login" className="font-medium text-primary hover:underline">
+            <Link href="/acceso-equipo" className="font-medium text-primary hover:underline">
               Ya tengo cuenta
             </Link>
           </p>

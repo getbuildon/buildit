@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation"
 import { createClient } from "@/utils/supabase/server"
+import { getLoginAudience } from "@/lib/auth/loginAudienceActions"
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
 import type { ProjectUserType } from "@/lib/projects/createProjectDraft"
 import { USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
@@ -106,11 +107,15 @@ export async function getProjectAccessContext(
     }
   }
 
-  if (!userType) return null
+  const clientUnitIds = await getClientAssignedUnitIds(supabase, id, user.id)
+  const loginAudience = (await getLoginAudience()) ?? "equipo"
+
+  if (!userType) {
+    if (clientUnitIds.length === 0) return null
+    userType = "Cliente"
+  }
 
   const permissions = getProjectPermissions(userType)
-  const clientUnitIds = await getClientAssignedUnitIds(supabase, id, user.id)
-
   const effectivePermissions =
     clientUnitIds.length > 0 && !permissions.clientPortal
       ? { ...permissions, clientPortal: true as const }
@@ -119,7 +124,11 @@ export async function getProjectAccessContext(
   return {
     userType,
     permissions: effectivePermissions,
-    assignedUnitIds: resolveAssignedUnitIds(effectivePermissions, clientUnitIds),
+    assignedUnitIds:
+      loginAudience === "cliente"
+        ? clientUnitIds
+        : resolveAssignedUnitIds(effectivePermissions, clientUnitIds),
+    loginAudience,
   }
 }
 
@@ -159,7 +168,22 @@ export async function assertProjectSectionAccess(
   segment: string,
 ): Promise<ProjectAccessContext> {
   const context = await getProjectAccessContext(projectId)
-  if (!context || !isNavSegmentAllowed(context.permissions, segment)) {
+  if (!context) {
+    redirect("/home")
+  }
+
+  if (context.loginAudience === "cliente") {
+    if (segment !== "mi-unidad") {
+      redirect(projectHref(projectId, "mi-unidad"))
+    }
+    return context
+  }
+
+  if (segment === "mi-unidad") {
+    redirect(projectHref(projectId))
+  }
+
+  if (!isNavSegmentAllowed(context.permissions, segment)) {
     redirect(projectHref(projectId))
   }
   return context

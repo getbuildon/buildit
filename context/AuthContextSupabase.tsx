@@ -16,6 +16,7 @@ import { injectClientSupabaseConfig } from "@/lib/auth/clientSupabaseConfig"
 import { withAuthTimeout } from "@/lib/auth/mapAuthError"
 import type { PublicSupabaseConfig } from "@/lib/auth/publicSupabaseConfig"
 import type { AppUser } from "@/lib/auth/types"
+import { clearLoginAudience } from "@/lib/auth/loginAudienceActions"
 import { createClient } from "@/utils/supabase/client"
 
 export type AuthContextValue = {
@@ -85,6 +86,7 @@ export function AuthProvider({ children, supabasePublicConfig }: AuthProviderPro
 
   const logOut = async () => {
     await signOutClient()
+    await clearLoginAudience()
     setUser(null)
   }
 

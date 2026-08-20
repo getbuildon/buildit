@@ -182,7 +182,7 @@ function RecoveryPasswordPage() {
       }
       setUpdateSuccess(true)
       setTimeout(() => {
-        router.push("/login")
+        router.push("/acceso-equipo")
       }, 2000)
     } catch {
       setUpdateError("No pudimos actualizar la contraseña. Intentá de nuevo.")
@@ -256,7 +256,7 @@ function RecoveryPasswordPage() {
           </p>
           <div className="flex justify-center pt-3">
             <Link
-              href="/login"
+              href="/acceso-equipo"
               className={cn(
                 LOGIN_TYPE.link,
                 "inline-flex items-center gap-2 hover:opacity-80",
@@ -495,7 +495,7 @@ function RecoveryPasswordPage() {
 
           <div className="flex justify-center pt-3">
             <Link
-              href="/login"
+              href="/acceso-equipo"
               className={cn(
                 LOGIN_TYPE.link,
                 "inline-flex items-center gap-2 hover:opacity-80",

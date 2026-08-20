@@ -3,9 +3,8 @@
 import { useEffect, type ComponentType } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContextSupabase"
+import { postLoginPath, getLoginAudienceFromDocument } from "@/lib/auth/loginAudience"
 import { Spinner } from "@/components/ui/spinner"
-
-const HOME_PATH = "/home"
 
 function RedirectingFallback({ message }: { message: string }) {
   return (
@@ -28,7 +27,7 @@ export function withGuestAuth<P extends object>(Component: ComponentType<P>) {
 
     useEffect(() => {
       if (loading || !user) return
-      router.replace(HOME_PATH)
+      router.replace(postLoginPath(getLoginAudienceFromDocument() ?? "equipo"))
     }, [user, loading, router])
 
     if (loading) {

@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContextSupabase"
 import { Spinner } from "@/components/ui/spinner"
 
-const LOGIN_PATH = "/login"
+import {
+  PORTAL_CLIENTE_PATH,
+  getLoginAudienceFromDocument,
+  loginPathForAudience,
+} from "@/lib/auth/loginAudience"
 
 function RedirectingFallback({ message }: { message: string }) {
   return (
@@ -27,8 +31,15 @@ export default function withAuth<P extends object>(Component: ComponentType<P>) 
     const router = useRouter()
 
     useEffect(() => {
-      if (typeof window === "undefined" || loading || user) return
-      router.replace(LOGIN_PATH)
+      if (typeof window === "undefined" || loading) return
+      const audience = getLoginAudienceFromDocument()
+      if (!user) {
+        router.replace(loginPathForAudience(audience ?? "equipo"))
+        return
+      }
+      if (audience === "cliente") {
+        router.replace(PORTAL_CLIENTE_PATH)
+      }
     }, [user, loading, router])
 
     if (loading) {
@@ -37,6 +48,10 @@ export default function withAuth<P extends object>(Component: ComponentType<P>) 
 
     if (!user) {
       return <RedirectingFallback message="Redirigiendo al inicio de sesión…" />
+    }
+
+    if (getLoginAudienceFromDocument() === "cliente") {
+      return <RedirectingFallback message="Redirigiendo…" />
     }
 
     return <Component {...props} />

@@ -39,6 +39,8 @@ export function resolvePendingAuthSetupPath(
 export const AUTH_SETUP_ALLOWED_PATH_PREFIXES = [
   REGISTER_CONFIRM_PATH,
   "/login",
+  "/acceso-equipo",
+  "/acceso-clientes",
   "/register",
   "/auth/",
   "/invite/setup",

@@ -41,7 +41,7 @@ export function AuthHashCallbackHandler() {
 
       if (error) {
         handledRef.current = false
-        router.replace("/login?error=hash_callback")
+        router.replace("/acceso-equipo?error=hash_callback")
         return
       }
 

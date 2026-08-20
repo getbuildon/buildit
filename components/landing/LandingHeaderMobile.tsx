@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Menu, X } from "lucide-react"
+import { CircleUserRound, Menu, X } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { useLandingActions } from "@/components/landing/LandingActionsProvider"
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/animated-collapsible"
 import { handleLandingNavClick } from "@/lib/landing/handleLandingNavClick"
 import { LANDING_HEADER_NAV_LINKS } from "@/lib/landing/headerNavLinks"
+import { LANDING_LOGIN_MENU_ITEMS } from "@/lib/landing/loginMenuItems"
 import { cn } from "@/lib/utils"
 
 export function LandingHeaderMobile() {
@@ -92,7 +93,7 @@ export function LandingHeaderMobile() {
         <div
           id="landing-mobile-nav"
           className={cn(
-            "flex flex-col gap-6 border-b border-[#eef0f2] bg-background px-6 pb-[41px] pt-6 transition-[opacity,transform] ease-in-out",
+            "flex flex-col gap-6 border-b border-[#eef0f2] bg-[#e2e0df] px-6 pb-[41px] pt-6 transition-[opacity,transform] ease-in-out",
             menuOpen
               ? "translate-y-0 opacity-100"
               : "-translate-y-2 opacity-0",
@@ -117,21 +118,23 @@ export function LandingHeaderMobile() {
           </nav>
 
           <div className="flex flex-col gap-2">
-            <Link
-              href="/login"
-              className="flex items-center justify-center gap-1 rounded-[10px] bg-[#fff6f1] py-2.5 text-lg leading-[1.2] tracking-[0.36px] text-[#272a2d]"
-              onClick={closeMenu}
-            >
-              <Image
-                src="/landing/user-icon.svg"
-                alt=""
-                width={24}
-                height={24}
-                aria-hidden
-                className="size-6"
-              />
-              Iniciar sesión
-            </Link>
+            <div className="flex flex-col rounded-[10px] bg-[#fff6f1] p-2">
+              <p className="flex items-center gap-1 px-2 py-1.5 text-sm font-medium leading-[1.4] text-[#272a2d]">
+                <CircleUserRound className="size-4" strokeWidth={1.75} aria-hidden />
+                Iniciar sesión
+              </p>
+              {LANDING_LOGIN_MENU_ITEMS.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-[10px] p-2 text-left text-sm leading-[1.4] text-[#111113] transition-colors hover:bg-[#ffeae0]"
+                  onClick={closeMenu}
+                >
+                  <p className="font-medium">{item.title}</p>
+                  <p className="whitespace-nowrap font-normal">{item.description}</p>
+                </Link>
+              ))}
+            </div>
 
             <div className="flex gap-2">
               <button
