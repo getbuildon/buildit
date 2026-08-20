@@ -24,7 +24,7 @@ function ProblemCardMobile({
   return (
     <article
       data-problem-card-mobile
-      className="relative w-full border border-solid border-[#edeef0] bg-white drop-shadow-[0px_-10px_3.85px_rgba(0,0,0,0.04)] not-last:-mb-[18px]"
+      className="relative w-full border border-solid border-[#edeef0] bg-white shadow-[0_-10px_3.85px_rgba(0,0,0,0.04)] not-last:-mb-[18px]"
     >
       <div className="flex items-start gap-5 px-[17px] py-[33px]">
         <div className="grid size-11 shrink-0 place-items-center rounded-[14px] bg-white shadow-[0px_1px_1.5px_rgba(0,0,0,0.1),0px_1px_1px_rgba(0,0,0,0.1)]">
@@ -68,7 +68,7 @@ export function LandingProblemMobile() {
         list,
       )
 
-      gsap.set(cards, { y: 48, opacity: 0 })
+          gsap.set(cards, { y: 48, opacity: 0, force3D: false })
 
       cards.forEach((card) => {
         gsap.to(card, {
@@ -76,6 +76,8 @@ export function LandingProblemMobile() {
           opacity: 1,
           duration: LANDING_REVEAL_DEFAULTS.duration,
           ease: LANDING_REVEAL_DEFAULTS.ease,
+          force3D: false,
+          clearProps: "transform",
           scrollTrigger: {
             trigger: card,
             start: "top 88%",
@@ -107,7 +109,7 @@ export function LandingProblemMobile() {
           </LandingReveal>
         </div>
 
-        <div ref={listRef} className="flex w-full flex-col">
+        <div ref={listRef} className="flex w-full flex-col pt-2.5">
           {PROBLEM_ITEMS.map((item) => (
             <ProblemCardMobile
               key={item.id}
