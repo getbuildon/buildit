@@ -5,6 +5,10 @@ import { useEffect, useRef, useState } from "react"
 import { LandingHeaderDesktop } from "@/components/landing/LandingHeaderDesktop"
 import { LandingHeaderMobile } from "@/components/landing/LandingHeaderMobile"
 import {
+  LANDING_NAV_LOCK_EVENT,
+  isLandingHeaderLocked,
+} from "@/lib/landing/landingHeaderLock"
+import {
   SOLUTIONS_PIN_EVENT,
   isSolutionsPinActive,
 } from "@/lib/landing/solutionDesktopSlider"
@@ -41,7 +45,7 @@ export function LandingHeader() {
 
       if (isSolutionsPinActive()) {
         setIsHeaderVisible(false)
-      } else if (currentScrollY <= hideAfter) {
+      } else if (isLandingHeaderLocked() || currentScrollY <= hideAfter) {
         setIsHeaderVisible(true)
       } else if (scrollDelta > SCROLL_DIRECTION_DELTA) {
         setIsHeaderVisible(false)
@@ -65,11 +69,13 @@ export function LandingHeader() {
     window.addEventListener("resize", measure)
     window.addEventListener("scroll", onScroll, { passive: true })
     window.addEventListener(SOLUTIONS_PIN_EVENT, onPinToggle)
+    window.addEventListener(LANDING_NAV_LOCK_EVENT, onScroll)
 
     return () => {
       window.removeEventListener("resize", measure)
       window.removeEventListener("scroll", onScroll)
       window.removeEventListener(SOLUTIONS_PIN_EVENT, onPinToggle)
+      window.removeEventListener(LANDING_NAV_LOCK_EVENT, onScroll)
     }
   }, [])
 
