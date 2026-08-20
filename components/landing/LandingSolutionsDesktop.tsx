@@ -230,6 +230,10 @@ export function LandingSolutionsDesktop() {
             paddingBottom: DESKTOP_SECTION_BOTTOM_PX,
           }}
         >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-1/2 z-0 w-px -translate-x-1/2 bg-[#363a3f]"
+          />
       <div className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 xl:px-20">
         <div
           className="flex max-w-full flex-col xl:flex-row xl:items-end"
