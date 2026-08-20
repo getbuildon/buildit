@@ -1,12 +1,11 @@
 export const STACK_PEEK_PX = 12
-export const CARD_ENTER_PX = 80
 /** Tamaño de la tarjeta en reposo (Figma mobile) */
 export const CARD_WIDTH_PX = 324
 export const CARD_HEIGHT_PX = 427
-/** Escala inicial de la tarjeta que entra (zoom-in al aparecer) */
-export const CARD_ENTER_SCALE = 1.16
-/** Ancho del contenedor: cabe la card con zoom sin recortar los lados */
-export const CARD_STACK_STAGE_WIDTH_PX = Math.ceil(CARD_WIDTH_PX * CARD_ENTER_SCALE)
+/** Sale de abajo del stage para entrar opaca, sin aparecer a mitad de la card */
+export const CARD_ENTER_PX = CARD_HEIGHT_PX + 24
+export const CARD_ENTER_SCALE = 1
+export const CARD_STACK_STAGE_WIDTH_PX = CARD_WIDTH_PX
 /** px de scroll anclado para completar las 3 transiciones de tarjetas */
 export const SCROLL_DISTANCE_PX = 540
 export const STACK_SCALE_MIN = 0.89

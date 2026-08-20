@@ -46,7 +46,7 @@ function setInitialCardState(cards: HTMLDivElement[]) {
   gsap.set(cards.slice(1), {
     y: CARD_ENTER_PX,
     scale: CARD_ENTER_SCALE,
-    opacity: 0,
+    opacity: 1,
     pointerEvents: "none",
     force3D: true,
   })
@@ -219,7 +219,11 @@ export function LandingSolutionsStack() {
                   data-solution-card
                   className="origin-top will-change-transform"
                   style={{
-                    opacity: index === 0 ? 1 : 0,
+                    opacity: 1,
+                    transform:
+                      index === 0
+                        ? undefined
+                        : `translate3d(0, ${CARD_ENTER_PX}px, 0)`,
                     pointerEvents: index === 0 ? "auto" : "none",
                   }}
                 >
