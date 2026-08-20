@@ -14,7 +14,7 @@ type SolutionSlideCardDesktopProps = {
 export function SolutionSlideCardDesktop({ slide }: SolutionSlideCardDesktopProps) {
   return (
     <article
-      className="flex shrink-0 flex-col overflow-hidden rounded-[4px] bg-[#edeef0]"
+      className="flex shrink-0 flex-col overflow-hidden rounded-[4px] border border-[#363a3f] bg-[#edeef0]"
       style={{
         width: DESKTOP_CARD_WIDTH_PX,
         height: DESKTOP_CARD_HEIGHT_PX,

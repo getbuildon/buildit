@@ -1,237 +1,243 @@
 "use client"
 
+import { useRef, useState } from "react"
+import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import {
-  useCallback,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type RefObject,
-} from "react"
 
 import { SolutionSlideCardDesktop } from "@/components/landing/SolutionSlideCardDesktop"
 import {
   DESKTOP_CARD_HEIGHT_PX,
   DESKTOP_CARD_WIDTH_PX,
-  DESKTOP_CARDS_TO_CONTROLS_PX,
-  DESKTOP_CONTENT_WIDTH_PX,
-  DESKTOP_CONTROLS_BOTTOM_PX,
+  DESKTOP_HEADER_GAP_PX,
   DESKTOP_HEADER_TO_CARDS_PX,
+  DESKTOP_HEADING_WIDTH_PX,
+  DESKTOP_SECTION_BOTTOM_PX,
   DESKTOP_SECTION_TOP_PX,
+  DESKTOP_SLIDER_GAP_PX,
   DESKTOP_SLIDE_DURATION_S,
   DESKTOP_SLIDE_EASE,
-  DESKTOP_STACK_LEFT_PADDING_PX,
-  DESKTOP_TRACK_WIDTH_PX,
-  getDesktopCardTarget,
-  getDesktopCardZIndex,
+  DESKTOP_TAB_WIDTH_PX,
+  getSliderPinEdge,
+  railOpacityForWidth,
+  type SliderPinEdge,
 } from "@/lib/landing/solutionDesktopSlider"
-import { SOLUTION_SLIDES } from "@/lib/landing/solutionSlides"
+import { SOLUTION_SLIDES, type SolutionSlide } from "@/lib/landing/solutionSlides"
 import { cn } from "@/lib/utils"
 
-const SLIDE_COUNT = SOLUTION_SLIDES.length
+function pinLayer(node: HTMLElement, edge: SliderPinEdge) {
+  if (edge === "left") {
+    gsap.set(node, {
+      left: 0,
+      x: 0,
+      y: 0,
+      scale: 1,
+      scaleX: 1,
+      clearProps: "right",
+    })
+    return
+  }
 
-function useSliderViewportWidth(
-  viewportRef: RefObject<HTMLDivElement | null>,
-) {
-  const [viewportWidth, setViewportWidth] = useState(DESKTOP_CONTENT_WIDTH_PX)
+  gsap.set(node, {
+    right: 0,
+    x: 0,
+    y: 0,
+    scale: 1,
+    scaleX: 1,
+    clearProps: "left",
+  })
+}
 
-  useLayoutEffect(() => {
-    const viewport = viewportRef.current
-    if (!viewport) return
+function syncRailToWidth(panel: HTMLElement, rail: HTMLElement) {
+  const width = Number(gsap.getProperty(panel, "width"))
+  gsap.set(rail, { autoAlpha: railOpacityForWidth(width) })
+}
 
-    const update = () => {
-      const left = viewport.getBoundingClientRect().left
-      setViewportWidth(window.innerWidth - left)
-    }
-
-    update()
-
-    const observer = new ResizeObserver(update)
-    observer.observe(viewport)
-    window.addEventListener("resize", update)
-
-    return () => {
-      observer.disconnect()
-      window.removeEventListener("resize", update)
-    }
-  }, [viewportRef])
-
-  return viewportWidth
+function SolutionCollapsedTab({
+  slide,
+  isActive,
+  onSelect,
+}: {
+  slide: SolutionSlide
+  isActive: boolean
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      data-slide-rail
+      onClick={onSelect}
+      tabIndex={isActive ? -1 : 0}
+      aria-hidden={isActive}
+      aria-expanded={isActive}
+      aria-label={`Ver solución ${slide.number}: ${slide.title}`}
+      className={cn(
+        "absolute top-0 z-10 flex h-full flex-col items-center overflow-hidden border-r border-solid border-[#363a3f] bg-[#272a2d] pt-6 transition-colors",
+        isActive ? "pointer-events-none" : "hover:bg-[#2d3034]",
+      )}
+      style={{ width: DESKTOP_TAB_WIDTH_PX }}
+    >
+      <span className="font-recoleta text-[17px] leading-[17px] text-[#ff7433]">
+        {slide.number}
+      </span>
+      <span
+        className="mt-5 font-recoleta text-[15px] leading-[15px] text-white/50"
+        style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+      >
+        {slide.title}
+      </span>
+    </button>
+  )
 }
 
 export function LandingSolutionsDesktop() {
   const [activeIndex, setActiveIndex] = useState(0)
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([])
-  const sliderViewportRef = useRef<HTMLDivElement>(null)
-  const sliderViewportWidth = useSliderViewportWidth(sliderViewportRef)
-  const prefersReducedMotionRef = useRef(false)
-  const isFirstRenderRef = useRef(true)
+  const trackRef = useRef<HTMLDivElement>(null)
+  const prevIndexRef = useRef(0)
+  const didAnimate = useRef(false)
 
-  const applySlideState = useCallback(
-    (index: number, animate: boolean) => {
-      const duration =
-        animate && !prefersReducedMotionRef.current ? DESKTOP_SLIDE_DURATION_S : 0
+  useGSAP(
+    () => {
+      const panels = gsap.utils.toArray<HTMLElement>("[data-slide-panel]")
+      const reducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches
+      const fromIndex = prevIndexRef.current
+      const instant = reducedMotion || !didAnimate.current
+      didAnimate.current = true
+      prevIndexRef.current = activeIndex
 
-      cardRefs.current.forEach((card, cardIndex) => {
-        if (!card) return
+      gsap.killTweensOf(panels)
 
-        const target = getDesktopCardTarget(cardIndex, index)
+      const openingPanel = panels[activeIndex]
+      const closingPanel =
+        fromIndex === activeIndex ? undefined : panels[fromIndex]
+      const openingRail =
+        openingPanel?.querySelector<HTMLElement>("[data-slide-rail]") ?? null
+      const closingRail =
+        closingPanel?.querySelector<HTMLElement>("[data-slide-rail]") ?? null
 
-        gsap.to(card, {
-          x: target.x,
-          scale: target.scale,
-          opacity: target.opacity,
-          duration,
-          ease: DESKTOP_SLIDE_EASE,
-          overwrite: true,
-          onStart: () => {
-            card.style.pointerEvents = target.pointerEvents
+      panels.forEach((panel, index) => {
+        const rail = panel.querySelector<HTMLElement>("[data-slide-rail]")
+        const card = panel.querySelector<HTMLElement>("[data-slide-card]")
+        const edge = getSliderPinEdge(index, fromIndex, activeIndex)
+
+        if (card) {
+          pinLayer(card, edge)
+          gsap.set(card, { autoAlpha: 1 })
+        }
+
+        if (rail) {
+          pinLayer(rail, edge)
+          gsap.set(rail, {
+            borderLeftWidth: edge === "right" ? 1 : 0,
+            borderRightWidth: edge === "left" ? 1 : 0,
+          })
+        }
+      })
+
+      const duration = instant ? 0 : DESKTOP_SLIDE_DURATION_S
+      const timeline = gsap.timeline({
+        defaults: { duration, ease: DESKTOP_SLIDE_EASE, overwrite: "auto" },
+        onUpdate: () => {
+          if (openingPanel && openingRail) {
+            syncRailToWidth(openingPanel, openingRail)
+          }
+          if (closingPanel && closingRail) {
+            syncRailToWidth(closingPanel, closingRail)
+          }
+        },
+      })
+
+      panels.forEach((panel, index) => {
+        const rail = panel.querySelector<HTMLElement>("[data-slide-rail]")
+        const isActive = index === activeIndex
+        const isTransferring = index === activeIndex || index === fromIndex
+
+        timeline.to(
+          panel,
+          {
+            width: isActive ? DESKTOP_CARD_WIDTH_PX : DESKTOP_TAB_WIDTH_PX,
           },
-        })
+          0,
+        )
+
+        if (rail && (instant || !isTransferring)) {
+          gsap.set(rail, { autoAlpha: isActive ? 0 : 1 })
+        }
       })
     },
-    [],
+    { scope: trackRef, dependencies: [activeIndex], revertOnUpdate: false },
   )
 
-  useLayoutEffect(() => {
-    prefersReducedMotionRef.current = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches
-
-    cardRefs.current.forEach((card, index) => {
-      if (!card) return
-
-      const target = getDesktopCardTarget(index, 0)
-      gsap.set(card, {
-        x: target.x,
-        scale: target.scale,
-        opacity: target.opacity,
-        transformOrigin: "left center",
-        force3D: true,
-      })
-      card.style.pointerEvents = target.pointerEvents
-    })
-  }, [])
-
-  useLayoutEffect(() => {
-    applySlideState(activeIndex, !isFirstRenderRef.current)
-    isFirstRenderRef.current = false
-  }, [activeIndex, applySlideState])
-
-  const goToSlide = (index: number) => {
-    if (index < 0 || index >= SLIDE_COUNT || index === activeIndex) return
-    setActiveIndex(index)
-  }
-
   return (
-    <div className="relative">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-[#363a3f]"
-      />
-
-      <div
-        className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 xl:px-20"
-        style={{ paddingTop: DESKTOP_SECTION_TOP_PX }}
-      >
-        <div className="flex max-w-full flex-col gap-6 xl:flex-row xl:items-end xl:gap-[180px]">
-          <h2 className="max-w-[470px] shrink-0 font-recoleta text-4xl leading-[1.05] text-[#fefcfb] xl:text-[48px]">
+    <div
+      className="relative"
+      style={{
+        paddingTop: DESKTOP_SECTION_TOP_PX,
+        paddingBottom: DESKTOP_SECTION_BOTTOM_PX,
+      }}
+    >
+      <div className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 xl:px-20">
+        <div
+          className="flex max-w-full flex-col xl:flex-row xl:items-end"
+          style={{ gap: DESKTOP_HEADER_GAP_PX }}
+        >
+          <h2
+            className="shrink-0 font-recoleta text-4xl leading-[1.05] text-[#fefcfb] xl:text-[48px]"
+            style={{ maxWidth: DESKTOP_HEADING_WIDTH_PX }}
+          >
             Todo el avance de obra. En un{" "}
             <span className="text-primary">solo lugar</span>.
           </h2>
-          <p className="max-w-[470px] pt-5 text-lg leading-[1.2] tracking-[0.36px] text-[#afb3ba] xl:pt-0">
+          <p
+            className="pt-5 text-lg leading-[1.2] tracking-[0.36px] text-[#afb3ba] xl:pt-0"
+            style={{ maxWidth: DESKTOP_HEADING_WIDTH_PX }}
+          >
             Con BuildOn conectás cada etapa del proyecto, desde la carga en campo
             hasta la visualización para clientes.
           </p>
         </div>
 
-        <div style={{ paddingTop: DESKTOP_HEADER_TO_CARDS_PX }}>
-          <div
-            ref={sliderViewportRef}
-            className="overflow-hidden"
-            style={{
-              width: sliderViewportWidth + DESKTOP_STACK_LEFT_PADDING_PX,
-              marginLeft: -DESKTOP_STACK_LEFT_PADDING_PX,
-              paddingLeft: DESKTOP_STACK_LEFT_PADDING_PX,
-            }}
-          >
-            <div
-              className="relative"
-              style={{
-                width: DESKTOP_TRACK_WIDTH_PX,
-                height: DESKTOP_CARD_HEIGHT_PX,
-              }}
-            >
-              {SOLUTION_SLIDES.map((slide, index) => (
-                <div
-                  key={slide.number}
-                  ref={(node) => {
-                    cardRefs.current[index] = node
-                  }}
-                  className="absolute left-0 top-0 origin-left overflow-hidden backface-hidden will-change-transform"
-                  style={{
-                    zIndex: getDesktopCardZIndex(index),
-                    width: DESKTOP_CARD_WIDTH_PX,
-                    height: DESKTOP_CARD_HEIGHT_PX,
-                  }}
-                >
-                  <SolutionSlideCardDesktop slide={slide} />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div
-        className="relative z-10 flex items-center justify-center gap-6"
-        style={{
-          marginTop: DESKTOP_CARDS_TO_CONTROLS_PX,
-          paddingBottom: DESKTOP_CONTROLS_BOTTOM_PX,
-        }}
-      >
-        <button
-          type="button"
-          aria-label="Solución anterior"
-          disabled={activeIndex === 0}
-          onClick={() => goToSlide(activeIndex - 1)}
-          className="grid size-10 place-items-center rounded-full border border-white/20 text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
+        <div
+          ref={trackRef}
+          className="flex w-max items-stretch xl:-mr-11"
+          style={{
+            marginTop: DESKTOP_HEADER_TO_CARDS_PX,
+            height: DESKTOP_CARD_HEIGHT_PX,
+            gap: DESKTOP_SLIDER_GAP_PX,
+          }}
         >
-          <ChevronLeft className="size-5" strokeWidth={1.75} />
-        </button>
-
-        <div className="flex items-center gap-2">
           {SOLUTION_SLIDES.map((slide, index) => {
             const isActive = index === activeIndex
 
             return (
-              <button
+              <div
                 key={slide.number}
-                type="button"
-                aria-label={`Ir a solución ${index + 1}`}
-                aria-current={isActive ? "true" : undefined}
-                onClick={() => goToSlide(index)}
-                className={cn(
-                  "rounded-full transition-[width,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                  isActive
-                    ? "h-2 w-6 bg-primary"
-                    : "size-2 bg-white/25 hover:bg-white/40",
-                )}
-              />
+                data-slide-panel
+                className="relative h-full shrink-0 overflow-hidden"
+                style={{
+                  width:
+                    index === 0 ? DESKTOP_CARD_WIDTH_PX : DESKTOP_TAB_WIDTH_PX,
+                }}
+              >
+                <div
+                  data-slide-card
+                  className="absolute top-0 h-full"
+                  style={{ width: DESKTOP_CARD_WIDTH_PX }}
+                >
+                  <SolutionSlideCardDesktop slide={slide} />
+                </div>
+                <SolutionCollapsedTab
+                  slide={slide}
+                  isActive={isActive}
+                  onSelect={() => {
+                    if (index !== activeIndex) setActiveIndex(index)
+                  }}
+                />
+              </div>
             )
           })}
         </div>
-
-        <button
-          type="button"
-          aria-label="Solución siguiente"
-          disabled={activeIndex === SLIDE_COUNT - 1}
-          onClick={() => goToSlide(activeIndex + 1)}
-          className="grid size-10 place-items-center rounded-full border border-white/20 text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <ChevronRight className="size-5" strokeWidth={1.75} />
-        </button>
       </div>
     </div>
   )

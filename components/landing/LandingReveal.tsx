@@ -16,6 +16,9 @@ type LandingRevealProps = {
   direction?: LandingRevealDirection
   delay?: number
   className?: string
+  start?: string
+  /** Reproduce al montar, sin esperar scroll. Útil para contenido above-the-fold. */
+  immediate?: boolean
 }
 
 export function LandingReveal({
@@ -23,6 +26,8 @@ export function LandingReveal({
   direction = "up",
   delay = 0,
   className,
+  start = LANDING_REVEAL_DEFAULTS.start,
+  immediate = false,
 }: LandingRevealProps) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -49,15 +54,19 @@ export function LandingReveal({
           delay,
           ease: LANDING_REVEAL_DEFAULTS.ease,
           immediateRender: true,
-          scrollTrigger: {
-            trigger: node,
-            start: LANDING_REVEAL_DEFAULTS.start,
-            once: true,
-          },
+          ...(immediate
+            ? {}
+            : {
+                scrollTrigger: {
+                  trigger: node,
+                  start,
+                  once: true,
+                },
+              }),
         },
       )
     },
-    { scope: ref, dependencies: [direction, delay] },
+    { scope: ref, dependencies: [delay, direction, immediate, start] },
   )
 
   return (

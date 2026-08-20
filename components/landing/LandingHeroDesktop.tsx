@@ -27,17 +27,22 @@ export function LandingHeroDesktop() {
         </div>
 
         <div className="relative z-10 mx-auto flex h-[752px] max-w-[1440px] flex-col items-center px-6 pb-12 pt-24 text-center lg:px-10 lg:pt-28 xl:px-20 xl:pt-32 2xl:px-[300px]">
-          <h1 className="max-w-[840px] font-recoleta text-4xl leading-[1.05] text-white lg:text-5xl xl:text-[64px]">
-            La forma más simple de controlar y comunicar el{" "}
-            <span className="text-primary">avance de obra</span>
-          </h1>
+          <LandingReveal direction="up" immediate>
+            <h1 className="max-w-[840px] font-recoleta text-4xl leading-[1.05] text-white lg:text-5xl xl:text-[64px]">
+              La forma más simple de controlar y comunicar el{" "}
+              <span className="text-primary">avance de obra</span>
+            </h1>
+          </LandingReveal>
 
-          <p className="max-w-[576px] pt-6 text-lg leading-[1.4] text-white xl:text-xl">
-            Gestioná tus proyectos de construcción con total visibilidad.
-            Monitoreá avances, coordiná equipos y mantené informados a tus
-            clientes desde un solo lugar.
-          </p>
+          <LandingReveal direction="up" immediate delay={0.12}>
+            <p className="max-w-[576px] pt-6 text-lg leading-[1.4] text-white xl:text-xl">
+              Gestioná tus proyectos de construcción con total visibilidad.
+              Monitoreá avances, coordiná equipos y mantené informados a tus
+              clientes desde un solo lugar.
+            </p>
+          </LandingReveal>
 
+          <LandingReveal direction="up" immediate delay={0.24}>
           <div className="flex items-center justify-center gap-3 pt-9">
             <button
               type="button"
@@ -63,6 +68,7 @@ export function LandingHeroDesktop() {
               Solicitar demo
             </button>
           </div>
+          </LandingReveal>
         </div>
 
         <div className="relative z-0 h-[642px] bg-[#f3671f]" />

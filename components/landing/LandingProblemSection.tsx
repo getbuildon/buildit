@@ -5,10 +5,8 @@ import { useRef } from "react"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
 
-import {
-  LANDING_REVEAL_DEFAULTS,
-  LANDING_REVEAL_OFFSET_PX,
-} from "@/lib/landing/landingReveal"
+import { LandingReveal } from "@/components/landing/LandingReveal"
+import { LANDING_REVEAL_DEFAULTS } from "@/lib/landing/landingReveal"
 import { PROBLEM_ITEMS } from "@/lib/landing/problemItems"
 
 function ProblemCard({
@@ -50,8 +48,7 @@ function ProblemCard({
   )
 }
 
-const PROBLEM_CARD_SCROLL_PX = 360
-const PROBLEM_COPY_SCROLL_PX = 220
+const PROBLEM_SCROLL_END_PX = 800
 
 export function LandingProblemSection() {
   const sectionRef = useRef<HTMLElement>(null)
@@ -66,43 +63,32 @@ export function LandingProblemSection() {
       mm.add(
         "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
         () => {
-          const copy = gsap.utils.toArray<HTMLElement>(
-            "[data-problem-copy]",
-            root,
-          )
           const cards = gsap.utils.toArray<HTMLElement>(
             "[data-problem-card]",
             root,
           )
 
-          gsap.set(copy, { y: LANDING_REVEAL_OFFSET_PX, opacity: 0 })
           gsap.set(cards, { y: 80, opacity: 0 })
 
           const timeline = gsap.timeline({
             defaults: { ease: LANDING_REVEAL_DEFAULTS.ease },
             scrollTrigger: {
               trigger: root,
-              start: "top 88px",
-              end: `+=${PROBLEM_COPY_SCROLL_PX + cards.length * PROBLEM_CARD_SCROLL_PX}`,
-              pin: true,
-              pinSpacing: true,
-              scrub: 0.7,
-              anticipatePin: 1,
+              start: "top 80%",
+              end: `+=${PROBLEM_SCROLL_END_PX}`,
+              scrub: 0.65,
               invalidateOnRefresh: true,
+              onLeave: () => {
+                gsap.set(cards, { clearProps: "transform,opacity" })
+              },
             },
           })
-
-          timeline.to(
-            copy,
-            { y: 0, opacity: 1, stagger: 0.1, duration: 0.45 },
-            0,
-          )
 
           cards.forEach((card, index) => {
             timeline.to(
               card,
               { y: 0, opacity: 1, duration: 0.55 },
-              index === 0 ? 0.25 : ">",
+              index === 0 ? 0 : ">",
             )
           })
         },
@@ -118,31 +104,34 @@ export function LandingProblemSection() {
       <div className="mx-auto max-w-[1280px] px-6 py-16 lg:px-10 lg:py-24 xl:px-20 xl:py-28">
         <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-x-12 xl:gap-x-24">
           <div className="relative min-w-0 pt-8 lg:max-w-[512px]">
-            <h2
-              data-problem-copy
-              className="max-w-[448px] font-recoleta text-4xl leading-[1.05] text-[#18191b] xl:text-[48px]"
-            >
-              No podés controlar lo que no podés{" "}
-              <span className="text-primary">ver</span>.
-            </h2>
-            <p
-              data-problem-copy
-              className="max-w-[448px] pt-5 text-lg leading-[1.4] text-[#272a2d] xl:text-[20px]"
-            >
-              El problema no es el esfuerzo del equipo. Está en la falta de
-              trazabilidad, seguimiento y alineación entre las personas que
-              construyen.
-            </p>
+            <LandingReveal direction="up">
+              <h2 className="max-w-[448px] font-recoleta text-4xl leading-[1.05] text-[#18191b] xl:text-[48px]">
+                No podés controlar lo que no podés{" "}
+                <span className="text-primary">ver</span>.
+              </h2>
+            </LandingReveal>
+            <LandingReveal direction="up" delay={0.12}>
+              <p className="max-w-[448px] pt-5 text-lg leading-[1.4] text-[#272a2d] xl:text-[20px]">
+                El problema no es el esfuerzo del equipo. Está en la falta de
+                trazabilidad, seguimiento y alineación entre las personas que
+                construyen.
+              </p>
+            </LandingReveal>
 
-            <Image
-              data-problem-copy
-              src="/landing/problem/plus-decoration.svg"
-              alt=""
-              width={79}
-              height={84}
-              aria-hidden
-              className="pointer-events-none absolute left-8 top-[408px] hidden h-[84px] w-[79px] xl:block"
-            />
+            <LandingReveal
+              direction="up"
+              delay={0.22}
+              className="pointer-events-none absolute left-8 top-[408px] hidden xl:block"
+            >
+              <Image
+                src="/landing/problem/plus-decoration.svg"
+                alt=""
+                width={79}
+                height={84}
+                aria-hidden
+                className="h-[84px] w-[79px]"
+              />
+            </LandingReveal>
           </div>
 
           <div className="flex min-w-0 flex-col gap-5 overflow-visible">
