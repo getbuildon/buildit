@@ -8,7 +8,7 @@ import {
 } from "@/lib/project/projectAccess"
 import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
 import type { MiUnidadAssignedUnit, MiUnidadPageData } from "@/lib/projects/miUnidadTypes"
-import { fetchProjectWeather } from "@/lib/weather/openMeteo"
+import { fetchProjectWeather, resolveWeatherLocation } from "@/lib/weather/openMeteo"
 import { getPortalClientesData } from "@/app/[projectId]/portal-clientes/actions"
 
 function resolveMiUnidadUnitIds(
@@ -39,7 +39,7 @@ export async function getMiUnidadPageData(
     getPortalClientesData(projectId),
     supabase
       .from("projects")
-      .select("name, location, end_date, companies(country)")
+      .select("name, location, weather_city, end_date, companies(country)")
       .eq("id", projectId)
       .maybeSingle(),
   ])
@@ -53,7 +53,10 @@ export async function getMiUnidadPageData(
     : projectResult.data?.companies
 
   const weather = await fetchProjectWeather({
-    location: projectResult.data?.location?.trim() ?? "",
+    location: resolveWeatherLocation(
+      projectResult.data?.weather_city,
+      projectResult.data?.location,
+    ),
     country: company?.country ?? null,
   })
 
@@ -64,7 +67,7 @@ export async function getMiUnidadPageData(
     const { data: unitRows, error: unitsError } = await supabase
       .from("project_units")
       .select(
-        "id, code, name, unit_type, room_count, render_url, sort_order, floor:project_floors(name, identifier)",
+        "id, code, name, unit_type, room_count, square_meters, render_url, sort_order, floor:project_floors(name, identifier)",
       )
       .eq("project_id", projectId)
       .in("id", assignedUnitIds)
@@ -83,6 +86,10 @@ export async function getMiUnidadPageData(
         name: row.name,
         unitType: row.unit_type,
         roomCount: row.room_count,
+        squareMeters:
+          row.square_meters == null || !Number.isFinite(Number(row.square_meters))
+            ? null
+            : Number(row.square_meters),
         renderUrl: row.render_url,
         floorLabel: floor
           ? getFloorDisplayLabel({

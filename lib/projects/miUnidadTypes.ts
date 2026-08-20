@@ -7,6 +7,7 @@ export type MiUnidadAssignedUnit = {
   name: string | null
   unitType: string | null
   roomCount: number | null
+  squareMeters: number | null
   renderUrl: string | null
   floorLabel: string | null
 }

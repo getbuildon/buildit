@@ -7,7 +7,7 @@ import { checkProjectPermission } from "@/lib/project/projectAccess"
 import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
 import type { MiUnidadAssignedUnit } from "@/lib/projects/miUnidadTypes"
 import { displayNameFromEmail } from "@/lib/projects/mockProjects"
-import { fetchProjectWeather } from "@/lib/weather/openMeteo"
+import { fetchProjectWeather, resolveWeatherLocation } from "@/lib/weather/openMeteo"
 import type { ProjectWeatherSnapshot } from "@/lib/weather/openMeteo"
 import type {
   PortalClientesData,
@@ -85,13 +85,13 @@ export async function getPortalClientesPreviewContext(
       .maybeSingle(),
     supabase
       .from("projects")
-      .select("name, location, end_date, companies(country)")
+      .select("name, location, weather_city, end_date, companies(country)")
       .eq("id", projectId)
       .maybeSingle(),
     supabase
       .from("project_units")
       .select(
-        "id, code, name, unit_type, room_count, render_url, sort_order, floor:project_floors(name, identifier)",
+        "id, code, name, unit_type, room_count, square_meters, render_url, sort_order, floor:project_floors(name, identifier)",
       )
       .eq("project_id", projectId)
       .order("sort_order", { ascending: true })
@@ -121,7 +121,10 @@ export async function getPortalClientesPreviewContext(
     : projectResult.data?.companies
 
   const weather = await fetchProjectWeather({
-    location: projectResult.data?.location?.trim() ?? "",
+    location: resolveWeatherLocation(
+      projectResult.data?.weather_city,
+      projectResult.data?.location,
+    ),
     country: company?.country ?? null,
   })
 
@@ -134,6 +137,10 @@ export async function getPortalClientesPreviewContext(
       name: row.name,
       unitType: row.unit_type,
       roomCount: row.room_count,
+      squareMeters:
+        row.square_meters == null || !Number.isFinite(Number(row.square_meters))
+          ? null
+          : Number(row.square_meters),
       renderUrl: row.render_url,
       floorLabel: floor
         ? getFloorDisplayLabel({
@@ -158,7 +165,7 @@ export async function getPortalClientesData(
 ): Promise<PortalClientesData> {
   const supabase = await createClient()
 
-  const [newsResult, milestonesResult] = await Promise.all([
+  const [newsResult, milestonesResult, projectResult] = await Promise.all([
     supabase
       .from("project_portal_news")
       .select("id, title, description, image_url, sort_order")
@@ -169,6 +176,11 @@ export async function getPortalClientesData(
       .select("id, name, estimated_date, status, sort_order")
       .eq("project_id", projectId)
       .order("sort_order", { ascending: true }),
+    supabase
+      .from("projects")
+      .select("weather_city, location")
+      .eq("id", projectId)
+      .maybeSingle(),
   ])
 
   if (newsResult.error) {
@@ -177,10 +189,17 @@ export async function getPortalClientesData(
   if (milestonesResult.error) {
     throw new Error(milestonesResult.error.message)
   }
+  if (projectResult.error) {
+    throw new Error(projectResult.error.message)
+  }
 
   return {
     news: (newsResult.data ?? []).map(mapNewsRow),
     milestones: (milestonesResult.data ?? []).map(mapMilestoneRow),
+    weatherCity:
+      projectResult.data?.weather_city?.trim() ||
+      projectResult.data?.location?.trim() ||
+      "",
   }
 }
 
@@ -226,6 +245,21 @@ export async function savePortalClientesContent(
     return { ok: false, error: validation.error }
   }
 
+  const { error: weatherCityError } = await supabase
+    .from("projects")
+    .update({
+      weather_city: input.weatherCity.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.projectId)
+
+  if (weatherCityError) {
+    return {
+      ok: false,
+      error: `No se pudo guardar la ciudad del clima: ${weatherCityError.message}`,
+    }
+  }
+
   for (const item of input.news) {
     const payload = {
       id: item.id,
@@ -267,6 +301,7 @@ export async function savePortalClientesContent(
   }
 
   revalidatePath(`/${input.projectId}/portal-clientes`)
+  revalidatePath(`/${input.projectId}/mi-unidad`)
 
   const data = await getPortalClientesData(input.projectId)
   return { ok: true, data }

@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import { MI_UNIDAD_LAYOUT } from "@/lib/project/designTokens"
 import type { MiUnidadPageData } from "@/lib/projects/miUnidadTypes"
 import { cn } from "@/lib/utils"
@@ -35,8 +35,6 @@ export function MiUnidadView({
   topSlot,
   className,
 }: MiUnidadViewProps) {
-  const [selectedUnitId, setSelectedUnitId] = useState(data.units[0]?.id ?? "")
-
   const projectEndDateLabel = useMemo(
     () => formatProjectEndDateLabel(data.projectEndDate),
     [data.projectEndDate],
@@ -52,7 +50,7 @@ export function MiUnidadView({
       style={{ maxWidth: MI_UNIDAD_LAYOUT.contentMaxWidth }}
     >
       {topSlot}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1">
           <h1 className="font-recoleta text-[32px] leading-[1.05] text-[#1d293d] sm:text-[36px]">
             Hola {greetingName} 👋
@@ -61,15 +59,13 @@ export function MiUnidadView({
             Seguí el avance de obra en tiempo real.
           </p>
         </div>
-        <MiUnidadWeatherWidget weather={data.weather} className="self-start sm:ml-6" />
+        <MiUnidadWeatherWidget weather={data.weather} className="sm:ml-6" />
       </header>
 
       <MiUnidadUnitSelector
         units={data.units}
         projectName={data.projectName}
         projectEndDateLabel={projectEndDateLabel}
-        selectedUnitId={selectedUnitId}
-        onSelectUnit={setSelectedUnitId}
       />
 
       <section className="flex flex-col gap-3">

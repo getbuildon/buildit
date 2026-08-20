@@ -63,6 +63,29 @@ const PORTAL_ADD_BUTTON_CLASSNAME =
 const SAVE_FOOTER_ANIMATION_MS = 320
 const SAVE_FOOTER_HEIGHT = 96
 const SAVE_FOOTER_SCROLL_GAP = 16
+const MIN_FOOTER_ALIGN_WIDTH = 240
+
+function useAnimatedFooterVisibility(isDirty: boolean) {
+  const [mounted, setMounted] = useState(isDirty)
+  const [visible, setVisible] = useState(isDirty)
+
+  useEffect(() => {
+    if (isDirty) {
+      setMounted(true)
+      const frame = requestAnimationFrame(() => setVisible(true))
+      return () => cancelAnimationFrame(frame)
+    }
+
+    setVisible(false)
+    const timeout = window.setTimeout(
+      () => setMounted(false),
+      SAVE_FOOTER_ANIMATION_MS,
+    )
+    return () => window.clearTimeout(timeout)
+  }, [isDirty])
+
+  return { mounted, visible }
+}
 
 type NewsDraft = PortalNewsItem & {
   imageDraft: PortalNewsImageDraft | null
@@ -70,6 +93,7 @@ type NewsDraft = PortalNewsItem & {
 }
 
 type PortalEditorSnapshot = {
+  weatherCity: string
   news: Array<{
     id: string
     title: string
@@ -124,10 +148,12 @@ function mapNewsToDraft(item: PortalNewsItem): NewsDraft {
 }
 
 function buildEditorSnapshot(
+  weatherCity: string,
   news: NewsDraft[],
   milestones: PortalMilestoneItem[],
 ): PortalEditorSnapshot {
   return {
+    weatherCity,
     news: news.map((item) => ({
       id: item.id,
       title: item.title,
@@ -149,6 +175,7 @@ function snapshotsEqual(a: PortalEditorSnapshot, b: PortalEditorSnapshot): boole
 
 function buildSnapshotFromData(data: PortalClientesData): PortalEditorSnapshot {
   return {
+    weatherCity: data.weatherCity,
     news: data.news.map((item) => ({
       id: item.id,
       title: item.title,
@@ -174,6 +201,8 @@ function useContentFooterAlign(contentRef: RefObject<HTMLDivElement | null>) {
 
     const update = () => {
       const rect = node.getBoundingClientRect()
+      if (rect.width < MIN_FOOTER_ALIGN_WIDTH) return
+
       const next = {
         left: Math.round(rect.left),
         width: Math.round(rect.width),
@@ -342,6 +371,7 @@ export function PortalClientesView({
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
+  const [weatherCity, setWeatherCity] = useState(initialData.weatherCity)
   const [newsItems, setNewsItems] = useState<NewsDraft[]>(() =>
     initialData.news.map(mapNewsToDraft),
   )
@@ -365,18 +395,21 @@ export function PortalClientesView({
   const [pendingDelete, setPendingDelete] = useState<PendingPortalDelete | null>(null)
 
   const currentSnapshot = useMemo(
-    () => buildEditorSnapshot(newsItems, milestones),
-    [newsItems, milestones],
+    () => buildEditorSnapshot(weatherCity, newsItems, milestones),
+    [weatherCity, newsItems, milestones],
   )
 
   const isDirty = useMemo(
     () => !snapshotsEqual(currentSnapshot, savedSnapshot),
     [currentSnapshot, savedSnapshot],
   )
+  const { mounted: footerMounted, visible: footerVisible } =
+    useAnimatedFooterVisibility(isDirty)
 
-  const footerScrollPadding = isDirty
-    ? SAVE_FOOTER_HEIGHT + SAVE_FOOTER_SCROLL_GAP
-    : 0
+  const footerScrollPadding =
+    footerMounted && footerVisible
+      ? SAVE_FOOTER_HEIGHT + SAVE_FOOTER_SCROLL_GAP
+      : 0
 
   const clearNewsFieldError = (id: string, field: keyof PortalNewsFieldErrors) => {
     setNewsFieldErrors((current) => {
@@ -410,6 +443,7 @@ export function PortalClientesView({
   const serverDataKey = useMemo(
     () =>
       JSON.stringify({
+        weatherCity: initialData.weatherCity,
         news: initialData.news,
         milestones: initialData.milestones,
       }),
@@ -417,6 +451,7 @@ export function PortalClientesView({
   )
 
   useEffect(() => {
+    setWeatherCity(initialData.weatherCity)
     setNewsItems(initialData.news.map(mapNewsToDraft))
     setMilestones(initialData.milestones)
     setRemovedNewsIds([])
@@ -535,6 +570,7 @@ export function PortalClientesView({
       revokePortalNewsPreview(item.imageDraft)
     }
 
+    setWeatherCity(snapshot.weatherCity)
     setNewsItems(
       snapshot.news.map((item) => ({
         id: item.id,
@@ -634,6 +670,7 @@ export function PortalClientesView({
 
     const result = await savePortalClientesContent({
       projectId,
+      weatherCity,
       news: newsPayload,
       milestones,
       removedNewsIds,
@@ -651,6 +688,7 @@ export function PortalClientesView({
     for (const item of newsItems) {
       revokePortalNewsPreview(item.imageDraft)
     }
+    setWeatherCity(result.data.weatherCity)
     setNewsItems(result.data.news.map(mapNewsToDraft))
     setMilestones(result.data.milestones)
     setRemovedNewsIds([])
@@ -661,6 +699,7 @@ export function PortalClientesView({
 
   const previewData = useMemo(
     () => ({
+      weatherCity,
       news: mapDraftNewsToPreview(newsItems),
       milestones,
       projectName: previewContext.projectName,
@@ -669,7 +708,7 @@ export function PortalClientesView({
       weather: previewContext.weather,
       units: previewContext.units,
     }),
-    [milestones, newsItems, previewContext],
+    [milestones, newsItems, previewContext, weatherCity],
   )
 
   const openPreview = () => {
@@ -723,6 +762,28 @@ export function PortalClientesView({
               Vista previa
             </button>
           </div>
+
+          <section className={cn(PORTAL_CARD_CLASSNAME, "flex flex-col gap-4")}>
+            <div className="flex flex-col gap-0.5">
+              <h2 className="text-[20px] font-normal leading-[1.4] text-[#18191b]">
+                Clima en Mi Unidad
+              </h2>
+              <p className="text-[14px] leading-[1.4] text-[#43484e]">
+                Ciudad que se usa para mostrar el clima a tus clientes.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-[14px] font-medium leading-[1.4] text-[#43484e]">
+                Ciudad
+              </p>
+              <Input
+                value={weatherCity}
+                onChange={(event) => setWeatherCity(event.target.value)}
+                placeholder="Buenos Aires"
+                className={PORTAL_NEWS_TITLE_CLASSNAME}
+              />
+            </div>
+          </section>
 
           <section className={cn(PORTAL_CARD_CLASSNAME, "flex flex-col gap-6")}>
             <h2 className="text-[20px] font-normal leading-[1.4] text-[#18191b]">
@@ -994,14 +1055,16 @@ export function PortalClientesView({
         </div>
       </div>
 
-      <PortalSaveFooter
-        visible={isDirty}
-        saving={saving}
-        errorMessage={saveError}
-        onRequestDiscard={() => setDiscardDialogOpen(true)}
-        onSave={handleSave}
-        align={footerAlign}
-      />
+      {footerMounted ? (
+        <PortalSaveFooter
+          visible={footerVisible}
+          saving={saving}
+          errorMessage={saveError}
+          onRequestDiscard={() => setDiscardDialogOpen(true)}
+          onSave={handleSave}
+          align={footerAlign}
+        />
+      ) : null}
 
       <ConfirmActionDialog
         open={discardDialogOpen}

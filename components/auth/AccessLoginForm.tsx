@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Eye, EyeOff, Lock, Mail } from "lucide-react"
 
 import { AuthFormCard, AuthSplitLayout } from "@/components/auth/AuthSplitLayout"
@@ -18,7 +18,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { finalizeAccessLogin } from "@/lib/auth/loginAccess"
-import type { LoginAudience } from "@/lib/auth/loginAudience"
+import { writeLoginAudienceCookie, type LoginAudience } from "@/lib/auth/loginAudience"
+import { setLoginAudience } from "@/lib/auth/loginAudienceActions"
 import {
   getClientSessionUser,
   signInWithPasswordClient,
@@ -52,6 +53,11 @@ export function AccessLoginForm({ audience }: AccessLoginFormProps) {
   const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    writeLoginAudienceCookie(audience)
+    void setLoginAudience(audience)
+  }, [audience])
 
   const callbackError = searchParams.get("error")
   const nextPath = searchParams.get("next")
@@ -93,6 +99,8 @@ export function AccessLoginForm({ audience }: AccessLoginFormProps) {
     if (!validateForm()) return
 
     setIsLoading(true)
+    writeLoginAudienceCookie(audience)
+    void setLoginAudience(audience)
     try {
       const result = await signInWithPasswordClient(email, password)
       if (result.error) {

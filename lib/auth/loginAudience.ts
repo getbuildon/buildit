@@ -24,6 +24,22 @@ export function readLoginAudienceFromCookieHeader(
   return isLoginAudience(value) ? value : null
 }
 
+export function writeLoginAudienceCookie(audience: LoginAudience) {
+  if (typeof document === "undefined") return
+
+  document.cookie = `${LOGIN_AUDIENCE_COOKIE}=${audience}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`
+}
+
+export function audienceFromAccessPath(pathname: string): LoginAudience | null {
+  if (pathname === ACCESO_CLIENTES_PATH || pathname.startsWith(`${ACCESO_CLIENTES_PATH}/`)) {
+    return "cliente"
+  }
+  if (pathname === ACCESO_EQUIPO_PATH || pathname.startsWith(`${ACCESO_EQUIPO_PATH}/`)) {
+    return "equipo"
+  }
+  return null
+}
+
 export function getLoginAudienceFromDocument(): LoginAudience | null {
   if (typeof document === "undefined") return null
 

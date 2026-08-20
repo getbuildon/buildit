@@ -6,9 +6,11 @@ import { BackofficeAccessCallout } from "@/components/home/BackofficeAccessCallo
 import { HomePageLayout } from "@/components/home/HomePageLayout"
 import { HomePageSkeleton } from "@/components/home/HomePageSkeleton"
 import { CompanyHomeButton } from "@/components/company/CompanyHomeButton"
+import { HomePortalClientesButton } from "@/components/home/HomePortalClientesButton"
 import { UserMenu } from "@/components/user/UserMenu"
 import { useAuth } from "@/context/AuthContextSupabase"
 import withAuth from "@/hoc/withAuth"
+import { getFirstClientProjectId } from "@/lib/auth/loginAccess"
 import { HOME_COLORS, HOME_LAYOUT } from "@/lib/home/designTokens"
 import { getProfileData } from "@/app/[projectId]/perfil/actions"
 import { listUserProjects } from "@/lib/projects/listUserProjects"
@@ -29,16 +31,19 @@ function HomePage() {
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [hasClientAccess, setHasClientAccess] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadData = async () => {
-      const [profileName, companiesData, profileData, userProjects] = await Promise.all([
-        getProfileName(),
-        getUserCompanies(),
-        getProfileData(),
-        listUserProjects(),
-      ])
+      const [profileName, companiesData, profileData, userProjects, clientProjectId] =
+        await Promise.all([
+          getProfileName(),
+          getUserCompanies(),
+          getProfileData(),
+          listUserProjects(),
+          user?.id ? getFirstClientProjectId(user.id) : Promise.resolve(null),
+        ])
       setDisplayName(profileName || displayNameFromEmail(user?.email) || "")
       if (profileData) {
         setFirstName(profileData.first_name)
@@ -47,10 +52,11 @@ function HomePage() {
       }
       setCompanies(companiesData)
       setProjects(userProjects)
+      setHasClientAccess(Boolean(clientProjectId))
       setLoading(false)
     }
     loadData()
-  }, [user?.email])
+  }, [user?.email, user?.id])
 
   const primaryCompany = companies[0] ?? null
   const canCreateProjects = canManageCompanyProjects(companies)
@@ -63,6 +69,7 @@ function HomePage() {
     <HomePageLayout
       topBar={
         <>
+          {hasClientAccess ? <HomePortalClientesButton /> : null}
           {primaryCompany ? (
             <CompanyHomeButton
               companyId={primaryCompany.id}

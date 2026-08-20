@@ -14,7 +14,7 @@ export function HomePageSkeleton() {
       ariaLabel="Cargando proyectos"
       topBar={
         <>
-          <Skeleton tone="dark" className="h-10 w-[min(100%,120px)] rounded-full sm:w-[136px]" />
+          <Skeleton tone="dark" className="h-9 w-[min(100%,128px)] rounded-[10px] sm:w-[140px]" />
           <Skeleton tone="dark" className="size-10 shrink-0 rounded-full" />
         </>
       }

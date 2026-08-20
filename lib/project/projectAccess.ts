@@ -39,25 +39,25 @@ export async function getClientAssignedUnitIds(
   projectId: string,
   userId: string,
 ): Promise<string[]> {
-  const { data: projectUnits, error: unitsError } = await supabase
-    .from("project_units")
-    .select("id")
-    .eq("project_id", projectId)
-
-  if (unitsError) return []
-
-  const unitIds = (projectUnits ?? []).map((unit) => unit.id)
-  if (unitIds.length === 0) return []
-
   const { data: assignments, error: assignmentsError } = await supabase
     .from("unit_clients")
     .select("unit_id")
     .eq("user_id", userId)
     .eq("status", "active")
-    .in("unit_id", unitIds)
 
   if (assignmentsError) return []
-  return (assignments ?? []).map((row) => row.unit_id)
+
+  const assignedIds = (assignments ?? []).map((row) => row.unit_id)
+  if (assignedIds.length === 0) return []
+
+  const { data: projectUnits, error: unitsError } = await supabase
+    .from("project_units")
+    .select("id")
+    .eq("project_id", projectId)
+    .in("id", assignedIds)
+
+  if (unitsError) return []
+  return (projectUnits ?? []).map((unit) => unit.id)
 }
 
 export async function getProjectAccessContext(

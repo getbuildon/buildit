@@ -40,7 +40,9 @@ export const HOME_LAYOUT = {
   topBarWrap:
     "flex w-full max-w-[1080px] shrink-0 justify-center lg:absolute lg:right-10 lg:top-6 lg:z-10 lg:w-auto lg:max-w-none lg:justify-end xl:right-16",
   topBar:
-    "flex w-full flex-wrap items-center justify-end gap-2 sm:gap-3",
+    "flex w-full flex-wrap items-center justify-end gap-6",
+  topPillButton:
+    "inline-flex items-center justify-center rounded-[10px] bg-[#321a10] px-4 py-2 text-center text-[14px] font-medium leading-[1.4] text-white transition-colors hover:bg-[#3d2114] disabled:cursor-not-allowed disabled:opacity-70",
   content:
     "flex w-full max-w-[1080px] flex-1 flex-col items-center justify-center py-8 sm:py-10 lg:min-h-[100dvh] lg:flex-none lg:py-0",
   header:

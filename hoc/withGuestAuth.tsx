@@ -1,9 +1,13 @@
 "use client"
 
 import { useEffect, type ComponentType } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContextSupabase"
-import { postLoginPath, getLoginAudienceFromDocument } from "@/lib/auth/loginAudience"
+import {
+  audienceFromAccessPath,
+  getLoginAudienceFromDocument,
+  postLoginPath,
+} from "@/lib/auth/loginAudience"
 import { Spinner } from "@/components/ui/spinner"
 
 function RedirectingFallback({ message }: { message: string }) {
@@ -24,11 +28,16 @@ export function withGuestAuth<P extends object>(Component: ComponentType<P>) {
   function WithGuestGuard(props: P) {
     const { user, loading } = useAuth()
     const router = useRouter()
+    const pathname = usePathname()
 
     useEffect(() => {
       if (loading || !user) return
-      router.replace(postLoginPath(getLoginAudienceFromDocument() ?? "equipo"))
-    }, [user, loading, router])
+      const audience =
+        audienceFromAccessPath(pathname) ??
+        getLoginAudienceFromDocument() ??
+        "equipo"
+      router.replace(postLoginPath(audience))
+    }, [user, loading, pathname, router])
 
     if (loading) {
       return <RedirectingFallback message="Cargando sesión…" />

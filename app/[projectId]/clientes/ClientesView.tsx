@@ -343,6 +343,7 @@ function EditClientDialog({
                   selectedIds={selectedUnitIds}
                   onChange={setSelectedUnitIds}
                   disabled={isSaving}
+                  emptyMessage="No hay unidades disponibles."
                 />
               </div>
             </div>
@@ -381,6 +382,39 @@ function EditClientDialog({
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function collectOccupiedUnitIds(
+  clients: ProjectClient[],
+  pendingInvitations: ProjectClientInvitation[],
+  exclude?: { type: "client" | "invitation"; id: string } | null,
+) {
+  const ids = new Set<string>()
+
+  for (const client of clients) {
+    if (exclude?.type === "client" && exclude.id === client.userId) continue
+    for (const unit of client.units) ids.add(unit.id)
+  }
+
+  for (const invitation of pendingInvitations) {
+    if (exclude?.type === "invitation" && exclude.id === invitation.invitationId) {
+      continue
+    }
+    for (const unit of invitation.units) ids.add(unit.id)
+  }
+
+  return ids
+}
+
+function availableUnitOptions(
+  unitOptions: ProjectUnitOption[],
+  occupiedUnitIds: Set<string>,
+  keepIds: string[] = [],
+) {
+  const keep = new Set(keepIds)
+  return unitOptions.filter(
+    (option) => !occupiedUnitIds.has(option.id) || keep.has(option.id),
   )
 }
 
@@ -424,12 +458,14 @@ function UnitMultiSelect({
   onChange,
   disabled,
   className,
+  emptyMessage = "No hay unidades configuradas.",
 }: {
   options: ProjectUnitOption[]
   selectedIds: string[]
   onChange: (ids: string[]) => void
   disabled?: boolean
   className?: string
+  emptyMessage?: string
 }) {
   const [open, setOpen] = useState(false)
   const selectedLabels = options
@@ -475,7 +511,7 @@ function UnitMultiSelect({
         <div className="max-h-[260px] overflow-y-auto px-2 pt-2">
           {options.length === 0 ? (
             <p className="px-3 py-2 text-[13px] text-[#777b84]">
-              No hay unidades configuradas.
+              {emptyMessage}
             </p>
           ) : (
             options.map((option) => {
@@ -737,6 +773,16 @@ export function ClientesView({ projectId, initialData }: Props) {
     setSeatSummary(summary)
   }
 
+  const occupiedUnitIds = useMemo(
+    () => collectOccupiedUnitIds(clients, pendingInvitations),
+    [clients, pendingInvitations],
+  )
+
+  const addUnitOptions = useMemo(
+    () => availableUnitOptions(unitOptions, occupiedUnitIds, selectedUnitIds),
+    [occupiedUnitIds, selectedUnitIds, unitOptions],
+  )
+
   const assignedEmails = useMemo(() => {
     const emails = new Set<string>()
     for (const client of clients) emails.add(client.email.toLowerCase())
@@ -955,6 +1001,11 @@ export function ClientesView({ projectId, initialData }: Props) {
     void handleRevokeInvitation(removingTarget.id)
   }
 
+  const unitsEmptyMessage =
+    unitOptions.length === 0
+      ? "No hay unidades configuradas."
+      : "No hay unidades disponibles."
+
   const editingClientTarget = useMemo((): EditClientDialogTarget | null => {
     if (editingTarget?.type === "client") {
       const client = clients.find((item) => item.userId === editingTarget.id)
@@ -970,6 +1021,28 @@ export function ClientesView({ projectId, initialData }: Props) {
 
     return null
   }, [clients, editingTarget, pendingInvitations])
+
+  const editUnitOptions = useMemo(() => {
+    if (!editingClientTarget) return addUnitOptions
+
+    const exclude =
+      editingClientTarget.type === "client"
+        ? { type: "client" as const, id: editingClientTarget.client.userId }
+        : {
+            type: "invitation" as const,
+            id: editingClientTarget.invitation.invitationId,
+          }
+    const keepIds =
+      editingClientTarget.type === "client"
+        ? editingClientTarget.client.units.map((unit) => unit.id)
+        : editingClientTarget.invitation.units.map((unit) => unit.id)
+
+    return availableUnitOptions(
+      unitOptions,
+      collectOccupiedUnitIds(clients, pendingInvitations, exclude),
+      keepIds,
+    )
+  }, [addUnitOptions, clients, editingClientTarget, pendingInvitations, unitOptions])
 
   const removingClient =
     removingTarget?.type === "client"
@@ -1080,9 +1153,10 @@ export function ClientesView({ projectId, initialData }: Props) {
               style={clientInputStyle}
             />
             <UnitMultiSelect
-              options={unitOptions}
+              options={addUnitOptions}
               selectedIds={selectedUnitIds}
               onChange={setSelectedUnitIds}
+              emptyMessage={unitsEmptyMessage}
               className="min-w-0 flex-1"
             />
             <Button
@@ -1195,7 +1269,7 @@ export function ClientesView({ projectId, initialData }: Props) {
 
       <EditClientDialog
         target={editingClientTarget}
-        unitOptions={unitOptions}
+        unitOptions={editUnitOptions}
         assignedEmails={assignedEmails}
         open={canManageClients && editingClientTarget != null}
         onOpenChange={(open) => {

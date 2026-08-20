@@ -172,6 +172,13 @@ async function fetchForecast(
   return forecast.current ?? null
 }
 
+export function resolveWeatherLocation(
+  weatherCity?: string | null,
+  location?: string | null,
+) {
+  return weatherCity?.trim() || location?.trim() || ""
+}
+
 export async function fetchProjectWeather(input: {
   location: string
   country?: string | null

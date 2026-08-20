@@ -1,4 +1,5 @@
 import Image from "next/image"
+import Link from "next/link"
 import type { ReactNode } from "react"
 import {
   LOGIN_ACCENT,
@@ -48,6 +49,29 @@ function renderHeroTitle(copy: AuthHeroCopy, accent: string, className: string) 
   )
 }
 
+function AuthLogoLink({
+  width,
+  height,
+  className,
+}: {
+  width: number
+  height: number
+  className: string
+}) {
+  return (
+    <Link href="/" aria-label="BuildOn — inicio">
+      <Image
+        src="/logo-build-on.svg"
+        alt="BuildOn"
+        width={width}
+        height={height}
+        priority
+        className={className}
+      />
+    </Link>
+  )
+}
+
 function AuthDesktopHero({ hero }: { hero: AuthHeroCopy }) {
   return (
     <section className="relative hidden min-h-dvh overflow-hidden lg:flex lg:flex-col">
@@ -68,12 +92,9 @@ function AuthDesktopHero({ hero }: { hero: AuthHeroCopy }) {
 
       <div className="relative flex min-h-dvh flex-col overflow-y-auto px-10 pb-12 pt-12 xl:px-16 xl:pb-16 xl:pt-16 2xl:px-20 2xl:pb-20 2xl:pt-20">
         <div className="flex flex-1 flex-col justify-center pr-4 xl:pr-16 2xl:pr-24">
-          <Image
-            src="/logo-build-on.svg"
-            alt="BuildOn"
+          <AuthLogoLink
             width={200}
             height={42}
-            priority
             className="mb-10 h-9 w-auto self-start xl:mb-16 xl:h-[42px]"
           />
 
@@ -103,9 +124,7 @@ function AuthDesktopHero({ hero }: { hero: AuthHeroCopy }) {
 function AuthTabletIntro({ hero }: { hero: AuthHeroCopy }) {
   return (
     <div className="mb-6 hidden w-full text-center md:block lg:hidden">
-      <Image
-        src="/logo-build-on.svg"
-        alt="BuildOn"
+      <AuthLogoLink
         width={180}
         height={38}
         className="mx-auto mb-5 h-9 w-auto"
@@ -119,9 +138,7 @@ function AuthTabletIntro({ hero }: { hero: AuthHeroCopy }) {
 
 function AuthMobileLogo() {
   return (
-    <Image
-      src="/logo-build-on.svg"
-      alt="BuildOn"
+    <AuthLogoLink
       width={180}
       height={38}
       className="mx-auto mb-5 h-9 w-auto md:hidden"

@@ -62,13 +62,22 @@ export async function getProjectById(
 
   const supabase = await createClient()
 
-  const { data: raw, error } = await supabase
+  const withCompany = await supabase
     .from("projects")
     .select("id, name, location, company_id, status, company:companies(name)")
     .eq("id", id)
     .maybeSingle()
 
-  if (error || !raw) return null
+  const withoutCompany = withCompany.error
+    ? await supabase
+        .from("projects")
+        .select("id, name, location, company_id, status")
+        .eq("id", id)
+        .maybeSingle()
+    : null
+
+  const raw = withoutCompany?.data ?? withCompany.data
+  if ((withoutCompany?.error ?? withCompany.error) || !raw) return null
 
   const r = raw as any
   const company = Array.isArray(r.company) ? r.company[0] : r.company

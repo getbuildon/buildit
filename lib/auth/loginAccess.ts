@@ -1,12 +1,11 @@
 "use server"
 
 import { clearLoginAudience, setLoginAudience } from "@/lib/auth/loginAudienceActions"
-import {
-  PORTAL_CLIENTE_PATH,
-  type LoginAudience,
-} from "@/lib/auth/loginAudience"
+import { type LoginAudience } from "@/lib/auth/loginAudience"
+import { projectHref } from "@/lib/project/routes"
 import { getAuthenticatedUserOrNull } from "@/lib/authHelpers"
 import { PROJECT_ROLE_SLUG, USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
+import { createAdminClient } from "@/utils/supabase/admin"
 import { createClient } from "@/utils/supabase/server"
 
 function slugFromRelation(
@@ -18,26 +17,27 @@ function slugFromRelation(
 }
 
 export async function getFirstClientProjectId(userId: string): Promise<string | null> {
-  const supabase = await createClient()
+  const admin = createAdminClient()
 
-  const { data: clientUnits } = await supabase
+  const { data: clientUnits } = await admin
     .from("unit_clients")
-    .select(
-      `unit:project_units!inner (
-        project_id
-      )`,
-    )
+    .select("unit_id")
     .eq("user_id", userId)
     .eq("status", "active")
     .limit(20)
 
-  for (const row of clientUnits ?? []) {
-    const unit = row.unit as { project_id?: string } | { project_id?: string }[] | null
-    const unitData = Array.isArray(unit) ? unit[0] : unit
-    if (unitData?.project_id) return unitData.project_id
+  const unitIds = (clientUnits ?? []).map((row) => row.unit_id).filter(Boolean)
+  if (unitIds.length > 0) {
+    const { data: units } = await admin
+      .from("project_units")
+      .select("project_id")
+      .in("id", unitIds)
+      .limit(1)
+
+    if (units?.[0]?.project_id) return units[0].project_id
   }
 
-  const { data: memberships } = await supabase
+  const { data: memberships } = await admin
     .from("project_members")
     .select("project_id, user_types ( slug ), project_roles ( slug )")
     .eq("user_id", userId)
@@ -109,7 +109,7 @@ export async function finalizeAccessLogin(audience: LoginAudience): Promise<
     }
 
     await setLoginAudience("cliente")
-    return { ok: true, redirectTo: PORTAL_CLIENTE_PATH }
+    return { ok: true, redirectTo: projectHref(projectId, "mi-unidad") }
   }
 
   const canUseTeamLogin = await isTeamAccessUser(user.id)
@@ -124,4 +124,24 @@ export async function finalizeAccessLogin(audience: LoginAudience): Promise<
 
   await setLoginAudience("equipo")
   return { ok: true, redirectTo: "/home" }
+}
+
+export async function switchToClientPortal(): Promise<
+  { ok: true; redirectTo: string } | { ok: false; error: string }
+> {
+  const user = await getAuthenticatedUserOrNull()
+  if (!user) {
+    return { ok: false, error: "No pudimos validar la sesión. Intentá de nuevo." }
+  }
+
+  const projectId = await getFirstClientProjectId(user.id)
+  if (!projectId) {
+    return {
+      ok: false,
+      error: "No tenés unidades asignadas como cliente.",
+    }
+  }
+
+  await setLoginAudience("cliente")
+  return { ok: true, redirectTo: projectHref(projectId, "mi-unidad") }
 }

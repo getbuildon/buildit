@@ -19,6 +19,7 @@ export type PortalMilestoneItem = {
 export type PortalClientesData = {
   news: PortalNewsItem[]
   milestones: PortalMilestoneItem[]
+  weatherCity: string
 }
 
 export const PORTAL_MILESTONE_STATUS_LABELS: Record<PortalMilestoneStatus, string> = {
@@ -51,6 +52,7 @@ export type PortalMilestoneSaveInput = {
 
 export type SavePortalClientesInput = {
   projectId: string
+  weatherCity: string
   news: PortalNewsSaveInput[]
   milestones: PortalMilestoneSaveInput[]
   removedNewsIds: string[]
