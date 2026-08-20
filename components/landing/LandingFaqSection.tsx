@@ -51,7 +51,11 @@ function LandingFaqMobile() {
 
 export function LandingFaqSection() {
   return (
-    <section id="faq" className="bg-[#fefcfb]">
+    <section
+      id="faq"
+      data-landing-section="faq"
+      className="scroll-mt-[80px] bg-[#fefcfb]"
+    >
       <div className="lg:hidden">
         <LandingFaqMobile />
       </div>

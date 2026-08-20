@@ -12,7 +12,11 @@ export function LandingPricingSection() {
   const [billing, setBilling] = useState<BillingPeriod>("annual")
 
   return (
-    <section id="planes" className="scroll-mt-[80px] bg-[#fefcfb]">
+    <section
+      id="planes"
+      data-landing-section="planes"
+      className="scroll-mt-[80px] bg-[#fefcfb]"
+    >
       <div className="lg:hidden">
         <div className="px-6 pb-6 pt-10 text-center md:px-10 md:pt-14">
           <LandingReveal direction="up">

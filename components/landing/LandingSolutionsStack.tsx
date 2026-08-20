@@ -5,6 +5,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { useLayoutEffect, useRef, useState } from "react"
 
 import { LandingHeroMobile } from "@/components/landing/LandingHeroMobile"
+import { LandingProblemMobile } from "@/components/landing/LandingProblemMobile"
 import { LandingSolutionsHeader } from "@/components/landing/LandingSolutionsHeader"
 import { SolutionSlideCard } from "@/components/landing/SolutionSlideCard"
 import { SOLUTION_SLIDES } from "@/lib/landing/solutionSlides"
@@ -183,62 +184,69 @@ export function LandingSolutionsStack() {
   }, [isMobile])
 
   return (
-    <div ref={rootRef} className="relative w-full lg:hidden">
+    <div className="relative w-full lg:hidden">
       <LandingHeroMobile />
 
-      <div className="w-full bg-[#272a2d]">
-        <div className="relative z-10 mx-auto w-full max-w-[390px] px-6 pt-10 md:max-w-[480px]">
-        <LandingSolutionsHeader />
+      <div ref={rootRef}>
+        <LandingProblemMobile />
 
-        <div className="mt-[52px] flex justify-center">
-          <div
-            className="relative overflow-hidden pt-2"
-            style={{
-              width: CARD_STACK_STAGE_WIDTH_PX,
-              height: CARD_HEIGHT_PX + 8,
-            }}
-          >
+        <div
+          data-landing-section="soluciones"
+          className="w-full scroll-mt-[80px] bg-[#272a2d]"
+        >
+          <div className="relative z-10 mx-auto w-full max-w-[390px] px-6 pt-10 md:max-w-[480px]">
+            <LandingSolutionsHeader />
+          </div>
+
+          <div className="mt-[52px] flex justify-center px-6">
             <div
-              className="invisible pointer-events-none mx-auto"
-              style={{ width: CARD_WIDTH_PX, height: CARD_HEIGHT_PX }}
-              aria-hidden
+              className="relative overflow-hidden pt-2"
+              style={{
+                width: CARD_STACK_STAGE_WIDTH_PX,
+                height: CARD_HEIGHT_PX + 8,
+              }}
             >
-              <SolutionSlideCard fixedSize slide={SOLUTION_SLIDES[0]} />
-            </div>
-
-            {SOLUTION_SLIDES.map((slide, index) => (
               <div
-                key={slide.number}
-                className="absolute top-2 left-1/2 -translate-x-1/2"
-                style={{
-                  width: CARD_WIDTH_PX,
-                  zIndex: 10 + index,
-                }}
+                className="invisible pointer-events-none mx-auto"
+                style={{ width: CARD_WIDTH_PX, height: CARD_HEIGHT_PX }}
+                aria-hidden
               >
+                <SolutionSlideCard fixedSize slide={SOLUTION_SLIDES[0]} />
+              </div>
+
+              {SOLUTION_SLIDES.map((slide, index) => (
                 <div
-                  data-solution-card
-                  className="origin-top will-change-transform"
+                  key={slide.number}
+                  className="absolute top-2 left-1/2 -translate-x-1/2"
                   style={{
-                    opacity: 1,
-                    transform:
-                      index === 0
-                        ? undefined
-                        : `translate3d(0, ${CARD_ENTER_PX}px, 0)`,
-                    pointerEvents: index === 0 ? "auto" : "none",
+                    width: CARD_WIDTH_PX,
+                    zIndex: 10 + index,
                   }}
                 >
-                  <SolutionSlideCard fixedSize slide={slide} stacked={index > 0} />
+                  <div
+                    data-solution-card
+                    className="origin-top will-change-transform"
+                    style={{
+                      opacity: 1,
+                      transform:
+                        index === 0
+                          ? undefined
+                          : `translate3d(0, ${CARD_ENTER_PX}px, 0)`,
+                      pointerEvents: index === 0 ? "auto" : "none",
+                    }}
+                  >
+                    <SolutionSlideCard fixedSize slide={slide} stacked={index > 0} />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {initError ? (
-          <p className="px-6 pb-4 text-center text-xs text-red-300">
-            Stack: {initError}
-          </p>
-        ) : null}
+          {initError ? (
+            <p className="px-6 pb-4 text-center text-xs text-red-300">
+              Stack: {initError}
+            </p>
+          ) : null}
         </div>
       </div>
     </div>

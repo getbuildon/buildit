@@ -3,12 +3,16 @@ import { LandingSolutionsMobile } from "@/components/landing/LandingSolutionsMob
 
 export function LandingSolutionsSection() {
   return (
-    <section id="soluciones" className="relative z-1 bg-[#272a2d]">
+    <section className="relative z-1 bg-[#272a2d]">
       <div className="lg:hidden">
         <LandingSolutionsMobile />
       </div>
 
-      <div className="hidden lg:block">
+      <div
+        id="soluciones"
+        data-landing-section="soluciones"
+        className="hidden scroll-mt-[80px] lg:block"
+      >
         <LandingSolutionsDesktop />
       </div>
 
