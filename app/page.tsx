@@ -17,8 +17,10 @@ export default function LandingPage() {
       <div className="min-h-screen bg-background text-foreground">
         <LandingHeader />
         <div className="landing-page">
-          <div className="hidden overflow-x-clip lg:block">
-            <LandingHeroDesktop />
+          <div className="hidden lg:block">
+            <div className="overflow-x-clip">
+              <LandingHeroDesktop />
+            </div>
             <LandingProblemSection />
           </div>
           <LandingSolutionsSection />

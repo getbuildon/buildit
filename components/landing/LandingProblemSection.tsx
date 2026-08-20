@@ -4,10 +4,17 @@ import Image from "next/image"
 import { useRef } from "react"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
 
 import { LandingReveal } from "@/components/landing/LandingReveal"
 import { LANDING_REVEAL_DEFAULTS } from "@/lib/landing/landingReveal"
 import { PROBLEM_ITEMS } from "@/lib/landing/problemItems"
+import {
+  DESKTOP_SLIDE_STICKY_OFFSET_PX,
+  setSolutionsPinActive,
+} from "@/lib/landing/solutionDesktopSlider"
+
+gsap.registerPlugin(ScrollTrigger)
 
 function ProblemCard({
   iconSrc,
@@ -51,12 +58,14 @@ function ProblemCard({
 const PROBLEM_SCROLL_END_PX = 800
 
 export function LandingProblemSection() {
-  const sectionRef = useRef<HTMLElement>(null)
+  const wrapRef = useRef<HTMLElement>(null)
+  const stickyRef = useRef<HTMLDivElement>(null)
 
   useGSAP(
     () => {
-      const root = sectionRef.current
-      if (!root) return
+      const wrap = wrapRef.current
+      const sticky = stickyRef.current
+      if (!wrap || !sticky) return
 
       const mm = gsap.matchMedia()
 
@@ -65,21 +74,28 @@ export function LandingProblemSection() {
         () => {
           const cards = gsap.utils.toArray<HTMLElement>(
             "[data-problem-card]",
-            root,
+            wrap,
           )
 
           gsap.set(cards, { y: 80, opacity: 0 })
 
+          const applyHeight = () => {
+            wrap.style.height = `${sticky.offsetHeight + PROBLEM_SCROLL_END_PX}px`
+          }
+
+          applyHeight()
+
           const timeline = gsap.timeline({
             defaults: { ease: LANDING_REVEAL_DEFAULTS.ease },
             scrollTrigger: {
-              trigger: root,
-              start: "top 50%",
+              trigger: wrap,
+              start: `top -${DESKTOP_SLIDE_STICKY_OFFSET_PX}px`,
               end: `+=${PROBLEM_SCROLL_END_PX}`,
               scrub: 0.65,
               invalidateOnRefresh: true,
-              onLeave: () => {
-                gsap.set(cards, { clearProps: "transform,opacity" })
+              onRefresh: applyHeight,
+              onToggle: (self) => {
+                setSolutionsPinActive(self.isActive)
               },
             },
           })
@@ -91,16 +107,26 @@ export function LandingProblemSection() {
               index === 0 ? 0 : ">",
             )
           })
+
+          return () => {
+            wrap.style.height = ""
+            setSolutionsPinActive(false)
+          }
         },
       )
 
       return () => mm.revert()
     },
-    { scope: sectionRef },
+    { scope: wrapRef },
   )
 
   return (
-    <section ref={sectionRef} className="hidden bg-[#fefcfb] lg:block">
+    <section ref={wrapRef} className="relative hidden bg-[#fefcfb] lg:block">
+      <div
+        ref={stickyRef}
+        className="sticky bg-[#fefcfb]"
+        style={{ top: -DESKTOP_SLIDE_STICKY_OFFSET_PX }}
+      >
       <div className="mx-auto max-w-[1280px] px-6 py-16 lg:px-10 lg:py-24 xl:px-20 xl:py-28">
         <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-x-12 xl:gap-x-24">
           <div className="relative min-w-0 pt-8 lg:max-w-[512px]">
@@ -145,6 +171,7 @@ export function LandingProblemSection() {
             ))}
           </div>
         </div>
+      </div>
       </div>
     </section>
   )
