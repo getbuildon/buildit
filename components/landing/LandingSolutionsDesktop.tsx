@@ -86,15 +86,25 @@ export function LandingSolutionsDesktop() {
   const scrollTriggerRef = useRef<ScrollTrigger | null>(null)
 
   const goToSlide = (index: number) => {
-    if (index === activeIndex) return
-
-    setActiveIndex(index)
-
     const trigger = scrollTriggerRef.current
-    if (!trigger?.isActive) return
+
+    if (!trigger) {
+      setActiveIndex(index)
+      return
+    }
+
+    if (index === activeIndex && trigger.isActive) return
 
     const progress = scrollProgressForIndex(index, SOLUTION_SLIDES.length)
-    trigger.scroll(trigger.start + (trigger.end - trigger.start) * progress)
+    const targetY = trigger.start + (trigger.end - trigger.start) * progress
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches
+
+    window.scrollTo({
+      top: targetY,
+      behavior: reducedMotion ? "auto" : "smooth",
+    })
   }
 
   useGSAP(
