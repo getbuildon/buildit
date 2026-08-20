@@ -70,7 +70,11 @@ export function LandingReveal({
   )
 
   return (
-    <div ref={ref} className={cn(className)}>
+    <div
+      ref={ref}
+      data-reveal={direction}
+      className={cn("landing-reveal", className)}
+    >
       {children}
     </div>
   )

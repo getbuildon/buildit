@@ -6,6 +6,7 @@ gsap.registerPlugin(useGSAP, ScrollTrigger)
 
 export type LandingRevealDirection = "up" | "down" | "left" | "right"
 
+/** Keep in sync with `.landing-reveal` transforms in `app/globals.css`. */
 export const LANDING_REVEAL_OFFSET_PX = 48
 
 export const LANDING_REVEAL_FROM: Record<

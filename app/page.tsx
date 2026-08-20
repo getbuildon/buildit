@@ -11,6 +11,9 @@ import { LandingSolutionsSection } from "@/components/landing/LandingSolutionsSe
 export default function LandingPage() {
   return (
     <LandingActionsProvider>
+      <noscript>
+        <style>{`.landing-reveal{opacity:1;transform:none}`}</style>
+      </noscript>
       <div className="min-h-screen bg-background text-foreground">
         <LandingHeader />
         <div className="landing-page">

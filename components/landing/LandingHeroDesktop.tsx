@@ -114,7 +114,7 @@ export function LandingHeroDesktop() {
             </LandingReveal>
           </div>
 
-          <div className="absolute left-1/2 top-[1195px] z-30 hidden w-[39.7%] min-w-[320px] max-w-[571px] -translate-x-1/2 xl:block">
+          <div className="absolute left-1/2 top-[1195px] z-30 hidden w-[39.7%] min-w-[320px] max-w-[571px] translate-x-[calc(-50%+110px)] xl:block">
             <LandingReveal direction="up">
               <Image
                 src="/landing/hero/desktop/unit-bar.png"
