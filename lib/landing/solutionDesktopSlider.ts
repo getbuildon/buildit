@@ -1,6 +1,7 @@
 export const DESKTOP_SLIDE_DURATION_S = 0.48
 export const DESKTOP_SLIDE_EASE = "power2.out"
 export const DESKTOP_SLIDE_SCROLL_PX = 420
+export const DESKTOP_SLIDE_STICKY_OFFSET_PX = 50
 export const SOLUTIONS_PIN_BODY_CLASS = "is-solutions-pinned"
 export const SOLUTIONS_PIN_EVENT = "buildon:solutions-pin"
 

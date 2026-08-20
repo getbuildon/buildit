@@ -18,6 +18,7 @@ import {
   DESKTOP_SLIDE_DURATION_S,
   DESKTOP_SLIDE_EASE,
   DESKTOP_SLIDE_SCROLL_PX,
+  DESKTOP_SLIDE_STICKY_OFFSET_PX,
   DESKTOP_TAB_WIDTH_PX,
   railOpacityForWidth,
   scrollProgressForIndex,
@@ -129,7 +130,7 @@ export function LandingSolutionsDesktop() {
 
           const trigger = ScrollTrigger.create({
             trigger: wrap,
-            start: "top top",
+            start: `top -${DESKTOP_SLIDE_STICKY_OFFSET_PX}px`,
             end: `+=${extraScroll}`,
             invalidateOnRefresh: true,
             onRefresh: applyHeight,
@@ -219,7 +220,8 @@ export function LandingSolutionsDesktop() {
       <div
         ref={stickyRef}
         data-solutions-pin
-        className="sticky top-0 bg-[#272a2d]"
+        className="sticky bg-[#272a2d]"
+        style={{ top: -DESKTOP_SLIDE_STICKY_OFFSET_PX }}
       >
         <div
           className="relative overflow-x-clip"
