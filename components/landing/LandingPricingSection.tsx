@@ -15,7 +15,7 @@ export function LandingPricingSection() {
     <section
       id="planes"
       data-landing-section="planes"
-      className="scroll-mt-[80px] bg-[#fefcfb]"
+      className="bg-[#fefcfb]"
     >
       <div className="lg:hidden">
         <div className="px-6 pb-6 pt-10 text-center md:px-10 md:pt-14">

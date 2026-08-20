@@ -11,7 +11,7 @@ export function LandingSolutionsSection() {
       <div
         id="soluciones"
         data-landing-section="soluciones"
-        className="hidden scroll-mt-[80px] lg:block"
+        className="hidden lg:block"
       >
         <LandingSolutionsDesktop />
       </div>

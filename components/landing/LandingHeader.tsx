@@ -84,6 +84,7 @@ export function LandingHeader() {
       <div aria-hidden className="shrink-0" style={{ height: headerHeight }} />
       <header
         ref={headerRef}
+        data-landing-header
         className={cn(
           "fixed inset-x-0 top-0 z-50 bg-background",
           isScrolled && "shadow-[0_4px_16px_rgba(24,25,27,0.08)]",

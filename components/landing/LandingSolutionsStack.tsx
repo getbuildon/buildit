@@ -192,7 +192,7 @@ export function LandingSolutionsStack() {
 
         <div
           data-landing-section="soluciones"
-          className="w-full scroll-mt-[80px] bg-[#272a2d]"
+          className="w-full bg-[#272a2d]"
         >
           <div className="relative z-10 mx-auto w-full max-w-[390px] px-6 pt-10 md:max-w-[480px]">
             <LandingSolutionsHeader />
