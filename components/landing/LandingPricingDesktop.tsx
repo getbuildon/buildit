@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 
+import { LandingReveal } from "@/components/landing/LandingReveal"
 import { PricingBillingToggle } from "@/components/landing/PricingBillingToggle"
 import { PricingContractModal } from "@/components/landing/PricingContractModal"
 import { PricingPlanCard } from "@/components/landing/PricingPlanCard"
@@ -31,24 +32,32 @@ export function LandingPricingDesktop({
     <>
       <div className="mx-auto max-w-[1280px] px-6 py-16 lg:px-10 lg:py-24 xl:px-20 xl:py-28">
         <div className="mx-auto max-w-[672px] text-center">
-          <h2 className="font-recoleta text-4xl leading-[1.05] text-[#18191b] xl:text-[48px]">
-            Planes que se adaptan a cada{" "}
-            <span className="text-primary">proyecto</span>.
-          </h2>
-          <p className="pt-5 text-lg leading-[1.4] text-[#43484e] xl:text-xl">
-            Desde obras pequeñas hasta operaciones multiobra, BuildOn escala con
-            tu equipo y tu forma de trabajar.
-          </p>
+          <LandingReveal direction="up">
+            <h2 className="font-recoleta text-4xl leading-[1.05] text-[#18191b] xl:text-[48px]">
+              Planes que se adaptan a cada{" "}
+              <span className="text-primary">proyecto</span>.
+            </h2>
+          </LandingReveal>
+          <LandingReveal direction="up" delay={0.12}>
+            <p className="pt-5 text-lg leading-[1.4] text-[#43484e] xl:text-xl">
+              Desde obras pequeñas hasta operaciones multiobra, BuildOn escala con
+              tu equipo y tu forma de trabajar.
+            </p>
+          </LandingReveal>
         </div>
 
-        <div className="flex justify-center pt-10">
-          <PricingBillingToggle value={billing} onChange={onBillingChange} />
-        </div>
+        <LandingReveal direction="up" delay={0.22}>
+          <div className="flex justify-center pt-10">
+            <PricingBillingToggle value={billing} onChange={onBillingChange} />
+          </div>
+        </LandingReveal>
 
         <div className="mx-auto grid w-full max-w-[560px] grid-cols-1 gap-6 pt-12 xl:max-w-none xl:grid-cols-3 xl:items-start">
-          {PRICING_PLANS.map((plan) => (
-            <div
+          {PRICING_PLANS.map((plan, index) => (
+            <LandingReveal
               key={plan.id}
+              direction="up"
+              delay={0.08 * index}
               className={cn(plan.featured && "xl:-mt-4")}
             >
               <PricingPlanCard
@@ -58,13 +67,13 @@ export function LandingPricingDesktop({
                   setContractSelection({ plan, surfaceTierId })
                 }
               />
-            </div>
+            </LandingReveal>
           ))}
         </div>
 
-        <div className="pt-16">
+        <LandingReveal direction="up" className="pt-16">
           <TeamRolesPanelDesktop />
-        </div>
+        </LandingReveal>
       </div>
 
       <PricingContractModal

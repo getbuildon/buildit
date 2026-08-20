@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 
+import { LandingReveal } from "@/components/landing/LandingReveal"
 import { useLandingActions } from "@/components/landing/LandingActionsProvider"
 
 export function LandingDemoDesktop() {
@@ -9,6 +10,7 @@ export function LandingDemoDesktop() {
 
   return (
     <div className="mx-auto max-w-[1280px] px-6 py-12 lg:px-10 lg:py-16 xl:px-20 xl:py-20">
+      <LandingReveal direction="up">
       <div className="overflow-hidden rounded-[4px] bg-[#212225] shadow-[0px_48px_120px_0px_rgba(0,0,0,0.2)]">
         <div className="grid min-h-[429.5px] grid-cols-1 lg:grid-cols-2">
           <div className="flex flex-col justify-center gap-8 px-6 py-10 lg:px-10 lg:py-14 xl:pl-14 xl:pr-20">
@@ -52,6 +54,7 @@ export function LandingDemoDesktop() {
           </div>
         </div>
       </div>
+      </LandingReveal>
     </div>
   )
 }
