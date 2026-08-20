@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/select"
 import type { BillingPeriod, PricingPlan } from "@/lib/landing/pricingPlans"
 import {
+  formatPlanPrice,
   getDefaultSurfaceTierId,
-  getPlanDisplayPrice,
-  getPlanPricePeriodLabel,
+  getPlanPriceBreakdown,
 } from "@/lib/landing/pricingPlans"
 import { cn } from "@/lib/utils"
 
@@ -67,9 +67,15 @@ export function PricingPlanCard({
   )
 
   const isDark = plan.theme === "dark"
-  const price = getPlanDisplayPrice(plan, billing, surfaceTierId)
-  const pricePeriodLabel = getPlanPricePeriodLabel(billing)
   const isQuote = Boolean(plan.priceLabel)
+  const breakdown = getPlanPriceBreakdown(plan, surfaceTierId)
+  const monthlyAmount =
+    billing === "annual" ? breakdown.annualMonthlyPrice : breakdown.monthlyPrice
+  const price = isQuote
+    ? plan.priceLabel
+    : monthlyAmount != null
+      ? formatPlanPrice(monthlyAmount)
+      : null
   const hasSurfaceTiers = Boolean(plan.surfaceTiers?.length)
 
   return (
@@ -123,7 +129,7 @@ export function PricingPlanCard({
               isDark ? "text-[#afb3ba]" : "text-[#5a6169]",
             )}
           >
-            {pricePeriodLabel}
+            usd/mes
           </p>
         ) : null}
       </div>

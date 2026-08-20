@@ -1,12 +1,9 @@
 "use client"
 
+import { useLayoutEffect, useRef, useState } from "react"
+
 import { cn } from "@/lib/utils"
 import type { BillingPeriod } from "@/lib/landing/pricingPlans"
-
-const TOGGLE_WIDTH_PX = 283
-const TAB_HEIGHT_PX = 43
-const TAB_ANNUAL_WIDTH_PX = 164
-const TAB_MONTHLY_WIDTH_PX = 109
 
 type PricingBillingToggleProps = {
   value: BillingPeriod
@@ -18,11 +15,36 @@ export function PricingBillingToggle({
   onChange,
 }: PricingBillingToggleProps) {
   const isAnnual = value === "annual"
+  const trackRef = useRef<HTMLDivElement>(null)
+  const annualRef = useRef<HTMLButtonElement>(null)
+  const monthlyRef = useRef<HTMLButtonElement>(null)
+  const [indicator, setIndicator] = useState({ left: 0, width: 0, height: 0 })
+
+  useLayoutEffect(() => {
+    const track = trackRef.current
+    const active = isAnnual ? annualRef.current : monthlyRef.current
+    if (!track || !active) return
+
+    const update = () => {
+      const trackRect = track.getBoundingClientRect()
+      const activeRect = active.getBoundingClientRect()
+      setIndicator({
+        left: activeRect.left - trackRect.left,
+        width: activeRect.width,
+        height: activeRect.height,
+      })
+    }
+
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(track)
+    observer.observe(active)
+    return () => observer.disconnect()
+  }, [isAnnual])
 
   return (
     <div
       className="flex flex-col items-center gap-1"
-      style={{ width: TOGGLE_WIDTH_PX }}
       role="tablist"
       aria-label="Modalidad de pago"
     >
@@ -30,48 +52,50 @@ export function PricingBillingToggle({
         Modalidad de pago:
       </p>
 
-      <div className="relative box-border w-full rounded-full bg-white p-[5px] shadow-[inset_0_0_0_1px_#afb3ba]">
-        <div className="relative flex h-[43px] w-[273px]">
-          <span
-            aria-hidden
-            className="absolute inset-y-0 left-0 rounded-full bg-[#272a2d] transition-[transform,width] duration-300 ease-in-out motion-reduce:transition-none"
-            style={{
-              width: isAnnual ? TAB_ANNUAL_WIDTH_PX : TAB_MONTHLY_WIDTH_PX,
-              transform: `translateX(${isAnnual ? 0 : TAB_ANNUAL_WIDTH_PX}px)`,
-            }}
-          />
+      <div
+        ref={trackRef}
+        className="relative flex rounded-full border border-[#afb3ba] bg-white p-[5px]"
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute top-[5px] rounded-full bg-[#272a2d] transition-[left,width] duration-300 ease-in-out motion-reduce:transition-none"
+          style={{
+            left: indicator.left,
+            width: indicator.width,
+            height: indicator.height,
+          }}
+        />
 
-          <button
-            type="button"
-            role="tab"
-            aria-selected={isAnnual}
-            onClick={() => onChange("annual")}
-            className={cn(
-              "relative z-10 flex items-center justify-center gap-1 rounded-full transition-colors duration-300 ease-out motion-reduce:transition-none",
-              isAnnual ? "text-white" : "text-[#696e77]",
-            )}
-            style={{ width: TAB_ANNUAL_WIDTH_PX, height: TAB_HEIGHT_PX }}
-          >
-            <span className="text-[15px] font-medium leading-none">Anual</span>
-            <span className="text-xs font-normal leading-none tracking-[-0.36px]">
-              ahorrás 20%
-            </span>
-          </button>
+        <button
+          ref={annualRef}
+          type="button"
+          role="tab"
+          aria-selected={isAnnual}
+          onClick={() => onChange("annual")}
+          className={cn(
+            "relative z-10 flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-[15px] font-medium leading-[22.5px] transition-colors duration-300",
+            isAnnual ? "text-white" : "text-[#696e77]",
+          )}
+        >
+          Anual
+          <span className="rounded-[20px] bg-[#111113] px-1.5 py-1 text-center text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#ffc9ae]">
+            ahorrás 20%
+          </span>
+        </button>
 
-          <button
-            type="button"
-            role="tab"
-            aria-selected={!isAnnual}
-            onClick={() => onChange("monthly")}
-            className={cn(
-              "relative z-10 flex items-center justify-center rounded-full text-[15px] font-medium leading-none transition-colors duration-300 ease-out motion-reduce:transition-none",
-              isAnnual ? "text-[#696e77]" : "text-white",
-            )}
-            style={{ width: TAB_MONTHLY_WIDTH_PX, height: TAB_HEIGHT_PX }}
-          >
-            Mensual
-          </button>
-        </div>
+        <button
+          ref={monthlyRef}
+          type="button"
+          role="tab"
+          aria-selected={!isAnnual}
+          onClick={() => onChange("monthly")}
+          className={cn(
+            "relative z-10 rounded-full px-6 py-2.5 text-[15px] font-medium leading-[22.5px] transition-colors duration-300",
+            isAnnual ? "text-[#696e77]" : "text-white",
+          )}
+        >
+          Mensual
+        </button>
       </div>
     </div>
   )

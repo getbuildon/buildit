@@ -13,6 +13,7 @@ type TaskTargetUnitChipProps = {
   status: CargarAvanceTaskStatus
   selected: boolean
   disabled?: boolean
+  locked?: boolean
   onToggle: () => void
 }
 
@@ -66,20 +67,28 @@ export function TaskTargetUnitChip({
   status,
   selected,
   disabled = false,
+  locked = false,
   onToggle,
 }: TaskTargetUnitChipProps) {
+  const isInteractive = !disabled && !locked
+
   return (
     <button
       type="button"
       aria-pressed={selected}
+      aria-disabled={locked || disabled}
       aria-label={`Aplicar cambios en unidad ${unitLabel}`}
       disabled={disabled}
-      onClick={onToggle}
+      onClick={() => {
+        if (locked) return
+        onToggle()
+      }}
       className={cn(
         "inline-flex w-fit max-w-full items-center gap-2 rounded-[10px] border bg-white px-2.5 py-1.5 text-left transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18191b]/10 focus-visible:ring-offset-1",
+        locked && "cursor-not-allowed",
         disabled && "cursor-not-allowed opacity-60",
-        !disabled && "cursor-pointer hover:border-[#d8d9db] hover:bg-[#fafafa]",
+        isInteractive && "cursor-pointer hover:border-[#d8d9db] hover:bg-[#fafafa]",
         selected && !disabled
           ? "border-[#c8cad0] bg-[#f7f8f9] shadow-[inset_0_0_0_1px_rgba(24,25,27,0.04)]"
           : "border-[#edeef0]",

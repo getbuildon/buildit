@@ -5,7 +5,7 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
-  Circle,
+  CircleEllipsis,
   Wrench,
 } from "lucide-react"
 import { InProcessStatusIcon } from "@/components/icons/InProcessStatusIcon"
@@ -88,7 +88,20 @@ function TaskStatusIcon({ status }: { status: CargarAvanceTaskStatus }) {
     case "blocked":
       return <AlertCircle className="size-5 shrink-0 text-[#c62828]" aria-hidden />
     default:
-      return <Circle className="size-5 shrink-0 text-[#afb3ba]" aria-hidden />
+      return <CircleEllipsis className="size-5 shrink-0 text-[#777b84]" aria-hidden />
+  }
+}
+
+function LegendStatusIcon({ status }: { status: CargarAvanceTaskStatus }) {
+  switch (status) {
+    case "completed":
+      return <CheckCircle2 className="size-3.5 shrink-0 text-[#26997b]" aria-hidden />
+    case "in_progress":
+      return <InProcessStatusIcon className="size-3.5 text-[#ab6400]" />
+    case "blocked":
+      return <AlertCircle className="size-3.5 shrink-0 text-[#dc3e42]" aria-hidden />
+    default:
+      return <CircleEllipsis className="size-3.5 shrink-0 text-[#777b84]" aria-hidden />
   }
 }
 
@@ -184,7 +197,7 @@ function TaskTargetUnitsSection({
           const isChecked = isSingleUnit
             ? true
             : draft.targetUnitIds.includes(unitId)
-          const isDisabled = isSingleUnit || isCompleted
+          const isLocked = isSingleUnit && !isCompleted
           const currentStatus =
             unitTaskStatuses[getUnitTaskKey(unitId, taskId)] ?? ("pending" as const)
           const unitLabel = unitLabelById[unitId] ?? unitId.slice(0, 8)
@@ -195,7 +208,8 @@ function TaskTargetUnitsSection({
               unitLabel={unitLabel}
               status={currentStatus}
               selected={isChecked}
-              disabled={isDisabled}
+              disabled={isCompleted}
+              locked={isLocked}
               onToggle={() => toggleTargetUnit(unitId, !isChecked)}
             />
           )
@@ -281,13 +295,20 @@ export function CargarAvanceTaskPanel({
           </p>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-[10px] bg-[#f5f6f7] px-4 py-3">
-          {LEGEND_ITEMS.map((item) => (
-            <div key={item.status} className="flex items-center gap-2">
-              <TaskStatusIcon status={item.status} />
-              <span className="text-[12px] text-[#43484e]">{item.label}</span>
-            </div>
-          ))}
+        <div className="mb-4 flex flex-wrap items-center gap-4 rounded-[10px] border border-[#edeef0] bg-[rgba(237,238,240,0.4)] px-[13px] py-[13px]">
+          <span className="text-[12px] font-medium leading-[1.4] text-[#45556c]">
+            Estados:
+          </span>
+          <div className="flex flex-wrap items-center gap-4">
+            {LEGEND_ITEMS.map((item) => (
+              <div key={item.status} className="flex h-4 items-center gap-1.5">
+                <LegendStatusIcon status={item.status} />
+                <span className="text-[12px] leading-[1.4] tracking-[-0.36px] text-[#45556c]">
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <CargarAvanceUnitMismatchCallout
@@ -316,7 +337,7 @@ export function CargarAvanceTaskPanel({
                     type="button"
                     onClick={() => onToggleTask(task.id)}
                     aria-expanded={expanded}
-                    className="flex min-h-[52px] w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-[#fafafa] sm:h-[52px] sm:py-0"
+                    className="flex min-h-[52px] w-full items-center gap-3 px-3.5 py-3 text-left outline-none transition-colors hover:bg-[#fafafa] focus:outline-none focus-visible:outline-none sm:h-[52px] sm:py-0"
                   >
                     <TaskStatusIcon status={draft.taskStatus} />
                     <span className="min-w-0 flex-1 truncate text-[14px] leading-[1.4] text-[#272a2d]">
