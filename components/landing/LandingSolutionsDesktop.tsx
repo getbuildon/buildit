@@ -5,6 +5,7 @@ import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 
+import { LandingReveal } from "@/components/landing/LandingReveal"
 import { SolutionSlideCardDesktop } from "@/components/landing/SolutionSlideCardDesktop"
 import {
   DESKTOP_CARD_HEIGHT_PX,
@@ -239,22 +240,27 @@ export function LandingSolutionsDesktop() {
           className="flex max-w-full flex-col xl:flex-row xl:items-end"
           style={{ gap: DESKTOP_HEADER_GAP_PX }}
         >
-          <h2
-            className="shrink-0 font-recoleta text-4xl leading-[1.05] text-[#fefcfb] xl:text-[48px]"
-            style={{ maxWidth: DESKTOP_HEADING_WIDTH_PX }}
-          >
-            Todo el avance de obra. En un{" "}
-            <span className="text-primary">solo lugar</span>.
-          </h2>
-          <p
-            className="pt-5 text-lg leading-[1.2] tracking-[0.36px] text-[#afb3ba] xl:pt-0"
-            style={{ maxWidth: DESKTOP_HEADING_WIDTH_PX }}
-          >
-            Con BuildOn conectás cada etapa del proyecto, desde la carga en campo
-            hasta la visualización para clientes.
-          </p>
+          <LandingReveal direction="up">
+            <h2
+              className="shrink-0 font-recoleta text-4xl leading-[1.05] text-[#fefcfb] xl:text-[48px]"
+              style={{ maxWidth: DESKTOP_HEADING_WIDTH_PX }}
+            >
+              Todo el avance de obra. En un{" "}
+              <span className="text-primary">solo lugar</span>.
+            </h2>
+          </LandingReveal>
+          <LandingReveal direction="up" delay={0.12}>
+            <p
+              className="pt-5 text-lg leading-[1.2] tracking-[0.36px] text-[#afb3ba] xl:pt-0"
+              style={{ maxWidth: DESKTOP_HEADING_WIDTH_PX }}
+            >
+              Con BuildOn conectás cada etapa del proyecto, desde la carga en campo
+              hasta la visualización para clientes.
+            </p>
+          </LandingReveal>
         </div>
 
+        <LandingReveal direction="up" delay={0.22}>
         <div
           ref={trackRef}
           className="flex w-max flex-nowrap items-stretch xl:-mr-11"
@@ -292,6 +298,7 @@ export function LandingSolutionsDesktop() {
             )
           })}
         </div>
+        </LandingReveal>
       </div>
         </div>
       </div>

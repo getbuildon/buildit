@@ -74,7 +74,7 @@ export function LandingProblemSection() {
             defaults: { ease: LANDING_REVEAL_DEFAULTS.ease },
             scrollTrigger: {
               trigger: root,
-              start: "top 80%",
+              start: "top 50%",
               end: `+=${PROBLEM_SCROLL_END_PX}`,
               scrub: 0.65,
               invalidateOnRefresh: true,
