@@ -21,6 +21,7 @@ import {
   DESKTOP_TAB_WIDTH_PX,
   railOpacityForWidth,
   scrollProgressForIndex,
+  setSolutionsPinActive,
   slideIndexFromProgress,
 } from "@/lib/landing/solutionDesktopSlider"
 import { SOLUTION_SLIDES, type SolutionSlide } from "@/lib/landing/solutionSlides"
@@ -78,7 +79,8 @@ function SolutionCollapsedTab({
 
 export function LandingSolutionsDesktop() {
   const [activeIndex, setActiveIndex] = useState(0)
-  const pinRef = useRef<HTMLDivElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const stickyRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const didAnimate = useRef(false)
   const scrollTriggerRef = useRef<ScrollTrigger | null>(null)
@@ -97,22 +99,33 @@ export function LandingSolutionsDesktop() {
 
   useGSAP(
     () => {
-      const pin = pinRef.current
-      if (!pin) return
+      const wrap = wrapRef.current
+      const sticky = stickyRef.current
+      if (!wrap || !sticky) return
 
       const media = gsap.matchMedia()
 
       media.add(
         "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
         () => {
+          const extraScroll =
+            SOLUTION_SLIDES.length * DESKTOP_SLIDE_SCROLL_PX
+
+          const applyHeight = () => {
+            wrap.style.height = `${sticky.offsetHeight + extraScroll}px`
+          }
+
+          applyHeight()
+
           const trigger = ScrollTrigger.create({
-            trigger: pin,
-            pin: true,
+            trigger: wrap,
             start: "top top",
-            end: `+=${SOLUTION_SLIDES.length * DESKTOP_SLIDE_SCROLL_PX}`,
-            anticipatePin: 1,
-            pinSpacing: true,
+            end: `+=${extraScroll}`,
             invalidateOnRefresh: true,
+            onRefresh: applyHeight,
+            onToggle: (self) => {
+              setSolutionsPinActive(self.isActive)
+            },
             onUpdate: (self) => {
               const nextIndex = slideIndexFromProgress(
                 self.progress,
@@ -131,6 +144,8 @@ export function LandingSolutionsDesktop() {
             if (scrollTriggerRef.current === trigger) {
               scrollTriggerRef.current = null
             }
+            wrap.style.height = ""
+            setSolutionsPinActive(false)
             trigger.kill()
           }
         },
@@ -138,7 +153,7 @@ export function LandingSolutionsDesktop() {
 
       return () => media.revert()
     },
-    { scope: pinRef },
+    { scope: wrapRef },
   )
 
   useGSAP(
@@ -190,14 +205,19 @@ export function LandingSolutionsDesktop() {
   )
 
   return (
-    <div ref={pinRef} data-solutions-pin className="relative bg-[#272a2d]">
-    <div
-      className="relative overflow-x-clip"
-      style={{
-        paddingTop: DESKTOP_SECTION_TOP_PX,
-        paddingBottom: DESKTOP_SECTION_BOTTOM_PX,
-      }}
-    >
+    <div ref={wrapRef} className="relative bg-[#272a2d]">
+      <div
+        ref={stickyRef}
+        data-solutions-pin
+        className="sticky top-0 bg-[#272a2d]"
+      >
+        <div
+          className="relative overflow-x-clip"
+          style={{
+            paddingTop: DESKTOP_SECTION_TOP_PX,
+            paddingBottom: DESKTOP_SECTION_BOTTOM_PX,
+          }}
+        >
       <div className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 xl:px-20">
         <div
           className="flex max-w-full flex-col xl:flex-row xl:items-end"
@@ -257,7 +277,8 @@ export function LandingSolutionsDesktop() {
           })}
         </div>
       </div>
-    </div>
+        </div>
+      </div>
     </div>
   )
 }

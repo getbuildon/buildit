@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react"
 
 import { LandingHeaderDesktop } from "@/components/landing/LandingHeaderDesktop"
 import { LandingHeaderMobile } from "@/components/landing/LandingHeaderMobile"
+import {
+  SOLUTIONS_PIN_EVENT,
+  isSolutionsPinActive,
+} from "@/lib/landing/solutionDesktopSlider"
 import { cn } from "@/lib/utils"
 
 const SCROLL_DIRECTION_DELTA = 8
@@ -35,7 +39,9 @@ export function LandingHeader() {
 
       setIsScrolled(currentScrollY > hideAfter)
 
-      if (currentScrollY <= hideAfter) {
+      if (isSolutionsPinActive()) {
+        setIsHeaderVisible(false)
+      } else if (currentScrollY <= hideAfter) {
         setIsHeaderVisible(true)
       } else if (scrollDelta > SCROLL_DIRECTION_DELTA) {
         setIsHeaderVisible(false)
@@ -46,13 +52,24 @@ export function LandingHeader() {
       lastScrollY.current = currentScrollY
     }
 
+    const onPinToggle = () => {
+      if (isSolutionsPinActive()) {
+        setIsHeaderVisible(false)
+        return
+      }
+
+      onScroll()
+    }
+
     onScroll()
     window.addEventListener("resize", measure)
     window.addEventListener("scroll", onScroll, { passive: true })
+    window.addEventListener(SOLUTIONS_PIN_EVENT, onPinToggle)
 
     return () => {
       window.removeEventListener("resize", measure)
       window.removeEventListener("scroll", onScroll)
+      window.removeEventListener(SOLUTIONS_PIN_EVENT, onPinToggle)
     }
   }, [])
 

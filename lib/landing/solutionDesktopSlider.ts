@@ -1,6 +1,8 @@
-export const DESKTOP_SLIDE_DURATION_S = 0.72
-export const DESKTOP_SLIDE_EASE = "power3.inOut"
+export const DESKTOP_SLIDE_DURATION_S = 0.48
+export const DESKTOP_SLIDE_EASE = "power2.out"
 export const DESKTOP_SLIDE_SCROLL_PX = 420
+export const SOLUTIONS_PIN_BODY_CLASS = "is-solutions-pinned"
+export const SOLUTIONS_PIN_EVENT = "buildon:solutions-pin"
 
 /** Figma node 2211:3203 */
 export const DESKTOP_SECTION_TOP_PX = 112
@@ -54,4 +56,13 @@ export function scrollProgressForIndex(index: number, count: number) {
   if (count <= 0) return 0
 
   return (index + 0.5) / count
+}
+
+export function setSolutionsPinActive(active: boolean) {
+  document.body.classList.toggle(SOLUTIONS_PIN_BODY_CLASS, active)
+  window.dispatchEvent(new Event(SOLUTIONS_PIN_EVENT))
+}
+
+export function isSolutionsPinActive() {
+  return document.body.classList.contains(SOLUTIONS_PIN_BODY_CLASS)
 }
