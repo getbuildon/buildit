@@ -1,6 +1,6 @@
 export const DESKTOP_SLIDE_DURATION_S = 0.72
 export const DESKTOP_SLIDE_EASE = "power3.inOut"
-export const DESKTOP_SLIDE_SCROLL_PX = 920
+export const DESKTOP_SLIDE_SCROLL_PX = 420
 
 /** Figma node 2211:3203 */
 export const DESKTOP_SECTION_TOP_PX = 112
