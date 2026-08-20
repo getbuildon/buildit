@@ -57,6 +57,13 @@ export const metadata: Metadata = {
   title: `${BRAND_NAME} — Seguimiento de obra`,
   description:
     "Plataforma multitenant de seguimiento de obra para desarrolladoras inmobiliarias.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 }
 
 export default function RootLayout({

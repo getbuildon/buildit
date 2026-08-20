@@ -27,6 +27,10 @@ import {
   getPhoneDialOption,
   sanitizePhoneInput,
 } from "@/lib/landing/phoneInput"
+import {
+  LandingLeadSuccessContent,
+  SUCCESS_DIALOG_CLASSNAME,
+} from "@/components/landing/LandingLeadSuccessModal"
 import { submitLandingLead } from "@/lib/landing/submitLandingLead"
 import { useIsDesktopViewport } from "@/lib/landing/useIsDesktopViewport"
 import { cn } from "@/lib/utils"
@@ -79,6 +83,7 @@ export function ContactTeamModal({ open, onOpenChange }: ContactTeamModalProps) 
   const isDesktop = useIsDesktopViewport()
   const [form, setForm] = useState<ContactFormState>(INITIAL_FORM)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   const phoneDialOption = getPhoneDialOption(form.phoneDialCode)
 
@@ -102,6 +107,7 @@ export function ContactTeamModal({ open, onOpenChange }: ContactTeamModalProps) 
     if (!nextOpen) {
       setForm(INITIAL_FORM)
       setIsSubmitting(false)
+      setShowSuccess(false)
     }
     onOpenChange(nextOpen)
   }
@@ -144,23 +150,34 @@ export function ContactTeamModal({ open, onOpenChange }: ContactTeamModalProps) 
       return
     }
 
-    toast.success("Solicitud enviada. Te contactaremos pronto.")
-    handleOpenChange(false)
+    setForm(INITIAL_FORM)
+    setShowSuccess(true)
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         showCloseButton={false}
-        presentation={isDesktop ? "default" : "sheet"}
+        presentation={showSuccess || isDesktop ? "default" : "sheet"}
         overlayClassName="bg-[#18191b]/60"
-        className={cn(
-          "overflow-hidden border-0 bg-[#fefcfb] p-0 shadow-none",
-          isDesktop
-            ? "flex max-h-[90vh] min-h-0 w-[calc(100%-48px)] max-w-[960px] flex-col overflow-hidden rounded-[4px] shadow-[0px_25px_50px_-12px_rgba(24,25,27,0.3)]"
-            : "flex-col",
-        )}
+        className={
+          showSuccess
+            ? SUCCESS_DIALOG_CLASSNAME
+            : cn(
+                "overflow-hidden border-0 bg-[#fefcfb] p-0 shadow-none",
+                isDesktop
+                  ? "flex max-h-[90vh] min-h-0 w-[calc(100%-48px)] max-w-[960px] flex-col overflow-hidden rounded-[4px] shadow-[0px_25px_50px_-12px_rgba(24,25,27,0.3)]"
+                  : "flex-col",
+              )
+        }
       >
+        {showSuccess ? (
+          <LandingLeadSuccessContent
+            onClose={() => handleOpenChange(false)}
+            description="Recibimos tu solicitud correctamente. Nuestro equipo se pondrá en contacto con vos a la brevedad para coordinar un día y horario."
+          />
+        ) : (
+          <>
         <DialogTitle className="sr-only">
           Agendar reunión con el equipo
         </DialogTitle>
@@ -315,6 +332,8 @@ export function ContactTeamModal({ open, onOpenChange }: ContactTeamModalProps) 
               </div>
             </form>
           </div>
+        )}
+          </>
         )}
       </DialogContent>
     </Dialog>

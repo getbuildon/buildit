@@ -47,6 +47,10 @@ import {
 } from "@/lib/landing/phoneInput"
 import type { BillingPeriod, PricingPlan } from "@/lib/landing/pricingPlans"
 import { getPlanDisplayPrice, getPlanPricePeriodLabel } from "@/lib/landing/pricingPlans"
+import {
+  LandingLeadSuccessContent,
+  SUCCESS_DIALOG_CLASSNAME,
+} from "@/components/landing/LandingLeadSuccessModal"
 import { submitLandingLead } from "@/lib/landing/submitLandingLead"
 import { useIsDesktopViewport } from "@/lib/landing/useIsDesktopViewport"
 import { cn } from "@/lib/utils"
@@ -190,6 +194,7 @@ export function PricingContractModal({
   const isDesktop = useIsDesktopViewport()
   const [form, setForm] = useState<ContractFormState>(INITIAL_FORM)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   if (!plan) return null
 
@@ -226,6 +231,7 @@ export function PricingContractModal({
     if (!nextOpen) {
       setForm(INITIAL_FORM)
       setIsSubmitting(false)
+      setShowSuccess(false)
     }
     onOpenChange(nextOpen)
   }
@@ -274,23 +280,31 @@ export function PricingContractModal({
       return
     }
 
-    toast.success("Solicitud enviada. Te contactaremos pronto.")
-    handleOpenChange(false)
+    setForm(INITIAL_FORM)
+    setShowSuccess(true)
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         showCloseButton={false}
-        presentation={isDesktop ? "default" : "sheet"}
+        presentation={showSuccess || isDesktop ? "default" : "sheet"}
         overlayClassName="bg-[#18191b]/60"
-        className={cn(
-          "overflow-hidden border-0 p-0 shadow-none",
-          isDesktop
-            ? "flex max-h-[90vh] min-h-0 w-[calc(100%-48px)] max-w-[960px] flex-row items-stretch overflow-hidden rounded-[4px] shadow-[0px_25px_50px_-12px_rgba(24,25,27,0.3)]"
-            : "flex-col bg-[#fefcfb]",
-        )}
+        className={
+          showSuccess
+            ? SUCCESS_DIALOG_CLASSNAME
+            : cn(
+                "overflow-hidden border-0 p-0 shadow-none",
+                isDesktop
+                  ? "flex max-h-[90vh] min-h-0 w-[calc(100%-48px)] max-w-[960px] flex-row items-stretch overflow-hidden rounded-[4px] shadow-[0px_25px_50px_-12px_rgba(24,25,27,0.3)]"
+                  : "flex-col bg-[#fefcfb]",
+              )
+        }
       >
+        {showSuccess ? (
+          <LandingLeadSuccessContent onClose={() => handleOpenChange(false)} />
+        ) : (
+          <>
         <DialogTitle className="sr-only">
           Solicitar contratación de {plan.name}
         </DialogTitle>
@@ -474,6 +488,8 @@ export function PricingContractModal({
               </div>
             </form>
           </div>
+        )}
+          </>
         )}
       </DialogContent>
     </Dialog>

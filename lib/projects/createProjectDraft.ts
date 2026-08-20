@@ -173,12 +173,12 @@ export function createDefaultFloor(floorIndex: number): StructureFloorDraft {
   }
 }
 
-function makeRubro(name: string): RubroItemDraft {
+function makeRubro(name: string, weightPercent = ""): RubroItemDraft {
   return {
     id: newId("rubro"),
     name,
     trackingType: "Porcentaje",
-    weightPercent: "",
+    weightPercent,
     tasks: [],
   }
 }
@@ -201,9 +201,9 @@ export function createTemplateRubroGroups(): RubroGroupDraft[] {
       id: newId("group"),
       name: "Obra Gruesa",
       rubros: [
-        makeRubro("Estructura de Fundación"),
-        makeRubro("Estructura Vertical"),
-        makeRubro("Estructura Horizontal"),
+        makeRubro("Estructura de Fundación", "10"),
+        makeRubro("Estructura Vertical", "10"),
+        makeRubro("Estructura Horizontal", "10"),
         makeRubro("Cubiertas"),
         makeRubro("Cerramientos"),
         makeRubro("Contrapisos"),
