@@ -32,7 +32,7 @@ export function getPublicEmailSendError(
   }
 
   if (code === "missing_recipients") {
-    return "No hay destinatarios configurados (BACKOFFICE_ALLOWED_EMAILS)."
+    return "No hay destinatarios configurados."
   }
 
   const resendMessage = parseResendError(error)
@@ -63,7 +63,7 @@ export async function sendTransactionalEmail(
     return {
       ok: false,
       code: "missing_recipients",
-      error: "No hay destinatarios configurados (BACKOFFICE_ALLOWED_EMAILS).",
+      error: "No hay destinatarios configurados.",
     }
   }
 

@@ -528,7 +528,7 @@ export async function submitPlanUpgradeRequest(
   if (recipients.length === 0) {
     return {
       ok: false,
-      error: "No hay destinatarios configurados (BACKOFFICE_ALLOWED_EMAILS).",
+      error: "No hay destinatarios configurados (LANDING_LEAD_NOTIFICATION_EMAILS).",
     }
   }
 

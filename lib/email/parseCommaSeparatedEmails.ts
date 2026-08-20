@@ -8,5 +8,5 @@ export function parseCommaSeparatedEmails(raw: string | undefined): string[] {
 }
 
 export function getLandingLeadNotificationRecipients(): string[] {
-  return parseCommaSeparatedEmails(process.env.BACKOFFICE_ALLOWED_EMAILS)
+  return parseCommaSeparatedEmails(process.env.LANDING_LEAD_NOTIFICATION_EMAILS)
 }

@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: "No hay destinatarios configurados (BACKOFFICE_ALLOWED_EMAILS).",
+        error: "No hay destinatarios configurados (LANDING_LEAD_NOTIFICATION_EMAILS).",
       },
       { status: 503 },
     )
