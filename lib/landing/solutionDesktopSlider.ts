@@ -16,6 +16,22 @@ export const DESKTOP_CARD_HEIGHT_PX = 600
 export const DESKTOP_TAB_WIDTH_PX = 72
 export const DESKTOP_SLIDER_GAP_PX = 0
 
+export function desktopAccordionWidthPx(slideCount: number) {
+  return (
+    DESKTOP_CARD_WIDTH_PX +
+    Math.max(0, slideCount - 1) * DESKTOP_TAB_WIDTH_PX
+  )
+}
+
+export function desktopAccordionScale(
+  availableWidth: number,
+  slideCount: number,
+) {
+  const width = desktopAccordionWidthPx(slideCount)
+  if (width <= 0 || availableWidth <= 0) return 1
+  return Math.min(1, availableWidth / width)
+}
+
 export type SliderPinEdge = "left" | "right"
 
 /**

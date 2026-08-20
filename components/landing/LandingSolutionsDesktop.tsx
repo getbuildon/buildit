@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useLayoutEffect, useRef, useState } from "react"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
@@ -21,6 +21,8 @@ import {
   DESKTOP_SLIDE_SCROLL_PX,
   DESKTOP_SLIDE_STICKY_OFFSET_PX,
   DESKTOP_TAB_WIDTH_PX,
+  desktopAccordionScale,
+  desktopAccordionWidthPx,
   railOpacityForWidth,
   scrollProgressForIndex,
   setSolutionsPinActive,
@@ -79,13 +81,37 @@ function SolutionCollapsedTab({
   )
 }
 
+const ACCORDION_WIDTH_PX = desktopAccordionWidthPx(SOLUTION_SLIDES.length)
+
 export function LandingSolutionsDesktop() {
   const [activeIndex, setActiveIndex] = useState(0)
+  const [accordionScale, setAccordionScale] = useState(1)
   const wrapRef = useRef<HTMLDivElement>(null)
   const stickyRef = useRef<HTMLDivElement>(null)
+  const measureRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const didAnimate = useRef(false)
   const scrollTriggerRef = useRef<ScrollTrigger | null>(null)
+
+  useLayoutEffect(() => {
+    const measure = measureRef.current
+    if (!measure) return
+
+    const update = () => {
+      setAccordionScale(
+        desktopAccordionScale(measure.clientWidth, SOLUTION_SLIDES.length),
+      )
+    }
+
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(measure)
+    return () => observer.disconnect()
+  }, [])
+
+  useLayoutEffect(() => {
+    ScrollTrigger.refresh()
+  }, [accordionScale])
 
   const goToSlide = (index: number) => {
     const trigger = scrollTriggerRef.current
@@ -235,10 +261,13 @@ export function LandingSolutionsDesktop() {
             aria-hidden
             className="pointer-events-none absolute inset-y-0 left-1/2 z-0 w-px -translate-x-1/2 bg-[#363a3f]"
           />
-      <div className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 xl:px-20">
+      <div
+        ref={measureRef}
+        className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 xl:px-20"
+      >
         <div
-          className="flex max-w-full flex-col xl:flex-row xl:items-end"
-          style={{ gap: DESKTOP_HEADER_GAP_PX }}
+          className="flex max-w-full flex-col gap-5 xl:flex-row xl:items-end"
+          style={{ columnGap: DESKTOP_HEADER_GAP_PX }}
         >
           <LandingReveal direction="up">
             <h2
@@ -251,7 +280,7 @@ export function LandingSolutionsDesktop() {
           </LandingReveal>
           <LandingReveal direction="up" delay={0.12}>
             <p
-              className="pt-5 text-lg leading-[1.2] tracking-[0.36px] text-[#afb3ba] xl:pt-0"
+              className="text-lg leading-[1.2] tracking-[0.36px] text-[#afb3ba]"
               style={{ maxWidth: DESKTOP_HEADING_WIDTH_PX }}
             >
               Con BuildOn conectás cada etapa del proyecto, desde la carga en campo
@@ -262,12 +291,24 @@ export function LandingSolutionsDesktop() {
 
         <LandingReveal direction="up" delay={0.22}>
         <div
-          ref={trackRef}
-          className="flex w-max flex-nowrap items-stretch xl:-mr-11"
+          className={cn(
+            accordionScale >= 1 && "xl:-mr-11",
+          )}
           style={{
             marginTop: DESKTOP_HEADER_TO_CARDS_PX,
+            width: ACCORDION_WIDTH_PX * accordionScale,
+            height: DESKTOP_CARD_HEIGHT_PX * accordionScale,
+          }}
+        >
+        <div
+          ref={trackRef}
+          className="flex w-max flex-nowrap items-stretch"
+          style={{
+            width: ACCORDION_WIDTH_PX,
             height: DESKTOP_CARD_HEIGHT_PX,
             gap: DESKTOP_SLIDER_GAP_PX,
+            transform: `scale(${accordionScale})`,
+            transformOrigin: "top left",
           }}
         >
           {SOLUTION_SLIDES.map((slide, index) => {
@@ -297,6 +338,7 @@ export function LandingSolutionsDesktop() {
               </div>
             )
           })}
+        </div>
         </div>
         </LandingReveal>
       </div>
