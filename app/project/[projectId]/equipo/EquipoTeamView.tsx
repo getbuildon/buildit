@@ -1,5 +1,6 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState, type ReactNode } from "react"
 import {
   ChevronDown,
@@ -23,6 +24,8 @@ import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { useToast } from "@/components/ui/toast"
+import { invalidateProjectSection } from "@/lib/project/invalidateProjectQueries"
+import { projectQueryKeys } from "@/lib/project/projectQueryKeys"
 import {
   addTeamMember,
   getProjectTeamSeatSummary,
@@ -495,6 +498,7 @@ function PermissionColumnHeader({ column }: { column: ProjectPermissionDisplayCo
 
 export function EquipoTeamView({ projectId, initialData }: Props) {
   const toast = useToast()
+  const queryClient = useQueryClient()
   const [members, setMembers] = useState(initialData.members)
   const [pendingInvitations, setPendingInvitations] = useState(
     initialData.pendingInvitations,
@@ -521,9 +525,16 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
   const canAddUsers = useProjectPermission("addUsers")
   const canEditPermissions = useProjectPermission("editPermissions")
 
+  useEffect(() => {
+    setMembers(initialData.members)
+    setPendingInvitations(initialData.pendingInvitations)
+    setSeatSummary(initialData.seatSummary)
+  }, [initialData])
+
   const refreshSeatSummary = async () => {
     const summary = await getProjectTeamSeatSummary(projectId)
     setSeatSummary(summary)
+    void invalidateProjectSection(queryClient, projectQueryKeys.equipo(projectId))
   }
 
   const assignedEmails = new Set([

@@ -1,8 +1,7 @@
 "use client"
 
 import { useQueryClient } from "@tanstack/react-query"
-import { useLayoutEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useLayoutEffect, useMemo, useState, useEffect } from "react"
 import {
   BadgeCheck,
   Clock,
@@ -27,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/toast"
-import { invalidateHomeProgress } from "@/lib/home/invalidateHomeQueries"
+import { invalidateProjectProgress } from "@/lib/project/invalidateProjectQueries"
 import {
   CERTIFICADA_BADGE,
   CERTIFICACIONES_CERTIFIER,
@@ -381,7 +380,6 @@ function TaskCard({
 }
 
 export function CertificacionesView({ projectId, initialData }: Props) {
-  const router = useRouter()
   const toast = useToast()
   const queryClient = useQueryClient()
 
@@ -402,6 +400,10 @@ export function CertificacionesView({ projectId, initialData }: Props) {
   const [listCertifyOpen, setListCertifyOpen] = useState(false)
   const [listCertifyEntryIds, setListCertifyEntryIds] = useState<string[]>([])
   const [listCertifyError, setListCertifyError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setTasks(initialData.tasks)
+  }, [initialData])
 
   const pendingTasks = useMemo(
     () => tasks.filter((task) => task.status === "pending"),
@@ -511,7 +513,7 @@ export function CertificacionesView({ projectId, initialData }: Props) {
       return { ok: false, error: result.error }
     }
 
-    void invalidateHomeProgress(queryClient)
+    void invalidateProjectProgress(queryClient, projectId)
 
     setTasks((prev) =>
       prev.map((task) => {
@@ -542,7 +544,6 @@ export function CertificacionesView({ projectId, initialData }: Props) {
         ? "Tarea certificada exitosamente"
         : `${result.certifiedCount} tareas certificadas exitosamente`,
     )
-    router.refresh()
     return { ok: true }
   }
 
@@ -832,7 +833,9 @@ export function CertificacionesView({ projectId, initialData }: Props) {
             throw new Error(result.error)
           }
         }}
-        onSaved={() => router.refresh()}
+        onSaved={() => {
+          void invalidateProjectProgress(queryClient, projectId)
+        }}
       />
 
       {listCertifyEntryIds.length > 1 ? (

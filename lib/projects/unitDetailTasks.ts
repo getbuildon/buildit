@@ -108,6 +108,27 @@ export function buildTaskCodeMap(
   return taskCodeById
 }
 
+export function buildTaskLabelMap(
+  groups: Array<{
+    rubros: Array<{
+      name: string
+      rubro_tasks: Array<{ id: string; name: string }> | null
+    }> | null
+  }>,
+): Map<string, { taskName: string; rubroName: string }> {
+  const labels = new Map<string, { taskName: string; rubroName: string }>()
+
+  for (const group of groups) {
+    for (const rubro of group.rubros ?? []) {
+      for (const task of rubro.rubro_tasks ?? []) {
+        labels.set(task.id, { taskName: task.name, rubroName: rubro.name })
+      }
+    }
+  }
+
+  return labels
+}
+
 export function formatUnitTaskMetaDate(value: string): string {
   return formatArgentinaUnitTaskMeta(value)
 }

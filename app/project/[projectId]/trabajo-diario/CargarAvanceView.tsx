@@ -35,7 +35,7 @@ import {
 import { ConfirmarAvanceDialog } from "./ConfirmarAvanceDialog"
 import { CargarAvanceTaskPanel } from "./CargarAvanceTaskPanel"
 import { saveCargarAvance, registerProgressAttachments } from "./actions"
-import { invalidateHomeProgress } from "@/lib/home/invalidateHomeQueries"
+import { invalidateProjectProgress } from "@/lib/project/invalidateProjectQueries"
 import type { TrabajoDiarioFloor, TrabajoDiarioRubroGroup } from "./actions"
 
 const INSTRUCTIONS = [
@@ -415,7 +415,7 @@ export function CargarAvanceView({
       return
     }
 
-    void invalidateHomeProgress(queryClient)
+    void invalidateProjectProgress(queryClient, projectId)
 
     const entriesByTaskId = new Map<string, string[]>()
     for (const entry of result.entries) {

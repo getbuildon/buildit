@@ -21,8 +21,10 @@ import {
   type CargarAvanceTaskStatus,
 } from "@/lib/projects/cargarAvance"
 import { getUnitLabelInFloor } from "@/lib/projects/floorLabels"
-import { buildTaskCodeMap } from "@/lib/projects/unitDetailTasks"
+import { buildTaskCodeMap, buildTaskLabelMap } from "@/lib/projects/unitDetailTasks"
 import { PROGRESS_PHOTOS_BUCKET } from "@/lib/progress/progressPhotoConfig"
+import { loadUnitTaskAssignmentsByUnit } from "@/lib/projects/loadUnitTaskAssignments"
+import { loadLatestProgressEntries } from "@/lib/projects/loadLatestProgressEntries"
 import { getUnitTaskAssignments } from "../configuracion/actions"
 
 export type SaveCargarAvanceInput = {
@@ -244,7 +246,7 @@ export async function getTrabajoDiarioData(
 
   const supabase = await createClient()
 
-  const [floorsResult, unitsResult, assignments, rubroGroupsResult, entriesResult] =
+  const [floorsResult, unitsResult, assignmentsByUnit, rubroGroupsResult, entries] =
     await Promise.all([
     supabase
       .from("project_floors")
@@ -256,7 +258,7 @@ export async function getTrabajoDiarioData(
       .select("id, floor_id, code, name, sort_order")
       .eq("project_id", id)
       .order("sort_order", { ascending: true }),
-    getUnitTaskAssignments(id),
+    loadUnitTaskAssignmentsByUnit(supabase, id),
     supabase
       .from("rubro_groups")
       .select(
@@ -270,32 +272,17 @@ export async function getTrabajoDiarioData(
       )
       .eq("project_id", id)
       .order("sort_order", { ascending: true }),
-    supabase
-      .from("progress_entries")
-      .select(`
-        id,
-        unit_id,
-        floor_id,
-        task_id,
-        status,
-        progress_state,
-        created_at,
-        submitted_at,
-        rubros:category_id (name),
-        rubro_tasks:task_id (name)
-      `)
-      .eq("project_id", id)
-      .order("created_at", { ascending: false }),
+    loadLatestProgressEntries(supabase, id),
   ])
 
-  if (floorsResult.error || unitsResult.error || rubroGroupsResult.error || entriesResult.error) {
+  if (floorsResult.error || unitsResult.error || rubroGroupsResult.error) {
     return null
   }
 
   const floors = floorsResult.data ?? []
   const units = unitsResult.data ?? []
+  const assignments = { byUnit: assignmentsByUnit }
   const rubroGroupsRaw = rubroGroupsResult.data ?? []
-  const entries = entriesResult.data ?? []
 
   const floorById = new Map(floors.map((floor) => [floor.id, floor.name]))
   const unitById = new Map(
@@ -352,51 +339,39 @@ export async function getTrabajoDiarioData(
   }))
 
   const tasks: TrabajoDiarioTask[] = []
-  const latestEntryKeys = new Set<string>()
-  const latestStatusKeys = new Set<string>()
   const loadedUnitTaskKeys = new Set<string>()
   const unitTaskStatuses: Record<string, CargarAvanceTaskStatus> = {}
   const taskCodeById = buildTaskCodeMap(rubroGroupsRaw)
+  const taskLabelsById = buildTaskLabelMap(rubroGroupsRaw)
 
   for (const entry of entries) {
     if (!entry.unit_id || !entry.task_id) continue
 
     const unitTaskKey = getUnitTaskKey(entry.unit_id, entry.task_id)
+    unitTaskStatuses[unitTaskKey] = mapDbProgressToCargarAvanceStatus(
+      entry.status,
+      entry.progress_state,
+    )
 
-    if (!latestStatusKeys.has(unitTaskKey)) {
-      latestStatusKeys.add(unitTaskKey)
-      unitTaskStatuses[unitTaskKey] = mapDbProgressToCargarAvanceStatus(
-        entry.status,
-        entry.progress_state,
-      )
-
-      if (isUnitTaskCompletedForLoading(entry.status, entry.progress_state)) {
-        loadedUnitTaskKeys.add(unitTaskKey)
-      }
+    if (isUnitTaskCompletedForLoading(entry.status, entry.progress_state)) {
+      loadedUnitTaskKeys.add(unitTaskKey)
     }
 
     if (!isTaskAssignedToUnit(assignments.byUnit, entry.unit_id, entry.task_id)) continue
-
-    if (latestEntryKeys.has(unitTaskKey)) continue
-    latestEntryKeys.add(unitTaskKey)
 
     const unit = unitById.get(entry.unit_id)
     if (!unit) continue
 
     const floorId = entry.floor_id ?? unit.floorId
     const floorName = floorId ? floorById.get(floorId) ?? "—" : "—"
-    const rubro = entry.rubros as { name: string } | { name: string }[] | null
-    const task = entry.rubro_tasks as { name: string } | { name: string }[] | null
-    const rubroName = Array.isArray(rubro) ? rubro[0]?.name : rubro?.name
-    const taskName = Array.isArray(task) ? task[0]?.name : task?.name
-
+    const labels = taskLabelsById.get(entry.task_id)
     const floorUnits = floorId ? floorUnitsById.get(floorId) ?? [] : []
 
     tasks.push({
       id: entry.id,
       taskCode: taskCodeById.get(entry.task_id) ?? "—",
-      name: taskName ?? "Tarea",
-      category: rubroName ?? "Rubro",
+      name: labels?.taskName ?? "Tarea",
+      category: labels?.rubroName ?? "Rubro",
       floorId,
       floorName,
       unitId: entry.unit_id,
@@ -407,6 +382,12 @@ export async function getTrabajoDiarioData(
       status: mapProgressStatus(entry.status, entry.progress_state),
     })
   }
+
+  tasks.sort((a, b) => {
+    const aTime = a.occurredAt ? new Date(a.occurredAt).getTime() : 0
+    const bTime = b.occurredAt ? new Date(b.occurredAt).getTime() : 0
+    return bTime - aTime
+  })
 
   return {
     floors: trabajoFloors,

@@ -1,5 +1,6 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
 import {
   useEffect,
   useLayoutEffect,
@@ -37,6 +38,8 @@ import {
   type PortalNewsFieldErrors,
 } from "@/lib/projects/portalClientesValidation"
 import { cn } from "@/lib/utils"
+import { invalidateProjectSection } from "@/lib/project/invalidateProjectQueries"
+import { projectQueryKeys } from "@/lib/project/projectQueryKeys"
 import { MilestoneStatusToggle } from "./MilestoneStatusToggle"
 import {
   PORTAL_FIELD_ERROR_BORDER_CLASSNAME,
@@ -366,6 +369,7 @@ export function PortalClientesView({
   previewContext,
 }: Props) {
   const toast = useToast()
+  const queryClient = useQueryClient()
   const contentRef = useRef<HTMLDivElement>(null)
   const footerAlign = useContentFooterAlign(contentRef)
 
@@ -694,6 +698,8 @@ export function PortalClientesView({
     setRemovedNewsIds([])
     setRemovedMilestoneIds([])
     setSavedSnapshot(nextSnapshot)
+    void invalidateProjectSection(queryClient, projectQueryKeys.portal(projectId))
+    void invalidateProjectSection(queryClient, projectQueryKeys.miUnidad(projectId))
     toast.success("Cambios guardados correctamente.")
   }
 

@@ -11,10 +11,11 @@ import {
 import { checkProjectPermission, checkProjectSectionAccess } from "@/lib/project/projectAccess"
 import { revalidateProjectPath } from "@/lib/project/revalidateProjectPath"
 import { hasProjectPermission } from "@/lib/project/projectPermissions"
-import { buildTaskCodeMap } from "@/lib/projects/unitDetailTasks"
+import { buildTaskCodeMap, buildTaskLabelMap } from "@/lib/projects/unitDetailTasks"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
 import { getUnitPillLabel } from "@/lib/projects/floorLabels"
-import { getUnitTaskAssignments } from "../configuracion/actions"
+import { loadUnitTaskAssignmentsByUnit } from "@/lib/projects/loadUnitTaskAssignments"
+import { loadLatestProgressEntries } from "@/lib/projects/loadLatestProgressEntries"
 
 export type CertificacionMember = {
   userId: string
@@ -76,7 +77,7 @@ export async function getCertificacionesData(
   const supabase = await createClient()
   const admin = createAdminClient()
 
-  const [floorsResult, unitsResult, assignments, groupsResult, entriesResult] =
+  const [floorsResult, unitsResult, assignmentsByUnit, groupsResult, entries] =
     await Promise.all([
       supabase
         .from("project_floors")
@@ -88,49 +89,34 @@ export async function getCertificacionesData(
         .select("id, floor_id, code, sort_order")
         .eq("project_id", id)
         .order("sort_order", { ascending: true }),
-      getUnitTaskAssignments(id),
+      loadUnitTaskAssignmentsByUnit(supabase, id),
       supabase
         .from("rubro_groups")
         .select(
           `
           id, sort_order,
           rubros (
-            id, sort_order,
-            rubro_tasks (id, sort_order)
+            id, name, sort_order,
+            rubro_tasks (id, name, sort_order)
           )
         `,
         )
         .eq("project_id", id)
         .order("sort_order", { ascending: true }),
-      supabase
-        .from("progress_entries")
-        .select(`
-          id,
-          unit_id,
-          floor_id,
-          task_id,
-          status,
-          progress_state,
-          comment,
-          created_at,
-          submitted_at,
-          created_by,
-          rubros:category_id (name),
-          rubro_tasks:task_id (name)
-        `)
-        .eq("project_id", id)
-        .in("status", ["submitted", "approved"])
-        .order("created_at", { ascending: false }),
+      loadLatestProgressEntries(supabase, id, {
+        statuses: ["submitted", "approved"],
+      }),
     ])
 
-  if (floorsResult.error || unitsResult.error || groupsResult.error || entriesResult.error) {
+  if (floorsResult.error || unitsResult.error || groupsResult.error) {
     return null
   }
 
   const floors = floorsResult.data ?? []
   const units = unitsResult.data ?? []
-  const entries = entriesResult.data ?? []
+  const assignments = { byUnit: assignmentsByUnit }
   const taskCodeById = buildTaskCodeMap(groupsResult.data ?? [])
+  const taskLabelsById = buildTaskLabelMap(groupsResult.data ?? [])
   const canCertify =
     accessContext != null &&
     hasProjectPermission(accessContext.permissions, "certifyTasks")
@@ -162,7 +148,6 @@ export async function getCertificacionesData(
     })
   }
 
-  const latestEntryKeys = new Set<string>()
   const tasks: CertificacionTask[] = []
   const authorIds = new Set<string>()
 
@@ -171,10 +156,6 @@ export async function getCertificacionesData(
     if (!isTaskAssignedToUnit(assignments.byUnit, entry.unit_id, entry.task_id)) {
       continue
     }
-
-    const unitTaskKey = `${entry.unit_id}:${entry.task_id}`
-    if (latestEntryKeys.has(unitTaskKey)) continue
-    latestEntryKeys.add(unitTaskKey)
 
     if (entry.status !== "submitted" && entry.status !== "approved") continue
     if (entry.status === "submitted" && entry.progress_state !== "completed") continue
@@ -185,11 +166,7 @@ export async function getCertificacionesData(
       unitMeta?.floorName ??
       (floorId ? floorById.get(floorId) ?? "—" : "—")
 
-    const rubro = entry.rubros as { name: string } | { name: string }[] | null
-    const task = entry.rubro_tasks as { name: string } | { name: string }[] | null
-    const rubroName = Array.isArray(rubro) ? rubro[0]?.name : rubro?.name
-    const taskName = Array.isArray(task) ? task[0]?.name : task?.name
-
+    const labels = taskLabelsById.get(entry.task_id)
     const occurredAt = entry.submitted_at ?? entry.created_at
     const daysPending = Math.max(0, differenceInDays(new Date(), new Date(occurredAt)))
 
@@ -198,8 +175,8 @@ export async function getCertificacionesData(
     tasks.push({
       entryId: entry.id,
       taskCode: taskCodeById.get(entry.task_id) ?? "—",
-      taskName: taskName ?? "Tarea",
-      rubroName: rubroName ?? "Rubro",
+      taskName: labels?.taskName ?? "Tarea",
+      rubroName: labels?.rubroName ?? "Rubro",
       floorName,
       unitLabel: unitMeta?.unitLabel ?? "—",
       authorId: entry.created_by,

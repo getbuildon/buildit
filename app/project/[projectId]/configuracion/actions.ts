@@ -1,9 +1,12 @@
 "use server"
 
 import { createClient } from "@/utils/supabase/server"
+import { loadProjectPlanSurfaceLimit } from "@/lib/company/projectSubscriptionLimits"
 import { formatTotalSurfaceFromNumber } from "@/lib/projects/totalSurfaceInput"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
 import { checkProjectPermission, checkProjectSectionAccess } from "@/lib/project/projectAccess"
+import { loadUnitTaskAssignmentsByUnit } from "@/lib/projects/loadUnitTaskAssignments"
+import { loadLatestProgressEntries } from "@/lib/projects/loadLatestProgressEntries"
 import { revalidateProjectPath } from "@/lib/project/revalidateProjectPath"
 import {
   calculateFloorProgressPercent,
@@ -157,7 +160,7 @@ export async function getDashboardData(
 
   const supabase = await createClient()
 
-  const [floorsResult, unitsResult, assignments, rubrosResult, tasksResult, entriesResult] =
+  const [floorsResult, unitsResult, assignmentsByUnit, rubrosResult, tasksResult, entries] =
     await Promise.all([
       supabase
         .from("project_floors")
@@ -169,21 +172,17 @@ export async function getDashboardData(
         .select("id, floor_id, code, name, unit_type, room_count, sort_order")
         .eq("project_id", id)
         .order("sort_order", { ascending: true }),
-      getUnitTaskAssignments(id),
+      loadUnitTaskAssignmentsByUnit(supabase, id),
       supabase.from("rubros").select("id, weight_percent").eq("project_id", id),
       supabase.from("rubro_tasks").select("id, rubro_id").eq("project_id", id),
-      supabase
-        .from("progress_entries")
-        .select("unit_id, task_id, progress_state, status, submitted_at, created_at")
-        .eq("project_id", id),
+      loadLatestProgressEntries(supabase, id),
     ])
 
   if (
     floorsResult.error ||
     unitsResult.error ||
     rubrosResult.error ||
-    tasksResult.error ||
-    entriesResult.error
+    tasksResult.error
   ) {
     return null
   }
@@ -195,7 +194,6 @@ export async function getDashboardData(
     rubrosResult.data ?? [],
     tasksResult.data ?? [],
   )
-  const entries = entriesResult.data ?? []
 
   const allowedUnitIdSet =
     accessContext.assignedUnitIds == null
@@ -213,7 +211,7 @@ export async function getDashboardData(
   weekAgo.setDate(weekAgo.getDate() - 7)
 
   const completedTasksThisWeek = countAssignedCompletedTasks(
-    assignments.byUnit,
+    assignmentsByUnit,
     allTaskIds,
     unitIds,
     entries.filter((entry) => {
@@ -224,7 +222,7 @@ export async function getDashboardData(
   )
 
   const blockedTasks = countAssignedBlockedTasks(
-    assignments.byUnit,
+    assignmentsByUnit,
     allTaskIds,
     unitIds,
     entries,
@@ -240,14 +238,14 @@ export async function getDashboardData(
 
     const floorUnits: DashboardUnit[] = floorUnitsData.map((unit) => {
         const assignedTaskIds = getAssignedTaskIdsForUnit(
-          assignments.byUnit,
+          assignmentsByUnit,
           unit.id,
           allTaskIds,
         )
         const progress = calculateUnitProgressValue(
           unit.id,
           allTaskIds,
-          assignments.byUnit,
+          assignmentsByUnit,
           entries,
           rubroProgress,
         )
@@ -267,7 +265,7 @@ export async function getDashboardData(
     const floorProgress = calculateFloorProgressPercent(
       floorUnitsData.map((unit) => unit.id),
       allTaskIds,
-      assignments.byUnit,
+      assignmentsByUnit,
       entries,
       rubroProgress,
     )
@@ -285,7 +283,7 @@ export async function getDashboardData(
   const generalProgress = calculateProjectProgressPercent(
     dashboardFloors.map((floor) => floor.units.map((unit) => unit.id)),
     allTaskIds,
-    assignments.byUnit,
+    assignmentsByUnit,
     entries,
     rubroProgress,
   )
@@ -309,6 +307,17 @@ export type UnitTaskAssignments = {
   byUnit: Record<string, string[]>
 }
 
+export type ConfigPageData = {
+  project: ProjectBasics
+  planSurfaceMaxM2: number | null
+  floors: FloorData[]
+  units: UnitData[]
+  groups: RubroGroupData[]
+  assignments: UnitTaskAssignments
+}
+
+type ProjectSupabase = Awaited<ReturnType<typeof createClient>>
+
 export async function getUnitTaskAssignments(
   projectId: string,
 ): Promise<UnitTaskAssignments> {
@@ -319,20 +328,7 @@ export async function getUnitTaskAssignments(
   if (!user) return { byUnit: {} }
 
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from("unit_task_assignments")
-    .select("unit_id, rubro_task_id")
-    .eq("project_id", id)
-
-  if (error || !data) return { byUnit: {} }
-
-  const byUnit: Record<string, string[]> = {}
-  for (const row of data) {
-    if (!byUnit[row.unit_id]) byUnit[row.unit_id] = []
-    byUnit[row.unit_id].push(row.rubro_task_id)
-  }
-
-  return { byUnit }
+  return { byUnit: await loadUnitTaskAssignmentsByUnit(supabase, id) }
 }
 
 export async function setUnitTaskAssignments(
@@ -387,14 +383,10 @@ function parseOptionalNumber(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-export async function getProjectBasics(projectId: string): Promise<ProjectBasics | null> {
-  const id = projectId.trim()
-  if (!id) return null
-
-  const user = await getAuthenticatedUserOrNull()
-  if (!user) return null
-
-  const supabase = await createClient()
+async function fetchProjectBasics(
+  supabase: ProjectSupabase,
+  id: string,
+): Promise<ProjectBasics | null> {
   const { data, error } = await supabase
     .from("projects")
     .select("id, name, location, start_date, end_date, total_surface_m2, company_id, companies(name)")
@@ -420,6 +412,168 @@ export async function getProjectBasics(projectId: string): Promise<ProjectBasics
     companyId: data.company_id ?? null,
     companyName,
   }
+}
+
+async function fetchProjectFloors(
+  supabase: ProjectSupabase,
+  id: string,
+): Promise<FloorData[]> {
+  const { data: floors, error } = await supabase
+    .from("project_floors")
+    .select("id, name, identifier, level, sort_order")
+    .eq("project_id", id)
+    .order("sort_order", { ascending: true })
+
+  if (error || !floors) return []
+  return floors as FloorData[]
+}
+
+async function fetchProjectUnits(
+  supabase: ProjectSupabase,
+  id: string,
+): Promise<UnitData[]> {
+  const { data: units, error } = await supabase
+    .from("project_units")
+    .select("id, floor_id, code, name, unit_type, room_count, square_meters, plan_url, render_url, sort_order")
+    .eq("project_id", id)
+    .order("sort_order", { ascending: true })
+
+  if (error || !units) return []
+  return units.map((u: {
+    id: string
+    floor_id: string
+    code: string
+    name: string | null
+    unit_type: string | null
+    room_count: number | null
+    square_meters: number | null
+    plan_url: string | null
+    render_url: string | null
+    sort_order: number
+  }) => ({
+    id: u.id,
+    floor_id: u.floor_id,
+    code: u.code,
+    name: u.name,
+    unit_type: u.unit_type,
+    rooms: u.room_count,
+    area_m2: u.square_meters,
+    plan_url: u.plan_url ?? null,
+    render_url: u.render_url ?? null,
+    sort_order: u.sort_order,
+  }))
+}
+
+async function fetchProjectRubroGroups(
+  supabase: ProjectSupabase,
+  id: string,
+): Promise<RubroGroupData[]> {
+  const { data: groups, error } = await supabase
+    .from("rubro_groups")
+    .select(
+      `
+      id, name, sort_order,
+      rubros (
+        id, name, tracking_scope, sort_order, weight_percent,
+        rubro_tasks (id, name, description, sort_order, weight_percent)
+      )
+    `,
+    )
+    .eq("project_id", id)
+    .order("sort_order", { ascending: true })
+
+  if (error || !groups) return []
+
+  return groups.map((g: {
+    id: string
+    name: string
+    sort_order: number
+    rubros: Array<{
+      id: string
+      name: string
+      tracking_scope: string
+      sort_order: number
+      weight_percent: number | null
+      rubro_tasks: Array<{
+        id: string
+        name: string
+        description: string | null
+        sort_order: number
+        weight_percent: number | null
+      }> | null
+    }> | null
+  }) => ({
+    id: g.id,
+    name: g.name,
+    sort_order: g.sort_order,
+    rubros: (g.rubros ?? [])
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .map((r) => ({
+        id: r.id,
+        name: r.name,
+        description: null,
+        tracking_scope: r.tracking_scope,
+        sort_order: r.sort_order,
+        weight_percent: r.weight_percent ?? null,
+        tasks: (r.rubro_tasks ?? [])
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+          .map((t) => ({
+            id: t.id,
+            name: t.name,
+            description: t.description ?? null,
+            sort_order: t.sort_order,
+            default_weight: t.weight_percent ?? null,
+          })),
+      })),
+  }))
+}
+
+export async function getConfigPageData(
+  projectId: string,
+): Promise<ConfigPageData | null> {
+  const id = projectId.trim()
+  if (!id) return null
+
+  const user = await getAuthenticatedUserOrNull()
+  if (!user) return null
+
+  const access = await checkProjectSectionAccess(id, "configuracion")
+  if (!access.ok) return null
+
+  const supabase = await createClient()
+
+  const [project, planLimit, floors, units, groups, byUnit] = await Promise.all([
+    fetchProjectBasics(supabase, id),
+    loadProjectPlanSurfaceLimit(supabase, id)
+      .then((limit) => limit?.surfaceMaxM2 ?? null)
+      .catch(() => null),
+    fetchProjectFloors(supabase, id),
+    fetchProjectUnits(supabase, id),
+    fetchProjectRubroGroups(supabase, id),
+    loadUnitTaskAssignmentsByUnit(supabase, id),
+  ])
+
+  if (!project) return null
+
+  return {
+    project,
+    planSurfaceMaxM2: planLimit,
+    floors,
+    units,
+    groups,
+    assignments: { byUnit },
+  }
+}
+
+export async function getProjectBasics(projectId: string): Promise<ProjectBasics | null> {
+  const id = projectId.trim()
+  if (!id) return null
+
+  const user = await getAuthenticatedUserOrNull()
+  if (!user) return null
+
+  const supabase = await createClient()
+  return fetchProjectBasics(supabase, id)
 }
 
 export async function updateProjectBasics(
@@ -480,14 +634,7 @@ export async function getProjectStructure(projectId: string): Promise<FloorData[
   if (!id) return []
 
   const supabase = await createClient()
-  const { data: floors, error } = await supabase
-    .from("project_floors")
-    .select("id, name, identifier, level, sort_order")
-    .eq("project_id", id)
-    .order("sort_order", { ascending: true })
-
-  if (error || !floors) return []
-  return floors as FloorData[]
+  return fetchProjectFloors(supabase, id)
 }
 
 export async function getProjectUnits(projectId: string): Promise<UnitData[]> {
@@ -495,25 +642,7 @@ export async function getProjectUnits(projectId: string): Promise<UnitData[]> {
   if (!id) return []
 
   const supabase = await createClient()
-  const { data: units, error } = await supabase
-    .from("project_units")
-    .select("id, floor_id, code, name, unit_type, room_count, square_meters, plan_url, render_url, sort_order")
-    .eq("project_id", id)
-    .order("sort_order", { ascending: true })
-
-  if (error || !units) return []
-  return units.map((u: any) => ({
-    id: u.id,
-    floor_id: u.floor_id,
-    code: u.code,
-    name: u.name,
-    unit_type: u.unit_type,
-    rooms: u.room_count,
-    area_m2: u.square_meters,
-    plan_url: u.plan_url ?? null,
-    render_url: u.render_url ?? null,
-    sort_order: u.sort_order,
-  }))
+  return fetchProjectUnits(supabase, id)
 }
 
 export async function getProjectRubroGroups(projectId: string): Promise<RubroGroupData[]> {
@@ -521,46 +650,7 @@ export async function getProjectRubroGroups(projectId: string): Promise<RubroGro
   if (!id) return []
 
   const supabase = await createClient()
-  const { data: groups, error } = await supabase
-    .from("rubro_groups")
-    .select(
-      `
-      id, name, sort_order,
-      rubros (
-        id, name, tracking_scope, sort_order, weight_percent,
-        rubro_tasks (id, name, description, sort_order, weight_percent)
-      )
-    `
-    )
-    .eq("project_id", id)
-    .order("sort_order", { ascending: true })
-
-  if (error || !groups) return []
-
-  return groups.map((g: any) => ({
-    id: g.id,
-    name: g.name,
-    sort_order: g.sort_order,
-    rubros: ((g.rubros as any[]) || [])
-      .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-      .map((r: any) => ({
-        id: r.id,
-        name: r.name,
-        description: null,
-        tracking_scope: r.tracking_scope,
-        sort_order: r.sort_order,
-        weight_percent: r.weight_percent ?? null,
-        tasks: ((r.rubro_tasks as any[]) || [])
-          .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-          .map((t: any) => ({
-            id: t.id,
-            name: t.name,
-            description: t.description ?? null,
-            sort_order: t.sort_order,
-            default_weight: t.weight_percent ?? null,
-          })),
-      })),
-  }))
+  return fetchProjectRubroGroups(supabase, id)
 }
 
 export async function saveProjectStructure(

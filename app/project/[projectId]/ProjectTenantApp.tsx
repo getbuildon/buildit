@@ -1,37 +1,35 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { PerfilView } from "@/components/profile/PerfilView"
 import { useProjectAccess } from "@/components/project-shell/ProjectAccessProvider"
+import { useProjectMeta } from "@/components/project-shell/ProjectMetaProvider"
 import { Spinner } from "@/components/ui/spinner"
-import { getProfileData } from "@/app/project/[projectId]/perfil/actions"
-import { toSidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
 import {
   parseTenantSection,
   tenantRouteRedirectHref,
   type TenantRoute,
 } from "@/lib/project/tenantSection"
-import { getProjectPlanSurfaceLimit } from "@/lib/projects/getProjectPlanSurfaceLimit"
+import {
+  PROJECT_QUERY_GC_MS,
+  PROJECT_QUERY_STALE_MS,
+  projectQueryKeys,
+} from "@/lib/project/projectQueryKeys"
 import { DashboardMainView } from "./components/DashboardMainView"
 import { UnitDetailView } from "./components/UnitDetailView"
 import { CertificacionesView } from "./certificaciones/CertificacionesView"
 import { getCertificacionesData } from "./certificaciones/actions"
 import { ClientesView } from "./clientes/ClientesView"
 import { getProjectClientsData } from "./clientes/actions"
-import {
-  getDashboardData,
-  getProjectBasics,
-} from "./configuracion/actions"
+import { getConfigPageData, getDashboardData } from "./configuracion/actions"
 import { ConfiguracionView } from "./configuracion/ConfiguracionView"
 import { EquipoTeamView } from "./equipo/EquipoTeamView"
 import { getProjectTeamData } from "./equipo/actions"
 import { getMiUnidadPageData } from "./mi-unidad/actions"
 import { MiUnidadView } from "./mi-unidad/MiUnidadView"
-import {
-  getPortalClientesData,
-  getPortalClientesPreviewContext,
-} from "./portal-clientes/actions"
+import { getPortalClientesPageData } from "./portal-clientes/actions"
 import { PortalClientesView } from "./portal-clientes/PortalClientesView"
 import { getTrabajoDiarioData, type TrabajoDiarioData } from "./trabajo-diario/actions"
 import { DashboardView } from "./trabajo-diario/DashboardView"
@@ -87,13 +85,7 @@ export function ProjectTenantApp({ projectId, section }: ProjectTenantAppProps) 
     return <SectionPending label="Redirigiendo…" />
   }
 
-  return (
-    <TenantSection
-      key={section?.join("/") ?? ""}
-      projectId={projectId}
-      route={route}
-    />
-  )
+  return <TenantSection projectId={projectId} route={route} />
 }
 
 function TenantSection({
@@ -135,345 +127,216 @@ function TenantSection({
 }
 
 function DashboardSection({ projectId }: { projectId: string }) {
-  const [state, setState] = useState<
-    | { status: "loading" }
-    | { status: "error" }
-    | {
-        status: "ready"
-        project: NonNullable<Awaited<ReturnType<typeof getProjectBasics>>>
-        dashboard: Awaited<ReturnType<typeof getDashboardData>>
-      }
-  >({ status: "loading" })
+  const project = useProjectMeta()
+  const query = useQuery({
+    queryKey: projectQueryKeys.dashboard(projectId),
+    queryFn: async () => {
+      const dashboard = await getDashboardData(projectId)
+      if (!dashboard) throw new Error("empty")
+      return dashboard
+    },
+    staleTime: PROJECT_QUERY_STALE_MS,
+    gcTime: PROJECT_QUERY_GC_MS,
+  })
 
-  useEffect(() => {
-    let cancelled = false
-    void Promise.all([getProjectBasics(projectId), getDashboardData(projectId)])
-      .then(([project, dashboard]) => {
-        if (cancelled) return
-        if (!project) {
-          setState({ status: "error" })
-          return
-        }
-        setState({ status: "ready", project, dashboard })
-      })
-      .catch(() => {
-        if (!cancelled) setState({ status: "error" })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId])
-
-  if (state.status === "loading") return <SectionPending />
-  if (state.status === "error") {
+  if (query.isPending) return <SectionPending />
+  if (query.isError || !query.data) {
     return <SectionError message="No pudimos cargar el dashboard." />
   }
-  return <DashboardMainView project={state.project} dashboard={state.dashboard} />
+  return (
+    <DashboardMainView
+      project={{ id: project.id, name: project.name }}
+      dashboard={query.data}
+    />
+  )
 }
 
 function TrabajoDiarioSection({ projectId }: { projectId: string }) {
-  const [state, setState] = useState<
-    | { status: "loading" }
-    | { status: "error" }
-    | {
-        status: "ready"
-        project: NonNullable<Awaited<ReturnType<typeof getProjectBasics>>>
-        data: TrabajoDiarioData
-      }
-  >({ status: "loading" })
+  const query = useQuery({
+    queryKey: projectQueryKeys.trabajoDiario(projectId),
+    queryFn: async () => {
+      const data = await getTrabajoDiarioData(projectId)
+      return data ?? EMPTY_TRABAJO_DIARIO
+    },
+    staleTime: PROJECT_QUERY_STALE_MS,
+    gcTime: PROJECT_QUERY_GC_MS,
+  })
 
-  useEffect(() => {
-    let cancelled = false
-    void Promise.all([getProjectBasics(projectId), getTrabajoDiarioData(projectId)])
-      .then(([project, data]) => {
-        if (cancelled) return
-        if (!project) {
-          setState({ status: "error" })
-          return
-        }
-        setState({ status: "ready", project, data: data ?? EMPTY_TRABAJO_DIARIO })
-      })
-      .catch(() => {
-        if (!cancelled) setState({ status: "error" })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId])
-
-  if (state.status === "loading") return <SectionPending />
-  if (state.status === "error") {
+  if (query.isPending) return <SectionPending />
+  if (query.isError || !query.data) {
     return <SectionError message="No pudimos cargar el trabajo diario." />
   }
-  return <DashboardView project={state.project} data={state.data} />
+  return <DashboardView projectId={projectId} data={query.data} />
 }
 
 function CertificacionesSection({ projectId }: { projectId: string }) {
-  const [state, setState] = useState<
-    | { status: "loading" }
-    | { status: "error" }
-    | { status: "ready"; data: NonNullable<Awaited<ReturnType<typeof getCertificacionesData>>> }
-  >({ status: "loading" })
+  const query = useQuery({
+    queryKey: projectQueryKeys.certificaciones(projectId),
+    queryFn: async () => {
+      const data = await getCertificacionesData(projectId)
+      if (!data) throw new Error("empty")
+      return data
+    },
+    staleTime: PROJECT_QUERY_STALE_MS,
+    gcTime: PROJECT_QUERY_GC_MS,
+  })
 
-  useEffect(() => {
-    let cancelled = false
-    void getCertificacionesData(projectId)
-      .then((data) => {
-        if (cancelled) return
-        if (!data) {
-          setState({ status: "error" })
-          return
-        }
-        setState({ status: "ready", data })
-      })
-      .catch(() => {
-        if (!cancelled) setState({ status: "error" })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId])
-
-  if (state.status === "loading") return <SectionPending />
-  if (state.status === "error") {
+  if (query.isPending) return <SectionPending />
+  if (query.isError || !query.data) {
     return <SectionError message="No pudimos cargar las certificaciones." />
   }
-  return <CertificacionesView projectId={projectId} initialData={state.data} />
+  return <CertificacionesView projectId={projectId} initialData={query.data} />
 }
 
 function EquipoSection({ projectId }: { projectId: string }) {
-  const [state, setState] = useState<
-    | { status: "loading" }
-    | { status: "error"; message: string }
-    | { status: "ready"; data: Awaited<ReturnType<typeof getProjectTeamData>> }
-  >({ status: "loading" })
+  const query = useQuery({
+    queryKey: projectQueryKeys.equipo(projectId),
+    queryFn: () => getProjectTeamData(projectId),
+    staleTime: PROJECT_QUERY_STALE_MS,
+    gcTime: PROJECT_QUERY_GC_MS,
+  })
 
-  useEffect(() => {
-    let cancelled = false
-    void getProjectTeamData(projectId)
-      .then((data) => {
-        if (!cancelled) setState({ status: "ready", data })
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setState({
-            status: "error",
-            message:
-              error instanceof Error ? error.message : "No pudimos cargar el equipo.",
-          })
+  if (query.isPending) return <SectionPending />
+  if (query.isError) {
+    return (
+      <SectionError
+        message={
+          query.error instanceof Error
+            ? query.error.message
+            : "No pudimos cargar el equipo."
         }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId])
-
-  if (state.status === "loading") return <SectionPending />
-  if (state.status === "error") return <SectionError message={state.message} />
-  return <EquipoTeamView projectId={projectId} initialData={state.data} />
+      />
+    )
+  }
+  if (!query.data) return <SectionError message="No pudimos cargar el equipo." />
+  return <EquipoTeamView projectId={projectId} initialData={query.data} />
 }
 
 function ClientesSection({ projectId }: { projectId: string }) {
-  const [state, setState] = useState<
-    | { status: "loading" }
-    | { status: "error"; message: string }
-    | { status: "ready"; data: Awaited<ReturnType<typeof getProjectClientsData>> }
-  >({ status: "loading" })
+  const query = useQuery({
+    queryKey: projectQueryKeys.clientes(projectId),
+    queryFn: () => getProjectClientsData(projectId),
+    staleTime: PROJECT_QUERY_STALE_MS,
+    gcTime: PROJECT_QUERY_GC_MS,
+  })
 
-  useEffect(() => {
-    let cancelled = false
-    void getProjectClientsData(projectId)
-      .then((data) => {
-        if (!cancelled) setState({ status: "ready", data })
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setState({
-            status: "error",
-            message:
-              error instanceof Error ? error.message : "No pudimos cargar los clientes.",
-          })
+  if (query.isPending) return <SectionPending />
+  if (query.isError) {
+    return (
+      <SectionError
+        message={
+          query.error instanceof Error
+            ? query.error.message
+            : "No pudimos cargar los clientes."
         }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId])
-
-  if (state.status === "loading") return <SectionPending />
-  if (state.status === "error") return <SectionError message={state.message} />
-  return <ClientesView projectId={projectId} initialData={state.data} />
+      />
+    )
+  }
+  if (!query.data) return <SectionError message="No pudimos cargar los clientes." />
+  return <ClientesView projectId={projectId} initialData={query.data} />
 }
 
 function ConfiguracionSection({ projectId }: { projectId: string }) {
-  const [state, setState] = useState<
-    | { status: "loading" }
-    | { status: "error" }
-    | {
-        status: "ready"
-        project: NonNullable<Awaited<ReturnType<typeof getProjectBasics>>>
-        planSurfaceMaxM2: number | null
-      }
-  >({ status: "loading" })
+  const query = useQuery({
+    queryKey: projectQueryKeys.configuracion(projectId),
+    queryFn: async () => {
+      const data = await getConfigPageData(projectId)
+      if (!data) throw new Error("empty")
+      return data
+    },
+    staleTime: PROJECT_QUERY_STALE_MS,
+    gcTime: PROJECT_QUERY_GC_MS,
+  })
 
-  useEffect(() => {
-    let cancelled = false
-    void Promise.all([
-      getProjectBasics(projectId),
-      getProjectPlanSurfaceLimit(projectId),
-    ])
-      .then(([project, planSurfaceMaxM2]) => {
-        if (cancelled) return
-        if (!project) {
-          setState({ status: "error" })
-          return
-        }
-        setState({ status: "ready", project, planSurfaceMaxM2 })
-      })
-      .catch(() => {
-        if (!cancelled) setState({ status: "error" })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId])
-
-  if (state.status === "loading") return <SectionPending />
-  if (state.status === "error") {
+  if (query.isPending) return <SectionPending />
+  if (query.isError || !query.data) {
     return <SectionError message="No pudimos cargar la configuración." />
   }
   return (
     <ConfiguracionView
-      project={state.project}
-      planSurfaceMaxM2={state.planSurfaceMaxM2}
+      project={query.data.project}
+      planSurfaceMaxM2={query.data.planSurfaceMaxM2}
+      initialFloors={query.data.floors}
+      initialUnits={query.data.units}
+      initialGroups={query.data.groups}
+      initialAssignmentsByUnit={query.data.assignments.byUnit}
     />
   )
 }
 
 function PortalClientesSection({ projectId }: { projectId: string }) {
-  const [state, setState] = useState<
-    | { status: "loading" }
-    | { status: "error"; message: string }
-    | {
-        status: "ready"
-        data: Awaited<ReturnType<typeof getPortalClientesData>>
-        previewContext: Awaited<ReturnType<typeof getPortalClientesPreviewContext>>
-      }
-  >({ status: "loading" })
+  const query = useQuery({
+    queryKey: projectQueryKeys.portal(projectId),
+    queryFn: () => getPortalClientesPageData(projectId),
+    staleTime: PROJECT_QUERY_STALE_MS,
+    gcTime: PROJECT_QUERY_GC_MS,
+  })
 
-  useEffect(() => {
-    let cancelled = false
-    void Promise.all([
-      getPortalClientesData(projectId),
-      getPortalClientesPreviewContext(projectId),
-    ])
-      .then(([data, previewContext]) => {
-        if (!cancelled) setState({ status: "ready", data, previewContext })
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setState({
-            status: "error",
-            message:
-              error instanceof Error
-                ? error.message
-                : "No pudimos cargar el portal de clientes.",
-          })
+  if (query.isPending) return <SectionPending />
+  if (query.isError) {
+    return (
+      <SectionError
+        message={
+          query.error instanceof Error
+            ? query.error.message
+            : "No pudimos cargar el portal de clientes."
         }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId])
-
-  if (state.status === "loading") return <SectionPending />
-  if (state.status === "error") return <SectionError message={state.message} />
+      />
+    )
+  }
+  if (!query.data) {
+    return <SectionError message="No pudimos cargar el portal de clientes." />
+  }
   return (
     <PortalClientesView
       projectId={projectId}
-      initialData={state.data}
-      previewContext={state.previewContext}
+      initialData={query.data.data}
+      previewContext={query.data.previewContext}
     />
   )
 }
 
 function MiUnidadSection({ projectId }: { projectId: string }) {
-  const [state, setState] = useState<
-    | { status: "loading" }
-    | { status: "error" }
-    | {
-        status: "ready"
-        data: NonNullable<Awaited<ReturnType<typeof getMiUnidadPageData>>>
-        greetingName: string
-      }
-  >({ status: "loading" })
+  const query = useQuery({
+    queryKey: projectQueryKeys.miUnidad(projectId),
+    queryFn: async () => {
+      const data = await getMiUnidadPageData(projectId)
+      if (!data) throw new Error("empty")
+      return data
+    },
+    staleTime: PROJECT_QUERY_STALE_MS,
+    gcTime: PROJECT_QUERY_GC_MS,
+  })
 
-  useEffect(() => {
-    let cancelled = false
-    void Promise.all([getMiUnidadPageData(projectId), getProfileData(projectId)])
-      .then(([data, profileData]) => {
-        if (cancelled) return
-        if (!data) {
-          setState({ status: "error" })
-          return
-        }
-        const userProfile = toSidebarUserProfile(profileData)
-        const greetingName =
-          userProfile.firstName.trim() ||
-          userProfile.fullName.split(" ")[0] ||
-          "Cliente"
-        setState({ status: "ready", data, greetingName })
-      })
-      .catch(() => {
-        if (!cancelled) setState({ status: "error" })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId])
-
-  if (state.status === "loading") return <SectionPending />
-  if (state.status === "error") {
+  if (query.isPending) return <SectionPending />
+  if (query.isError || !query.data) {
     return <SectionError message="No pudimos cargar tu unidad." />
   }
-    return (
-      <MiUnidadView
-        projectId={projectId}
-        data={state.data}
-        greetingName={state.greetingName}
-      />
-    )
+  const { greetingName, ...pageData } = query.data
+  return (
+    <MiUnidadView
+      projectId={projectId}
+      data={pageData}
+      greetingName={greetingName}
+    />
+  )
 }
 
 function UnitSection({ projectId, unitId }: { projectId: string; unitId: string }) {
-  const [state, setState] = useState<
-    | { status: "loading" }
-    | { status: "error" }
-    | { status: "ready"; data: NonNullable<Awaited<ReturnType<typeof getUnitDetailData>>> }
-  >({ status: "loading" })
+  const query = useQuery({
+    queryKey: projectQueryKeys.unit(projectId, unitId),
+    queryFn: async () => {
+      const data = await getUnitDetailData(projectId, unitId)
+      if (!data) throw new Error("empty")
+      return data
+    },
+    staleTime: PROJECT_QUERY_STALE_MS,
+    gcTime: PROJECT_QUERY_GC_MS,
+  })
 
-  useEffect(() => {
-    let cancelled = false
-    void getUnitDetailData(projectId, unitId)
-      .then((data) => {
-        if (cancelled) return
-        if (!data) {
-          setState({ status: "error" })
-          return
-        }
-        setState({ status: "ready", data })
-      })
-      .catch(() => {
-        if (!cancelled) setState({ status: "error" })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, unitId])
-
-  if (state.status === "loading") return <SectionPending />
-  if (state.status === "error") {
+  if (query.isPending) return <SectionPending />
+  if (query.isError || !query.data) {
     return <SectionError message="No encontramos esta unidad." />
   }
-  return <UnitDetailView projectId={projectId} data={state.data} />
+  return <UnitDetailView projectId={projectId} data={query.data} />
 }

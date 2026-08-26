@@ -1,7 +1,8 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
+import { invalidateProjectProgress } from "@/lib/project/invalidateProjectQueries"
 import { endOfDay, endOfMonth, startOfDay, startOfMonth } from "date-fns"
 import { formatArgentinaTodayLabel } from "@/lib/datetime/argentinaDateTime"
 import { Calendar, Plus, X } from "lucide-react"
@@ -21,7 +22,6 @@ import {
   getUnitDisplayTitle,
 } from "@/lib/projects/cargarAvance"
 import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
-import type { ProjectBasics } from "../configuracion/actions"
 import { CargarAvanceView } from "./CargarAvanceView"
 import { TaskDetailDialog } from "./TaskDetailDialog"
 import type { TrabajoDiarioData, TrabajoDiarioTaskStatus } from "./actions"
@@ -46,13 +46,13 @@ const statusStyles: Record<TrabajoDiarioTaskStatus, string> = {
 type ViewMode = "list" | "load"
 
 type Props = {
-  project: ProjectBasics
+  projectId: string
   data: TrabajoDiarioData
 }
 
-export function DashboardView({ project, data }: Props) {
-  const router = useRouter()
+export function DashboardView({ projectId, data }: Props) {
   const toast = useToast()
+  const queryClient = useQueryClient()
   const [viewMode, setViewMode] = useState<ViewMode>("list")
   const [selectedLoadFloorId, setSelectedLoadFloorId] = useState<string | null>(null)
   const [selectedLoadRubroId, setSelectedLoadRubroId] = useState<string | null>(null)
@@ -114,7 +114,6 @@ export function DashboardView({ project, data }: Props) {
 
   const handleSaved = () => {
     exitLoadMode()
-    router.refresh()
     toast.success("Trabajo diario registrado exitosamente")
   }
 
@@ -156,7 +155,7 @@ export function DashboardView({ project, data }: Props) {
 
       {viewMode === "load" ? (
         <CargarAvanceView
-          projectId={project.id}
+          projectId={projectId}
           floors={data.floors}
           rubroGroups={data.rubroGroups}
           assignmentsByUnit={data.assignmentsByUnit}
@@ -312,10 +311,12 @@ export function DashboardView({ project, data }: Props) {
       <TaskDetailDialog
         open={taskDetailOpen}
         onOpenChange={setTaskDetailOpen}
-        projectId={project.id}
+        projectId={projectId}
         entryId={selectedTaskId}
         onEntryIdChange={setSelectedTaskId}
-        onSaved={() => router.refresh()}
+        onSaved={() => {
+          void invalidateProjectProgress(queryClient, projectId)
+        }}
       />
     </div>
   )

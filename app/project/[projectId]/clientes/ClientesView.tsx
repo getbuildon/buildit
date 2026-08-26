@@ -1,5 +1,6 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import {
   ChevronDown,
@@ -24,6 +25,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Spinner } from "@/components/ui/spinner"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { cn } from "@/lib/utils"
+import { invalidateProjectSection } from "@/lib/project/invalidateProjectQueries"
+import { projectQueryKeys } from "@/lib/project/projectQueryKeys"
 import { CLIENTES_LAYOUT, FORM_MODAL_DIALOG } from "@/lib/project/designTokens"
 import {
   addProjectClientInvitation,
@@ -746,6 +749,7 @@ function PendingClientRow({
 
 export function ClientesView({ projectId, initialData }: Props) {
   const toast = useToast()
+  const queryClient = useQueryClient()
   const [clients, setClients] = useState(initialData.clients)
   const [pendingInvitations, setPendingInvitations] = useState(
     initialData.pendingInvitations,
@@ -768,9 +772,16 @@ export function ClientesView({ projectId, initialData }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const canManageClients = useProjectPermission("manageClients")
 
+  useEffect(() => {
+    setClients(initialData.clients)
+    setPendingInvitations(initialData.pendingInvitations)
+    setSeatSummary(initialData.seatSummary)
+  }, [initialData])
+
   const refreshSeatSummary = async () => {
     const summary = await getProjectClientSeatSummary(projectId)
     setSeatSummary(summary)
+    void invalidateProjectSection(queryClient, projectQueryKeys.clientes(projectId))
   }
 
   const occupiedUnitIds = useMemo(

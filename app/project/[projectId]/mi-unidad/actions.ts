@@ -10,6 +10,7 @@ import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
 import type { MiUnidadAssignedUnit, MiUnidadPageData } from "@/lib/projects/miUnidadTypes"
 import { fetchProjectWeather, resolveWeatherLocation } from "@/lib/weather/openMeteo"
 import { getPortalClientesData } from "@/app/project/[projectId]/portal-clientes/actions"
+import { displayNameFromEmail } from "@/lib/projects/mockProjects"
 
 function resolveMiUnidadUnitIds(
   clientUnitIds: string[],
@@ -21,7 +22,7 @@ function resolveMiUnidadUnitIds(
 
 export async function getMiUnidadPageData(
   projectId: string,
-): Promise<MiUnidadPageData | null> {
+): Promise<(MiUnidadPageData & { greetingName: string }) | null> {
   const user = await requireAuthenticatedUser()
   const accessContext = await getProjectAccessContext(projectId)
   if (!accessContext || accessContext.permissions.clientPortal !== true) {
@@ -35,18 +36,30 @@ export async function getMiUnidadPageData(
     accessContext.assignedUnitIds,
   )
 
-  const [portalData, projectResult] = await Promise.all([
+  const [portalData, projectResult, profileResult] = await Promise.all([
     getPortalClientesData(projectId),
     supabase
       .from("projects")
       .select("name, location, weather_city, end_date, companies(country)")
       .eq("id", projectId)
       .maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("first_name, last_name, email")
+      .eq("id", user.id)
+      .maybeSingle(),
   ])
 
   if (projectResult.error) {
     throw new Error(projectResult.error.message)
   }
+
+  const firstName = profileResult.data?.first_name?.trim() ?? ""
+  const lastName = profileResult.data?.last_name?.trim() ?? ""
+  const email = profileResult.data?.email ?? ""
+  const fullName =
+    [firstName, lastName].filter(Boolean).join(" ") || displayNameFromEmail(email)
+  const greetingName = firstName || fullName.split(" ")[0] || "Cliente"
 
   const company = Array.isArray(projectResult.data?.companies)
     ? projectResult.data.companies[0]
@@ -108,5 +121,6 @@ export async function getMiUnidadPageData(
     projectEndDate: projectResult.data?.end_date ?? null,
     weather,
     units,
+    greetingName,
   }
 }

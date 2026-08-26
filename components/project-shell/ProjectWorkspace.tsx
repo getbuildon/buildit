@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { UserMenuDropdown } from "./UserMenuDropdown"
 import { ProjectMobileHeader } from "./ProjectMobileHeader"
+import { ProjectMetaProvider } from "./ProjectMetaProvider"
 
 // Figma node 1157:2701 — exact specs
 // Sidebar: bg=#fefcfb, radius=24, border=#dadada w=1, shadow: blur=39.2 spread=3.9 a=0.08
@@ -213,7 +214,9 @@ export function ProjectWorkspace({ project, userProfile, children }: ProjectWork
               maxWidth: SHELL_LAYOUT.contentMaxWidth,
             }}
           >
-            {children}
+            <ProjectMetaProvider value={{ id: project.projectId, name: project.name }}>
+              {children}
+            </ProjectMetaProvider>
           </div>
         </main>
       </div>

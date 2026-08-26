@@ -21,7 +21,7 @@ import { getUnitDashboardLabel } from "@/lib/projects/unitTypes"
 import { DASHBOARD_SHADOW, DASHBOARD_TYPE } from "@/lib/project/dashboardDesignTokens"
 import { projectHref } from "@/lib/project/routes"
 import { cn } from "@/lib/utils"
-import type { ProjectBasics, DashboardFloor, DashboardStats } from "../configuracion/actions"
+import type { DashboardFloor, DashboardStats } from "../configuracion/actions"
 
 const mockFloors: DashboardFloor[] = [
   {
@@ -299,7 +299,7 @@ export function DashboardMainView({
   project,
   dashboard,
 }: {
-  project: ProjectBasics
+  project: { id: string; name: string }
   dashboard: { floors: DashboardFloor[]; stats: DashboardStats } | null
 }) {
   const floors = dashboard?.floors ?? mockFloors

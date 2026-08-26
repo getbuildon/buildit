@@ -21,7 +21,8 @@ import {
   type UnitDetailTaskGroup,
   type UnitDetailTaskItem,
 } from "@/lib/projects/unitDetailTasks"
-import { getUnitTaskAssignments } from "../configuracion/actions"
+import { loadUnitTaskAssignmentsByUnit } from "@/lib/projects/loadUnitTaskAssignments"
+import { loadLatestProgressEntries } from "@/lib/projects/loadLatestProgressEntries"
 
 export type UnitDetailData = {
   unit: {
@@ -69,7 +70,7 @@ export async function getUnitDetailData(
   const supabase = await createClient()
   const admin = createAdminClient()
 
-  const [unitResult, assignments, groupsResult, entriesResult] = await Promise.all([
+  const [unitResult, assignmentsByUnit, groupsResult, entries] = await Promise.all([
     supabase
       .from("project_units")
       .select(
@@ -88,7 +89,7 @@ export async function getUnitDetailData(
       .eq("project_id", id)
       .eq("id", selectedUnitId)
       .maybeSingle(),
-    getUnitTaskAssignments(id),
+    loadUnitTaskAssignmentsByUnit(supabase, id),
     supabase
       .from("rubro_groups")
       .select(
@@ -102,15 +103,11 @@ export async function getUnitDetailData(
       )
       .eq("project_id", id)
       .order("sort_order", { ascending: true }),
-    supabase
-      .from("progress_entries")
-      .select("id, unit_id, task_id, progress_state, status, created_at, submitted_at, created_by")
-      .eq("project_id", id)
-      .eq("unit_id", selectedUnitId),
+    loadLatestProgressEntries(supabase, id, { unitId: selectedUnitId }),
   ])
 
   if (unitResult.error || !unitResult.data) return null
-  if (groupsResult.error || entriesResult.error) return null
+  if (groupsResult.error) return null
 
   const unit = unitResult.data
   const floorRaw = unit.project_floors as
@@ -121,9 +118,7 @@ export async function getUnitDetailData(
   if (!floorRow) return null
 
   const groupsRaw = groupsResult.data ?? []
-  const entries = (entriesResult.data ?? []) as Array<
-    ProgressEntryRow & { id: string; created_by: string }
-  >
+  const assignments = { byUnit: assignmentsByUnit }
 
   const allTaskIds: string[] = []
   for (const group of groupsRaw) {

@@ -8,10 +8,7 @@ import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
-import {
-  invalidateHomeProgress,
-  invalidateHomeProjects,
-} from "@/lib/home/invalidateHomeQueries"
+import { invalidateProjectQueries } from "@/lib/project/invalidateProjectQueries"
 import { ConfigConfirmDialog } from "./ConfigConfirmDialog"
 import { ConfiguracionSectionsSkeleton } from "./ConfiguracionSectionsSkeleton"
 import { FieldErrorTooltip } from "@/components/ui/field-error-tooltip"
@@ -77,14 +74,14 @@ import {
 } from "@/lib/projects/unitPlanPhoto.client"
 import {
   updateProjectBasics,
-  getProjectStructure,
-  getProjectUnits,
-  getProjectRubroGroups,
-  getUnitTaskAssignments,
+  getConfigPageData,
   saveProjectStructure,
   saveProjectRubros,
   setUnitTaskAssignments,
+  type FloorData,
   type ProjectBasics,
+  type RubroGroupData,
+  type UnitData,
 } from "./actions"
 import {
   countAssignmentRows,
@@ -98,6 +95,10 @@ import {
 type ConfiguracionViewProps = {
   project: ProjectBasics
   planSurfaceMaxM2?: number | null
+  initialFloors: FloorData[]
+  initialUnits: UnitData[]
+  initialGroups: RubroGroupData[]
+  initialAssignmentsByUnit: Record<string, string[]>
 }
 
 type SaveFeedback = { type: "success" | "error"; message: string } | null
@@ -418,14 +419,42 @@ function ConfigSaveFooter({
 export function ConfiguracionView({
   project,
   planSurfaceMaxM2 = null,
+  initialFloors,
+  initialUnits,
+  initialGroups,
+  initialAssignmentsByUnit,
 }: ConfiguracionViewProps) {
   const toast = useToast()
   const queryClient = useQueryClient()
-  // El draft de estructura/rubros usa IDs aleatorios (crypto.randomUUID), que
-  // difieren entre el render del servidor y el del cliente. Lo construimos solo
-  // en el cliente, tras montar, para evitar errores de hidratación.
-  const [draft, setDraft] = useState<CreateProjectDraft | null>(null)
-  const [savedSnapshot, setSavedSnapshot] = useState<ConfigSavedSnapshot | null>(null)
+  const [draft, setDraft] = useState<CreateProjectDraft | null>(() =>
+    buildConfigDraftFromProjectData({
+      projectName: project.name,
+      location: project.location,
+      floors: initialFloors,
+      units: initialUnits,
+      groups: initialGroups,
+      assignmentsByUnit: initialAssignmentsByUnit,
+    }),
+  )
+  const [savedSnapshot, setSavedSnapshot] = useState<ConfigSavedSnapshot | null>(() =>
+    buildConfigSnapshot(
+      {
+        name: project.name,
+        location: project.location,
+        totalSurface: project.totalSurface,
+        startDate: project.startDate,
+        endDate: project.endDate,
+      },
+      buildConfigDraftFromProjectData({
+        projectName: project.name,
+        location: project.location,
+        floors: initialFloors,
+        units: initialUnits,
+        groups: initialGroups,
+        assignmentsByUnit: initialAssignmentsByUnit,
+      }),
+    ),
+  )
 
   const [name, setName] = useState(project.name)
   const [location, setLocation] = useState(project.location)
@@ -482,20 +511,16 @@ export function ConfiguracionView({
     options?: { updateSnapshot?: boolean },
   ) => {
     const basics = basicsOverride ?? basicsState
-    const [floors, units, groups, assignments] = await Promise.all([
-      getProjectStructure(project.id),
-      getProjectUnits(project.id),
-      getProjectRubroGroups(project.id),
-      getUnitTaskAssignments(project.id),
-    ])
+    const page = await getConfigPageData(project.id)
+    if (!page) return null
 
     const nextDraft = buildConfigDraftFromProjectData({
       projectName: basics.name,
       location: basics.location,
-      floors,
-      units,
-      groups,
-      assignmentsByUnit: assignments.byUnit,
+      floors: page.floors,
+      units: page.units,
+      groups: page.groups,
+      assignmentsByUnit: page.assignments.byUnit,
     })
 
     setDraft(nextDraft)
@@ -505,18 +530,6 @@ export function ConfiguracionView({
 
     return nextDraft
   }
-
-  useEffect(() => {
-    void loadProjectData({
-      name: project.name,
-      location: project.location,
-      totalSurface: project.totalSurface,
-      startDate: project.startDate,
-      endDate: project.endDate,
-    })
-    // Solo al montar: el proyecto es estable durante la vida de la página.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const updateDraft = (patch: Partial<CreateProjectDraft>) => {
     setDraft((current) => (current ? { ...current, ...patch } : current))
@@ -927,8 +940,7 @@ export function ConfiguracionView({
     }
 
     setSaving(false)
-    void invalidateHomeProgress(queryClient)
-    void invalidateHomeProjects(queryClient)
+    void invalidateProjectQueries(queryClient, project.id)
     setDraft(refreshedDraft)
     setSavedSnapshot(
       buildConfigSnapshot(
