@@ -13,9 +13,7 @@ import { useAuth } from "@/context/AuthContextSupabase"
 import withAuth from "@/hoc/withAuth"
 import { HOME_COLORS, HOME_LAYOUT } from "@/lib/home/designTokens"
 import {
-  HOME_PROGRESS_STALE_MS,
-  HOME_PROJECTS_STALE_MS,
-  HOME_SHELL_STALE_MS,
+  HOME_QUERY_STALE_MS,
   homeProgressIdsKey,
   homeQueryKeys,
 } from "@/lib/home/homeQueryKeys"
@@ -34,14 +32,16 @@ function HomePage() {
   const shellQuery = useQuery({
     queryKey: homeQueryKeys.shell(userId),
     queryFn: getHomeShell,
-    staleTime: HOME_SHELL_STALE_MS,
+    staleTime: HOME_QUERY_STALE_MS,
+    gcTime: HOME_QUERY_STALE_MS,
     enabled: Boolean(userId),
   })
 
   const projectsQuery = useQuery({
     queryKey: homeQueryKeys.projects(userId),
     queryFn: listHomeProjects,
-    staleTime: HOME_PROJECTS_STALE_MS,
+    staleTime: HOME_QUERY_STALE_MS,
+    gcTime: HOME_QUERY_STALE_MS,
     enabled: Boolean(userId),
   })
 
@@ -52,8 +52,8 @@ function HomePage() {
   const progressQuery = useQuery({
     queryKey: homeQueryKeys.progress(userId, progressIdsKey),
     queryFn: () => getHomeProjectsProgress(projectIds),
-    staleTime: HOME_PROGRESS_STALE_MS,
-    gcTime: HOME_PROGRESS_STALE_MS,
+    staleTime: HOME_QUERY_STALE_MS,
+    gcTime: HOME_QUERY_STALE_MS,
     refetchOnWindowFocus: false,
     enabled: Boolean(userId) && projectIds.length > 0,
   })

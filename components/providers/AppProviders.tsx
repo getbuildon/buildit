@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 
 import { AppRouteLoadingProvider } from "@/components/navigation/AppRouteLoadingProvider"
 import { ToastProvider } from "@/components/ui/toast"
@@ -29,6 +30,7 @@ export function AppProviders({ children }: AppProvidersProps) {
       <AppRouteLoadingProvider>
         <ToastProvider>{children}</ToastProvider>
       </AppRouteLoadingProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   )
 }

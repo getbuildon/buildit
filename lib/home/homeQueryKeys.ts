@@ -1,8 +1,6 @@
 export const HOME_QUERY_ROOT = ["home"] as const
 
-export const HOME_SHELL_STALE_MS = 5 * 60 * 1000
-export const HOME_PROJECTS_STALE_MS = 5 * 60 * 1000
-export const HOME_PROGRESS_STALE_MS = 2 * 60 * 60 * 1000
+export const HOME_QUERY_STALE_MS = 2 * 60 * 60 * 1000
 
 export const homeQueryKeys = {
   all: HOME_QUERY_ROOT,
