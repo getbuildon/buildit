@@ -1,5 +1,6 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
 import Image from "next/image"
 import { useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -8,6 +9,7 @@ import {
   CREATE_PROJECT_COLORS,
   CREATE_PROJECT_TYPE,
 } from "@/lib/projects/createProjectTokens"
+import { invalidateHomeProjects } from "@/lib/home/invalidateHomeQueries"
 import { projectHref } from "@/lib/project/routes"
 import { cn } from "@/lib/utils"
 
@@ -21,11 +23,13 @@ export function CreateProjectSuccessPanel({
   projectName,
 }: CreateProjectSuccessPanelProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   const goToProject = useCallback(() => {
+    void invalidateHomeProjects(queryClient)
     router.push(projectHref(projectId))
     router.refresh()
-  }, [router, projectId])
+  }, [queryClient, router, projectId])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow

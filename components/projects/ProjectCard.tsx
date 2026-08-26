@@ -4,7 +4,8 @@ import Link from "next/link"
 import { Building2, TrendingUp } from "lucide-react"
 
 import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
-import type { UserProjectListItem } from "@/lib/projects/types"
+import type { HomeProjectListItem } from "@/lib/projects/types"
+import type { ProjectHomeProgress } from "@/lib/projects/homeProjectProgress"
 import { projectDashboardHref } from "@/lib/project/routes"
 import {
   HOME_COLORS,
@@ -18,25 +19,26 @@ import {
 import { cn } from "@/lib/utils"
 
 type ProjectCardProps = {
-  project: UserProjectListItem
+  project: HomeProjectListItem
+  progress?: ProjectHomeProgress
 }
 
 function formatWeeklyDelta(delta: number): string {
   return `${delta}%`
 }
 
-export function ProjectCard({ project }: ProjectCardProps) {
+export function ProjectCard({ project, progress }: ProjectCardProps) {
   const { navigate } = useAppRouteNavigation()
   const isDraft = project.status === "draft"
   const href = isDraft
     ? `/projects/new?projectId=${project.projectId}`
     : projectDashboardHref(project.projectId)
-  const generalProgress = project.generalProgressPercent
-  const weeklyDelta = project.weeklyProgressDelta
+  const generalProgress = progress?.generalProgressPercent
+  const weeklyDelta = progress?.weeklyProgressDelta
   const weeklyBadgeColor =
-    weeklyDelta >= 0 ? HOME_COLORS.progressBadge : "#ce2c31"
+    (weeklyDelta ?? 0) >= 0 ? HOME_COLORS.progressBadge : "#ce2c31"
   const weeklyBadgeBg =
-    weeklyDelta >= 0 ? HOME_COLORS.progressBadgeBg : "#feebec"
+    (weeklyDelta ?? 0) >= 0 ? HOME_COLORS.progressBadgeBg : "#feebec"
 
   return (
     <Link
@@ -77,7 +79,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                   Borrador
                 </span>
               </div>
-            ) : (
+            ) : weeklyDelta != null ? (
               <div className="group relative flex shrink-0 items-center">
                 <div
                   className="flex h-6 items-center gap-1 rounded-[10px] px-2 py-1"
@@ -102,6 +104,12 @@ export function ProjectCard({ project }: ProjectCardProps) {
                   {HOME_WEEKLY_PROGRESS_TOOLTIP}
                 </div>
               </div>
+            ) : (
+              <div
+                className="h-6 w-14 animate-pulse rounded-[10px]"
+                style={{ backgroundColor: HOME_COLORS.progressTrack }}
+                aria-hidden
+              />
             )}
           </div>
 
@@ -142,7 +150,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
               className="h-1.5 w-full overflow-hidden rounded-full"
               style={{ backgroundColor: HOME_COLORS.progressTrack }}
             >
-              {!isDraft ? (
+              {!isDraft && generalProgress != null ? (
                 <div
                   className="h-full rounded-full"
                   style={{

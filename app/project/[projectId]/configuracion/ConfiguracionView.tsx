@@ -1,5 +1,6 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react"
 import { createPortal } from "react-dom"
 import { AlertCircle, Building2, CalendarDays, Check, ChevronDown, MapPin } from "lucide-react"
@@ -7,6 +8,10 @@ import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
+import {
+  invalidateHomeProgress,
+  invalidateHomeProjects,
+} from "@/lib/home/invalidateHomeQueries"
 import { ConfigConfirmDialog } from "./ConfigConfirmDialog"
 import { ConfiguracionSectionsSkeleton } from "./ConfiguracionSectionsSkeleton"
 import { FieldErrorTooltip } from "@/components/ui/field-error-tooltip"
@@ -415,6 +420,7 @@ export function ConfiguracionView({
   planSurfaceMaxM2 = null,
 }: ConfiguracionViewProps) {
   const toast = useToast()
+  const queryClient = useQueryClient()
   // El draft de estructura/rubros usa IDs aleatorios (crypto.randomUUID), que
   // difieren entre el render del servidor y el del cliente. Lo construimos solo
   // en el cliente, tras montar, para evitar errores de hidratación.
@@ -921,6 +927,8 @@ export function ConfiguracionView({
     }
 
     setSaving(false)
+    void invalidateHomeProgress(queryClient)
+    void invalidateHomeProjects(queryClient)
     setDraft(refreshedDraft)
     setSavedSnapshot(
       buildConfigSnapshot(

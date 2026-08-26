@@ -12,3 +12,12 @@ export type UserProjectListItem = {
   /** Variación del progreso respecto a hace 7 días. */
   weeklyProgressDelta: number
 }
+
+/** Card de Home: identidad de la obra, sin progreso. */
+export type HomeProjectListItem = {
+  projectId: string
+  name: string
+  address: string
+  floors: number
+  status: UserProjectListItem["status"]
+}

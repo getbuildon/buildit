@@ -1,5 +1,6 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { House, Info, MapPin, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -34,6 +35,7 @@ import {
 import { ConfirmarAvanceDialog } from "./ConfirmarAvanceDialog"
 import { CargarAvanceTaskPanel } from "./CargarAvanceTaskPanel"
 import { saveCargarAvance, registerProgressAttachments } from "./actions"
+import { invalidateHomeProgress } from "@/lib/home/invalidateHomeQueries"
 import type { TrabajoDiarioFloor, TrabajoDiarioRubroGroup } from "./actions"
 
 const INSTRUCTIONS = [
@@ -131,6 +133,7 @@ export function CargarAvanceView({
   onClose,
   onSaved,
 }: CargarAvanceViewProps) {
+  const queryClient = useQueryClient()
   const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([])
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set())
   const [taskDrafts, setTaskDrafts] = useState<Record<string, CargarAvanceTaskDraft>>({})
@@ -411,6 +414,8 @@ export function CargarAvanceView({
       setSaveError(result.error)
       return
     }
+
+    void invalidateHomeProgress(queryClient)
 
     const entriesByTaskId = new Map<string, string[]>()
     for (const entry of result.entries) {

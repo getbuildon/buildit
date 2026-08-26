@@ -1,5 +1,6 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
 import { useLayoutEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -26,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/toast"
+import { invalidateHomeProgress } from "@/lib/home/invalidateHomeQueries"
 import {
   CERTIFICADA_BADGE,
   CERTIFICACIONES_CERTIFIER,
@@ -381,6 +383,7 @@ function TaskCard({
 export function CertificacionesView({ projectId, initialData }: Props) {
   const router = useRouter()
   const toast = useToast()
+  const queryClient = useQueryClient()
 
   const [tasks, setTasks] = useState(initialData.tasks)
   const [canCertify] = useState(initialData.canCertify)
@@ -507,6 +510,8 @@ export function CertificacionesView({ projectId, initialData }: Props) {
       toast.error(result.error)
       return { ok: false, error: result.error }
     }
+
+    void invalidateHomeProgress(queryClient)
 
     setTasks((prev) =>
       prev.map((task) => {

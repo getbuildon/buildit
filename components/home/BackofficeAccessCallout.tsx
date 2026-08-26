@@ -12,26 +12,37 @@ const BACKOFFICE_DASHBOARD_HREF = "/backoffice/dashboard"
 
 const ENTER_DELAY_MS = 2000
 
-export function BackofficeAccessCallout() {
+type BackofficeAccessCalloutProps = {
+  canAccess?: boolean
+}
+
+export function BackofficeAccessCallout({ canAccess: canAccessProp }: BackofficeAccessCalloutProps) {
   const { navigate } = useAppRouteNavigation()
-  const [canAccess, setCanAccess] = useState<boolean | null>(null)
+  const [fetchedAccess, setFetchedAccess] = useState<boolean | null>(null)
   const [delayElapsed, setDelayElapsed] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [closing, setClosing] = useState(false)
+  const canAccess = canAccessProp ?? fetchedAccess
 
   useEffect(() => {
     const delayTimer = window.setTimeout(() => {
       setDelayElapsed(true)
     }, ENTER_DELAY_MS)
 
+    if (canAccessProp !== undefined) {
+      return () => {
+        window.clearTimeout(delayTimer)
+      }
+    }
+
     void getHomeBackofficeAccess().then((access) => {
-      setCanAccess(access)
+      setFetchedAccess(access)
     })
 
     return () => {
       window.clearTimeout(delayTimer)
     }
-  }, [])
+  }, [canAccessProp])
 
   useEffect(() => {
     if (canAccess !== true || !delayElapsed) return

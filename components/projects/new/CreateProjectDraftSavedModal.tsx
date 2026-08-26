@@ -1,5 +1,6 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
 import Image from "next/image"
 import { useCallback } from "react"
 import { useRouter } from "next/navigation"
@@ -14,6 +15,7 @@ import {
   CREATE_PROJECT_COLORS,
   CREATE_PROJECT_TYPE,
 } from "@/lib/projects/createProjectTokens"
+import { invalidateHomeProjects } from "@/lib/home/invalidateHomeQueries"
 import { cn } from "@/lib/utils"
 
 type CreateProjectDraftSavedModalProps = {
@@ -22,11 +24,13 @@ type CreateProjectDraftSavedModalProps = {
 
 export function CreateProjectDraftSavedModal({ open }: CreateProjectDraftSavedModalProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   const goToDashboard = useCallback(() => {
+    void invalidateHomeProjects(queryClient)
     router.push("/home")
     router.refresh()
-  }, [router])
+  }, [queryClient, router])
 
   return (
     <Dialog open={open}>
