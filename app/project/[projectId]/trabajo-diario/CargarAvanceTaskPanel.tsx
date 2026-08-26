@@ -221,7 +221,7 @@ function TaskTargetUnitsSection({
 
 type CargarAvanceTaskPanelProps = {
   availableRubros: CargarAvanceRubroOption[]
-  selectedRubroId: string
+  selectedRubroId: string | null
   onSelectRubro: (rubroId: string) => void
   tasks: TrabajoDiarioRubroTask[]
   expandedTaskIds: Set<string>
@@ -271,9 +271,9 @@ export function CargarAvanceTaskPanel({
           <Wrench className="size-4 text-[#314158]" aria-hidden />
           <p className="text-[16px] font-normal leading-[1.4] text-[#314158]">Rubro</p>
         </div>
-        <Select value={selectedRubroId} onValueChange={onSelectRubro}>
+        <Select value={selectedRubroId ?? undefined} onValueChange={onSelectRubro}>
           <SelectTrigger aria-label="Seleccionar rubro">
-            <SelectValue placeholder="Seleccioná un rubro" />
+            <SelectValue placeholder="seleccionar" />
           </SelectTrigger>
           <SelectContent>
             {availableRubros.map((rubro) => (
@@ -285,6 +285,7 @@ export function CargarAvanceTaskPanel({
         </Select>
       </div>
 
+      {selectedRubroId ? (
       <div className="rounded-[14px] border border-[#edeef0] bg-white p-4 shadow-[0_0_5px_rgba(243,103,31,0.08)] sm:p-6">
         <div className="mb-4 flex flex-col gap-1">
           <h3 className="text-[16px] font-normal leading-[1.4] text-[#314158]">
@@ -474,6 +475,7 @@ export function CargarAvanceTaskPanel({
           </Button>
         </div>
       </div>
+      ) : null}
     </div>
   )
 }

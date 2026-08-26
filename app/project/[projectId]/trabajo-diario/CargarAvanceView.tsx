@@ -114,7 +114,7 @@ type CargarAvanceViewProps = {
   selectedFloorId: string | null
   selectedRubroId: string | null
   onSelectFloor: (floorId: string) => void
-  onSelectRubro: (rubroId: string) => void
+  onSelectRubro: (rubroId: string | null) => void
   onClose: () => void
   onSaved: () => void
 }
@@ -248,7 +248,10 @@ export function CargarAvanceView({
   }, [selectedFloorId])
 
   useEffect(() => {
-    if (selectedUnitIds.length === 0) return
+    if (selectedUnitIds.length === 0) {
+      if (selectedRubroId) onSelectRubro(null)
+      return
+    }
 
     const rubros = getRubrosForUnits(
       selectedUnitIds,
@@ -256,10 +259,9 @@ export function CargarAvanceView({
       assignmentsByUnit,
       loadedKeys,
     )
-    if (rubros.length === 0) return
 
-    if (!selectedRubroId || !rubros.some((rubro) => rubro.id === selectedRubroId)) {
-      onSelectRubro(rubros[0].id)
+    if (selectedRubroId && !rubros.some((rubro) => rubro.id === selectedRubroId)) {
+      onSelectRubro(null)
     }
   }, [assignmentsByUnit, loadedKeys, onSelectRubro, rubroGroups, selectedRubroId, selectedUnitIds])
 
@@ -544,7 +546,7 @@ export function CargarAvanceView({
           </SelectionCard>
         ) : null}
 
-        {showWorkSections && selectedRubroId && availableRubros.length > 0 ? (
+        {showWorkSections && availableRubros.length > 0 ? (
           <CargarAvanceTaskPanel
             availableRubros={availableRubros}
             selectedRubroId={selectedRubroId}

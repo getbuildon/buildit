@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "crypto"
 import { PROJECT_ROLE_SLUG } from "@/lib/projects/catalogSlugs"
 import { buildInviteSetupPath } from "@/lib/auth/pendingAuthSetup"
 import { getSiteOrigin } from "@/lib/invitations/siteOrigin"
+import { toProjectMemberFicha } from "@/lib/projects/projectMemberFicha"
 
 const INVITE_EXPIRY_DAYS = 7
 
@@ -123,6 +124,12 @@ export async function acceptProjectInvitation(
   const roleSlug = Array.isArray(roleRelation) ? roleRelation[0]?.slug : roleRelation?.slug
   const isClient = roleSlug === PROJECT_ROLE_SLUG.Cliente
 
+  const ficha = toProjectMemberFicha({
+    firstName: invitation.first_name,
+    lastName: invitation.last_name,
+    phone: invitation.phone,
+  })
+
   const { data: existingMember } = await admin
     .from("project_members")
     .select("id, is_active")
@@ -131,7 +138,12 @@ export async function acceptProjectInvitation(
     .maybeSingle()
 
   if (existingMember?.is_active) {
-    // Ya es miembro activo: marcar invitación aceptada y sincronizar unidades de cliente si aplica.
+    const { error: fichaError } = await admin
+      .from("project_members")
+      .update(ficha)
+      .eq("id", existingMember.id)
+    if (fichaError) return { ok: false, error: fichaError.message }
+
     if (isClient) {
       const unitsResult = await syncClientUnitsForUser(admin, invitationId, userId)
       if (!unitsResult.ok) return unitsResult
@@ -144,6 +156,7 @@ export async function acceptProjectInvitation(
           is_active: true,
           user_type_id: invitation.user_type_id,
           role_id: invitation.role_id,
+          ...ficha,
         })
         .eq("id", existingMember.id)
       if (reactivateError) return { ok: false, error: reactivateError.message }
@@ -154,6 +167,7 @@ export async function acceptProjectInvitation(
         user_type_id: invitation.user_type_id,
         role_id: invitation.role_id,
         is_active: true,
+        ...ficha,
       })
       if (memberError) return { ok: false, error: memberError.message }
     }
@@ -163,17 +177,6 @@ export async function acceptProjectInvitation(
       if (!unitsResult.ok) return unitsResult
     }
   }
-
-  const { error: profileError } = await admin
-    .from("profiles")
-    .update({
-      first_name: invitation.first_name.trim(),
-      last_name: invitation.last_name.trim(),
-      phone: invitation.phone?.trim() || null,
-    })
-    .eq("id", userId)
-
-  if (profileError) return { ok: false, error: profileError.message }
 
   const { error: acceptError } = await admin
     .from("project_invitations")
@@ -200,8 +203,6 @@ export async function sendProjectInvitationEmail(
   const { error } = await admin.auth.admin.inviteUserByEmail(params.email.trim().toLowerCase(), {
     redirectTo,
     data: {
-      first_name: params.firstName.trim(),
-      last_name: params.lastName.trim(),
       invitation_id: params.invitationId,
     },
   })
@@ -414,8 +415,18 @@ export async function addExistingUserToProject(
     .eq("user_id", params.userId)
     .maybeSingle()
 
+  const ficha = toProjectMemberFicha({
+    firstName: params.firstName,
+    lastName: params.lastName,
+    phone: params.phone,
+  })
+
   if (existingMember?.is_active) {
-    // Ya es miembro activo.
+    const { error: fichaError } = await admin
+      .from("project_members")
+      .update(ficha)
+      .eq("id", existingMember.id)
+    if (fichaError) return { ok: false, error: fichaError.message }
   } else if (existingMember) {
     const { error: reactivateError } = await admin
       .from("project_members")
@@ -423,6 +434,7 @@ export async function addExistingUserToProject(
         is_active: true,
         user_type_id: params.userTypeId,
         role_id: params.roleId,
+        ...ficha,
       })
       .eq("id", existingMember.id)
     if (reactivateError) return { ok: false, error: reactivateError.message }
@@ -433,6 +445,7 @@ export async function addExistingUserToProject(
       user_type_id: params.userTypeId,
       role_id: params.roleId,
       is_active: true,
+      ...ficha,
     })
     if (memberError) return { ok: false, error: memberError.message }
   }
@@ -441,17 +454,6 @@ export async function addExistingUserToProject(
     const unitsResult = await syncClientUnitsDirect(admin, params.userId, params.unitIds)
     if (!unitsResult.ok) return unitsResult
   }
-
-  const { error: profileError } = await admin
-    .from("profiles")
-    .update({
-      first_name: params.firstName.trim(),
-      last_name: params.lastName.trim(),
-      phone: params.phone?.trim() || null,
-    })
-    .eq("id", params.userId)
-
-  if (profileError) return { ok: false, error: profileError.message }
 
   return { ok: true }
 }

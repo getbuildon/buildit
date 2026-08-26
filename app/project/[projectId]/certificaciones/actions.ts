@@ -16,6 +16,7 @@ import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
 import { getUnitPillLabel } from "@/lib/projects/floorLabels"
 import { loadUnitTaskAssignmentsByUnit } from "@/lib/projects/loadUnitTaskAssignments"
 import { loadLatestProgressEntries } from "@/lib/projects/loadLatestProgressEntries"
+import { loadProjectMemberDisplayNames } from "@/lib/projects/projectMemberFicha"
 
 export type CertificacionMember = {
   userId: string
@@ -47,18 +48,6 @@ export type CertificacionesData = {
   tasks: CertificacionTask[]
   members: CertificacionMember[]
   canCertify: boolean
-}
-
-function formatProfileName(profile: {
-  first_name: string | null
-  last_name: string | null
-  email: string
-}): string {
-  const firstName = profile.first_name?.trim()
-  const lastName = profile.last_name?.trim()
-  if (firstName && lastName) return `${firstName} ${lastName}`
-  if (firstName) return firstName
-  return profile.email
 }
 
 export async function getCertificacionesData(
@@ -194,29 +183,13 @@ export async function getCertificacionesData(
     })
   }
 
-  const { data: profiles } =
-    authorIds.size > 0
-      ? await admin
-          .from("profiles")
-          .select("id, first_name, last_name, email")
-          .in("id", [...authorIds])
-      : { data: [] as Array<{
-          id: string
-          first_name: string | null
-          last_name: string | null
-          email: string
-        }> }
-
-  const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]))
-
-  for (const task of tasks) {
-    const profile = profileById.get(task.authorId)
-    task.authorName = profile ? formatProfileName(profile) : "Usuario"
-  }
-
   const certifiedEntryIds = tasks
     .filter((task) => task.status === "certified")
     .map((task) => task.entryId)
+
+  const certifiedAtByEntryId = new Map<string, string>()
+  const certifiedByIdByEntryId = new Map<string, string>()
+  const certificationCommentByEntryId = new Map<string, string | null>()
 
   if (certifiedEntryIds.length > 0) {
     const { data: validations } = await supabase
@@ -225,10 +198,6 @@ export async function getCertificacionesData(
       .in("progress_entry_id", certifiedEntryIds)
       .eq("decision", "approved")
       .order("validated_at", { ascending: false })
-
-    const certifiedAtByEntryId = new Map<string, string>()
-    const certifiedByIdByEntryId = new Map<string, string>()
-    const certificationCommentByEntryId = new Map<string, string | null>()
 
     for (const validation of validations ?? []) {
       if (certifiedAtByEntryId.has(validation.progress_entry_id)) continue
@@ -239,57 +208,42 @@ export async function getCertificacionesData(
         validation.comment,
       )
     }
-
-    const certifierIds = [...new Set([...certifiedByIdByEntryId.values()])]
-    const missingCertifierIds = certifierIds.filter((userId) => !profileById.has(userId))
-
-    if (missingCertifierIds.length > 0) {
-      const { data: certifierProfiles } = await admin
-        .from("profiles")
-        .select("id, first_name, last_name, email")
-        .in("id", missingCertifierIds)
-
-      for (const profile of certifierProfiles ?? []) {
-        profileById.set(profile.id, profile)
-      }
-    }
-
-    for (const task of tasks) {
-      if (task.status !== "certified") continue
-
-      const certifiedAt =
-        certifiedAtByEntryId.get(task.entryId) ?? task.occurredAt
-      task.certifiedAt = certifiedAt
-      task.formattedDate = formatArgentinaTaskDate(certifiedAt)
-      task.formattedTime = formatArgentinaTaskTime(certifiedAt)
-
-      const certifierId = certifiedByIdByEntryId.get(task.entryId)
-      task.certifiedById = certifierId ?? null
-      task.certifiedByName = certifierId
-        ? profileById.get(certifierId)
-          ? formatProfileName(profileById.get(certifierId)!)
-          : "Usuario"
-        : null
-
-      const certificationComment = certificationCommentByEntryId.get(task.entryId)
-      if (certificationComment !== undefined) {
-        task.comment = certificationComment
-      }
-    }
   }
 
-  const memberIds = new Set(authorIds)
+  const memberIds = [...new Set([
+    ...authorIds,
+    ...certifiedByIdByEntryId.values(),
+  ])]
+  const nameById = await loadProjectMemberDisplayNames(admin, id, memberIds)
+
   for (const task of tasks) {
-    if (task.certifiedById) memberIds.add(task.certifiedById)
+    task.authorName = nameById.get(task.authorId) ?? "Usuario"
+
+    if (task.status !== "certified") continue
+
+    const certifiedAt =
+      certifiedAtByEntryId.get(task.entryId) ?? task.occurredAt
+    task.certifiedAt = certifiedAt
+    task.formattedDate = formatArgentinaTaskDate(certifiedAt)
+    task.formattedTime = formatArgentinaTaskTime(certifiedAt)
+
+    const certifierId = certifiedByIdByEntryId.get(task.entryId)
+    task.certifiedById = certifierId ?? null
+    task.certifiedByName = certifierId
+      ? (nameById.get(certifierId) ?? "Usuario")
+      : null
+
+    const certificationComment = certificationCommentByEntryId.get(task.entryId)
+    if (certificationComment !== undefined) {
+      task.comment = certificationComment
+    }
   }
 
-  const members: CertificacionMember[] = [...memberIds]
-    .map((userId) => {
-      const profile = profileById.get(userId)
-      if (!profile) return null
-      return { userId, name: formatProfileName(profile) }
-    })
-    .filter((member): member is CertificacionMember => member !== null)
+  const members: CertificacionMember[] = memberIds
+    .map((userId) => ({
+      userId,
+      name: nameById.get(userId) ?? "Usuario",
+    }))
     .sort((a, b) => a.name.localeCompare(b.name, "es"))
 
   return { tasks, members, canCertify }

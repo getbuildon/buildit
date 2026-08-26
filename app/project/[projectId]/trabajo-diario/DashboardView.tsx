@@ -108,7 +108,7 @@ export function DashboardView({ projectId, data }: Props) {
     setSelectedLoadRubroId(null)
   }
 
-  const handleSelectRubro = (rubroId: string) => {
+  const handleSelectRubro = (rubroId: string | null) => {
     setSelectedLoadRubroId(rubroId)
   }
 
@@ -138,7 +138,7 @@ export function DashboardView({ projectId, data }: Props) {
             onClick={() => setViewMode("load")}
           >
             <Plus className="size-5" />
-            Cargar Avances
+            Cargar nuevo avance
           </Button>
         ) : (
           <Button

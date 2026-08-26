@@ -63,7 +63,7 @@ export async function getCompanyProjectMembers(
 
   const { data: members, error: membersError } = await admin
     .from("project_members")
-    .select("user_id, role_id, user_type_id, joined_at")
+    .select("user_id, role_id, user_type_id, joined_at, first_name, last_name")
     .in("project_id", projectIds)
     .eq("is_active", true)
     .neq("user_id", user.id)
@@ -73,7 +73,7 @@ export async function getCompanyProjectMembers(
   const userIds = [...new Set(members.map((m) => m.user_id))]
 
   const [profilesResult, rolesResult, userTypesResult] = await Promise.all([
-    admin.from("profiles").select("id, first_name, last_name, email, avatar_url").in("id", userIds),
+    admin.from("profiles").select("id, email, avatar_url").in("id", userIds),
     admin.from("project_roles").select("id, slug, label"),
     admin.from("user_types").select("id, slug"),
   ])
@@ -101,7 +101,7 @@ export async function getCompanyProjectMembers(
     seen.add(member.user_id)
 
     const profile = profileById.get(member.user_id)
-    if (!profile) continue
+    if (!profile?.email) continue
 
     const roleRow = roleById.get(member.role_id)
     const userTypeRow = userTypeById.get(member.user_type_id)
@@ -111,8 +111,8 @@ export async function getCompanyProjectMembers(
 
     result.push({
       id: member.user_id,
-      firstName: profile.first_name || "",
-      lastName: profile.last_name || "",
+      firstName: member.first_name || "",
+      lastName: member.last_name || "",
       email: profile.email,
       roleTitle: roleRow?.label ?? role,
       userType,

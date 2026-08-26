@@ -23,6 +23,7 @@ import {
 } from "@/lib/projects/unitDetailTasks"
 import { loadUnitTaskAssignmentsByUnit } from "@/lib/projects/loadUnitTaskAssignments"
 import { loadLatestProgressEntries } from "@/lib/projects/loadLatestProgressEntries"
+import { loadProjectMemberDisplayNames } from "@/lib/projects/projectMemberFicha"
 
 export type UnitDetailData = {
   unit: {
@@ -42,15 +43,6 @@ export type UnitDetailData = {
   completedTasks: number
   totalTasks: number
   groups: UnitDetailTaskGroup[]
-}
-
-function formatAuthorName(profile: {
-  first_name: string | null
-  last_name: string | null
-  email: string
-}): string {
-  const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim()
-  return fullName || profile.email
 }
 
 export async function getUnitDetailData(
@@ -146,20 +138,7 @@ export async function getUnitDetailData(
     ),
   ] as string[]
 
-  const { data: profiles } =
-    authorIds.length > 0
-      ? await admin
-          .from("profiles")
-          .select("id, first_name, last_name, email")
-          .in("id", authorIds)
-      : { data: [] as Array<{
-          id: string
-          first_name: string | null
-          last_name: string | null
-          email: string
-        }> }
-
-  const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]))
+  const nameById = await loadProjectMemberDisplayNames(admin, id, authorIds)
 
   const rubroRows: Array<{ id: string; weight_percent: number | null }> = []
   const taskRows: Array<{ id: string; rubro_id: string }> = []
@@ -198,7 +177,6 @@ export async function getUnitDetailData(
           | undefined
         const status = resolveUnitTaskStatus(latest ?? null)
         const authorId = latest?.created_by
-        const author = authorId ? profileById.get(authorId) : null
         const occurredAt = latest?.submitted_at ?? latest?.created_at ?? null
 
         const entryId = latest?.id ?? null
@@ -214,7 +192,7 @@ export async function getUnitDetailData(
           groupIndex: groupIndex + 1,
           status,
           entryId,
-          authorName: author ? formatAuthorName(author) : null,
+          authorName: authorId ? (nameById.get(authorId) ?? null) : null,
           occurredAt,
           formattedMeta: occurredAt ? formatUnitTaskMetaDate(occurredAt) : null,
         })
@@ -249,17 +227,13 @@ export async function getUnitDetailData(
     }
 
     const missingCertifierIds = [...new Set([...certifiedByIdByEntryId.values()])].filter(
-      (userId) => !profileById.has(userId),
+      (userId) => !nameById.has(userId),
     )
 
     if (missingCertifierIds.length > 0) {
-      const { data: certifierProfiles } = await admin
-        .from("profiles")
-        .select("id, first_name, last_name, email")
-        .in("id", missingCertifierIds)
-
-      for (const profile of certifierProfiles ?? []) {
-        profileById.set(profile.id, profile)
+      const extraNames = await loadProjectMemberDisplayNames(admin, id, missingCertifierIds)
+      for (const [userId, name] of extraNames) {
+        nameById.set(userId, name)
       }
     }
 
@@ -275,8 +249,7 @@ export async function getUnitDetailData(
         }
 
         if (certifierId) {
-          const certifier = profileById.get(certifierId)
-          task.authorName = certifier ? formatAuthorName(certifier) : "Usuario"
+          task.authorName = nameById.get(certifierId) ?? "Usuario"
         }
       }
     }

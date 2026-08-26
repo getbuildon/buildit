@@ -73,7 +73,7 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
   const [membersRes, invitationsRes] = await Promise.all([
     supabase
       .from("project_members")
-      .select("id, user_id, role_id, user_type_id")
+      .select("id, user_id, role_id, user_type_id, first_name, last_name")
       .eq("project_id", projectId)
       .eq("is_active", true),
     supabase
@@ -102,8 +102,8 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
 
   const [profilesRes, rolesRes, userTypesRes] = await Promise.all([
     userIds.length > 0
-      ? admin.from("profiles").select("id, first_name, last_name, email, avatar_url").in("id", userIds)
-      : Promise.resolve({ data: [] as { id: string; first_name: string; last_name: string; email: string; avatar_url: string | null }[] }),
+      ? admin.from("profiles").select("id, email, avatar_url").in("id", userIds)
+      : Promise.resolve({ data: [] as { id: string; email: string; avatar_url: string | null }[] }),
     allRoleIds.length > 0
       ? admin.from("project_roles").select("id, slug, label, badge").in("id", allRoleIds)
       : Promise.resolve({ data: [] as { id: string; slug: string; label: string; badge: string }[] }),
@@ -128,8 +128,8 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
       return {
         memberId: m.id,
         userId: m.user_id,
-        firstName: profile?.first_name ?? "",
-        lastName: profile?.last_name ?? "",
+        firstName: m.first_name ?? "",
+        lastName: m.last_name ?? "",
         email: profile?.email ?? "",
         roleLabel: role?.label ?? "",
         userType: mappedUserType.userType,
@@ -230,7 +230,7 @@ export async function addTeamMember(
 
     const { data: memberRow } = await admin
       .from("project_members")
-      .select("id, user_id")
+      .select("id, user_id, first_name, last_name")
       .eq("project_id", projectId)
       .eq("user_id", existingProfile.id)
       .eq("is_active", true)
@@ -238,7 +238,7 @@ export async function addTeamMember(
 
     const { data: profileRow } = await admin
       .from("profiles")
-      .select("first_name, last_name, email, avatar_url")
+      .select("email, avatar_url")
       .eq("id", existingProfile.id)
       .single()
 
@@ -248,8 +248,8 @@ export async function addTeamMember(
       member: {
         memberId: memberRow?.id ?? existingProfile.id,
         userId: existingProfile.id,
-        firstName: profileRow?.first_name ?? data.firstName.trim(),
-        lastName: profileRow?.last_name ?? data.lastName.trim(),
+        firstName: memberRow?.first_name || data.firstName.trim(),
+        lastName: memberRow?.last_name || data.lastName.trim(),
         email: profileRow?.email ?? normalizedEmail,
         roleLabel: roleRes.data?.label ?? data.role,
         userType: data.userType,

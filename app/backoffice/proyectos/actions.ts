@@ -10,6 +10,7 @@ import {
   type ProjectSubscriptionSnapshot,
 } from "@/lib/backoffice/proyectosSubscriptionStatus"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
+import { loadFichaSnapshotsFromProfiles } from "@/lib/projects/projectMemberFicha"
 import {
   buildCustomPlanPriceLabel,
   normalizeProjectSubscriptionInput,
@@ -1432,6 +1433,7 @@ async function addOwnerAsProjectMember(
   ownerUserId: string,
 ): Promise<void> {
   const catalog = await loadProjectCatalogIds(admin)
+  const fichaByUserId = await loadFichaSnapshotsFromProfiles(admin, [ownerUserId])
 
   const { error } = await admin.from("project_members").insert({
     project_id: projectId,
@@ -1439,6 +1441,11 @@ async function addOwnerAsProjectMember(
     role_id: catalog.roleIds.Administrador,
     user_type_id: catalog.userTypeIds.Owner,
     is_active: true,
+    ...(fichaByUserId.get(ownerUserId) ?? {
+      first_name: "",
+      last_name: "",
+      phone: null,
+    }),
   })
 
   if (error) {

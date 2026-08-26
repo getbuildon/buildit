@@ -13,6 +13,10 @@ import {
 } from "@/lib/projects/initialWorkStatus"
 import { validateProjectSeatAllocation } from "@/lib/company/projectSubscriptionLimits"
 import { createAdminClient } from "@/utils/supabase/admin"
+import {
+  fichaFromProfileRow,
+  loadFichaSnapshotsFromProfiles,
+} from "@/lib/projects/projectMemberFicha"
 
 function parseOptionalNumber(value: string): number | null {
   const trimmed = value.trim()
@@ -440,19 +444,25 @@ export async function ensureProjectCreatorMembership(
         ? catalog.userTypeIds.Owner
         : catalog.userTypeIds.Admin
 
+    const coAdmins = (companyAdmins ?? []).filter((cm) => cm.user_id !== userId)
+    const fichaByUserId = await loadFichaSnapshotsFromProfiles(adminClient, [
+      userId,
+      ...coAdmins.map((cm) => cm.user_id),
+    ])
+
     const { error: memberError } = await supabase.from("project_members").insert({
       project_id: projectId,
       user_id: userId,
       role_id: catalog.roleIds.Administrador,
       user_type_id: creatorUserTypeId,
       is_active: true,
+      ...(fichaByUserId.get(userId) ?? fichaFromProfileRow(null)),
     })
 
     if (memberError) {
       return { ok: false as const, error: memberError.message }
     }
 
-    const coAdmins = (companyAdmins ?? []).filter((cm) => cm.user_id !== userId)
     if (coAdmins.length > 0) {
       const { error: coAdminError } = await adminClient
         .from("project_members")
@@ -466,6 +476,7 @@ export async function ensureProjectCreatorMembership(
                 ? catalog.userTypeIds.Owner
                 : catalog.userTypeIds.Admin,
             is_active: true,
+            ...(fichaByUserId.get(cm.user_id) ?? fichaFromProfileRow(null)),
           })),
         )
       if (coAdminError) {

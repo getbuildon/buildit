@@ -25,6 +25,7 @@ import { buildTaskCodeMap, buildTaskLabelMap } from "@/lib/projects/unitDetailTa
 import { PROGRESS_PHOTOS_BUCKET } from "@/lib/progress/progressPhotoConfig"
 import { loadUnitTaskAssignmentsByUnit } from "@/lib/projects/loadUnitTaskAssignments"
 import { loadLatestProgressEntries } from "@/lib/projects/loadLatestProgressEntries"
+import { loadProjectMemberDisplayNames } from "@/lib/projects/projectMemberFicha"
 import { getUnitTaskAssignments } from "../configuracion/actions"
 
 export type SaveCargarAvanceInput = {
@@ -169,18 +170,6 @@ function mapProgressStatus(
   if (status === "rejected") return "Bloqueado"
   if (progressState === "completed" || status === "approved") return "Completado"
   return "En Proceso"
-}
-
-function formatProfileName(profile: {
-  first_name: string | null
-  last_name: string | null
-  email: string
-}): string {
-  const firstName = profile.first_name?.trim()
-  const lastName = profile.last_name?.trim()
-  if (firstName && lastName) return `${firstName} ${lastName}`
-  if (firstName) return firstName
-  return profile.email
 }
 
 async function getAttachmentsByEntry(
@@ -725,22 +714,10 @@ export async function getTrabajoDiarioTaskDetail(
 
   const authorIds = [...new Set(historyRows.map((row) => row.created_by))]
   const validatorIds = [...new Set((validationRows ?? []).map((row) => row.validated_by))]
-  const profileIds = [...new Set([...authorIds, ...validatorIds])]
-
-  const { data: profiles } =
-    profileIds.length > 0
-      ? await admin
-          .from("profiles")
-          .select("id, first_name, last_name, email")
-          .in("id", profileIds)
-      : { data: [] as Array<{
-          id: string
-          first_name: string | null
-          last_name: string | null
-          email: string
-        }> }
-
-  const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]))
+  const nameById = await loadProjectMemberDisplayNames(admin, id, [
+    ...authorIds,
+    ...validatorIds,
+  ])
 
   const rubro = entry.rubros as { name: string } | { name: string }[] | null
   const task = entry.rubro_tasks as { name: string } | { name: string }[] | null
@@ -759,31 +736,27 @@ export async function getTrabajoDiarioTaskDetail(
 
   const progressHistory: TrabajoDiarioTaskHistoryItem[] = historyRows.map((row) => {
     const rowOccurredAt = row.submitted_at ?? row.created_at
-    const profile = profileById.get(row.created_by)
     return {
       id: row.id,
       status: mapProgressStatus(row.status, row.progress_state),
       comment: row.comment,
       occurredAt: rowOccurredAt,
       formattedDate: formatArgentinaDateTime(rowOccurredAt),
-      authorName: profile ? formatProfileName(profile) : "Usuario",
+      authorName: nameById.get(row.created_by) ?? "Usuario",
       attachments: attachmentsByEntry.get(row.id) ?? [],
     }
   })
 
   const certificationHistory: TrabajoDiarioTaskHistoryItem[] = (validationRows ?? []).map(
-    (validation) => {
-      const profile = profileById.get(validation.validated_by)
-      return {
-        id: `certification-${validation.id}`,
-        status: "Certificada",
-        comment: validation.comment,
-        occurredAt: validation.validated_at,
-        formattedDate: formatArgentinaDateTime(validation.validated_at),
-        authorName: profile ? formatProfileName(profile) : "Usuario",
-        attachments: [],
-      }
-    },
+    (validation) => ({
+      id: `certification-${validation.id}`,
+      status: "Certificada",
+      comment: validation.comment,
+      occurredAt: validation.validated_at,
+      formattedDate: formatArgentinaDateTime(validation.validated_at),
+      authorName: nameById.get(validation.validated_by) ?? "Usuario",
+      attachments: [],
+    }),
   )
 
   const history = canViewHistory

@@ -380,11 +380,30 @@ export async function getProjectClientsData(
     clientUserIds.length > 0
       ? await admin
           .from("profiles")
-          .select("id, first_name, last_name, email, phone, avatar_url")
+          .select("id, email, avatar_url")
           .in("id", clientUserIds)
-      : { data: [] }
+      : { data: [] as { id: string; email: string; avatar_url: string | null }[] }
+  const membersRes =
+    clientUserIds.length > 0
+      ? await admin
+          .from("project_members")
+          .select("user_id, first_name, last_name, phone")
+          .eq("project_id", projectId)
+          .eq("is_active", true)
+          .in("user_id", clientUserIds)
+      : {
+          data: [] as {
+            user_id: string
+            first_name: string
+            last_name: string
+            phone: string | null
+          }[],
+        }
 
   const profileById = new Map((profilesRes.data ?? []).map((p) => [p.id, p]))
+  const memberFichaByUserId = new Map(
+    (membersRes.data ?? []).map((member) => [member.user_id, member]),
+  )
 
   const clientUnitsMap = new Map<string, string[]>()
   for (const uc of unitClientRows) {
@@ -396,14 +415,15 @@ export async function getProjectClientsData(
   const clients: ProjectClient[] = clientUserIds
     .map((userId) => {
       const profile = profileById.get(userId)
-      if (!profile) return null
+      const ficha = memberFichaByUserId.get(userId)
+      if (!profile && !ficha) return null
       return {
         userId,
-        firstName: profile.first_name || "",
-        lastName: profile.last_name || "",
-        email: profile.email,
-        phone: profile.phone ?? null,
-        avatarUrl: profile.avatar_url ?? null,
+        firstName: ficha?.first_name || "",
+        lastName: ficha?.last_name || "",
+        email: profile?.email ?? "",
+        phone: ficha?.phone ?? null,
+        avatarUrl: profile?.avatar_url ?? null,
         units: mapUnitsById(clientUnitsMap.get(userId) ?? [], unitOptionById),
       }
     })
@@ -698,16 +718,18 @@ export async function updateProjectClient(
   )
   if (!unitValidation.ok) return unitValidation
 
-  const { error: profileError } = await admin
-    .from("profiles")
+  const { error: fichaError } = await admin
+    .from("project_members")
     .update({
       first_name: data.firstName.trim(),
       last_name: data.lastName.trim(),
       phone: data.phone?.trim() || null,
     })
-    .eq("id", userId)
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .eq("is_active", true)
 
-  if (profileError) return { ok: false, error: profileError.message }
+  if (fichaError) return { ok: false, error: fichaError.message }
 
   const unitsResult = await syncClientUnits(admin, userId, data.unitIds)
   if (!unitsResult.ok) return unitsResult
