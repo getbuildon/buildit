@@ -16,11 +16,13 @@ import {
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { formatArgentinaTableDate } from "@/lib/datetime/argentinaDateTime"
+import { useInvalidateBackoffice } from "@/lib/backoffice/invalidateBackofficeQueries"
 import { cn } from "@/lib/utils"
 
 type EmpresasViewProps = {
   result: BackofficeCompaniesResult
   initialSearch: string
+  isRefreshing?: boolean
 }
 
 const TABLE_GRID =
@@ -76,7 +78,7 @@ function CompanyRowActions({
   disabled?: boolean
   onEdit: () => void
 }) {
-  const router = useRouter()
+  const invalidateBackoffice = useInvalidateBackoffice()
   const [open, setOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -95,7 +97,7 @@ function CompanyRowActions({
 
       setDeleteOpen(false)
       setOpen(false)
-      router.refresh()
+      void invalidateBackoffice()
     })
   }
 
@@ -222,10 +224,15 @@ function EmpresasPageJump({
   )
 }
 
-export function EmpresasView({ result, initialSearch }: EmpresasViewProps) {
+export function EmpresasView({
+  result,
+  initialSearch,
+  isRefreshing = false,
+}: EmpresasViewProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [isPending, startTransition] = useTransition()
+  const [isNavigating, startTransition] = useTransition()
+  const isPending = isNavigating || isRefreshing
   const [searchInput, setSearchInput] = useState(initialSearch)
   const [formOpen, setFormOpen] = useState(false)
   const [editingCompany, setEditingCompany] = useState<BackofficeCompanyRow | null>(

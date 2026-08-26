@@ -13,6 +13,12 @@ export type DashboardPeriod = {
 
 const PRESETS = new Set<string>(["always", "this_month", "last_month", "custom"])
 
+export function isDashboardPeriodPreset(
+  value: string | null | undefined,
+): value is DashboardPeriodPreset {
+  return value != null && PRESETS.has(value)
+}
+
 /** Inicio del historial para métricas "Siempre". */
 const ALWAYS_START = { year: 2020, month: 1, day: 1 }
 

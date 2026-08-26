@@ -105,18 +105,15 @@ export async function loadProjectsHomeProgress(
         .in("project_id", projectIds),
     ])
 
-  if (
+  const loadError =
     floorsRes.error ||
     unitsRes.error ||
     rubrosRes.error ||
     tasksRes.error ||
     assignmentsRes.error ||
     entriesRes.error
-  ) {
-    for (const projectId of projectIds) {
-      result.set(projectId, { generalProgressPercent: 0, weeklyProgressDelta: 0 })
-    }
-    return result
+  if (loadError) {
+    throw new Error(loadError.message || "No se pudo calcular el progreso de las obras.")
   }
 
   const floors = (floorsRes.data ?? []) as FloorRow[]

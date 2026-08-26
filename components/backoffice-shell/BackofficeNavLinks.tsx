@@ -2,7 +2,10 @@
 
 import Link from "next/link"
 
-import { useBackofficeNavigation } from "@/components/backoffice-shell/BackofficeNavigationContext"
+import {
+  matchesBackofficeNavHref,
+  useBackofficeNavigation,
+} from "@/components/backoffice-shell/BackofficeNavigationContext"
 import {
   BACKOFFICE_NAV_ITEMS,
   backofficeHref,
@@ -23,13 +26,15 @@ export function BackofficeNavLinks({
   className,
   linkClassName,
 }: BackofficeNavLinksProps) {
-  const { navigate } = useBackofficeNavigation()
+  const { navigate, pendingHref } = useBackofficeNavigation()
 
   return (
     <nav className={cn("flex flex-col gap-1", className)}>
       {BACKOFFICE_NAV_ITEMS.map((item) => {
         const href = backofficeHref(item.segment)
-        const active = isBackofficeNavActive(pathname, item.segment)
+        const active = pendingHref
+          ? matchesBackofficeNavHref(pendingHref, href)
+          : isBackofficeNavActive(pathname, item.segment)
         const Icon = item.icon
 
         return (

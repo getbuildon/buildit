@@ -145,12 +145,31 @@ export function calculateUnitProgressPercent(
     totalProgress += rubroWeight * (certifiedCount / taskIds.length)
   }
 
-  return Math.round(totalProgress)
+  return totalProgress
 }
 
 function calculateAverageProgress(values: number[]): number {
   if (values.length === 0) return 0
-  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
+  return values.reduce((sum, value) => sum + value, 0) / values.length
+}
+
+/** Etiqueta de UI: 0% solo cuando el valor es exactamente 0. */
+export function formatProgressPercentLabel(value: number): string {
+  if (value <= 0) return "0%"
+  if (value < 1) return "<1%"
+  return `${Math.round(value)}%`
+}
+
+/** Ancho de barra: si hay avance real menor a 1%, dejar un sliver visible. */
+export function progressBarWidthPercent(value: number): number {
+  if (value <= 0) return 0
+  if (value >= 100) return 100
+  if (value < 1) return 1
+  return value
+}
+
+export function isUnitProgressComplete(value: number): boolean {
+  return Math.round(value) === 100
 }
 
 export function calculateUnitProgressValue(

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useTransition } from "react"
 import { Minus, Plus } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 import {
   getBackofficeProjectBilling,
@@ -23,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
+import { useInvalidateBackoffice } from "@/lib/backoffice/invalidateBackofficeQueries"
 import { formatArgentinaTableDate } from "@/lib/datetime/argentinaDateTime"
 import {
   formatBillingBalanceLabel,
@@ -198,7 +198,7 @@ export function ProjectBillingDialog({
   open,
   onOpenChange,
 }: ProjectBillingDialogProps) {
-  const router = useRouter()
+  const invalidateBackoffice = useInvalidateBackoffice()
   const [billing, setBilling] = useState<SubscriptionBillingSummary | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -282,7 +282,7 @@ export function ProjectBillingDialog({
       const refreshed = await getBackofficeProjectBilling(project.id)
       setBilling(refreshed)
       closeEntryForm()
-      router.refresh()
+      void invalidateBackoffice()
     })
   }
 

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 type ClientesViewProps = {
   result: BackofficeClientesResult
   initialSearch: string
+  isRefreshing?: boolean
 }
 
 const TABLE_GRID =
@@ -209,10 +210,15 @@ function ClientesPageJump({
   )
 }
 
-export function ClientesView({ result, initialSearch }: ClientesViewProps) {
+export function ClientesView({
+  result,
+  initialSearch,
+  isRefreshing = false,
+}: ClientesViewProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [isPending, startTransition] = useTransition()
+  const [isNavigating, startTransition] = useTransition()
+  const isPending = isNavigating || isRefreshing
   const [searchInput, setSearchInput] = useState(initialSearch)
 
   useEffect(() => {

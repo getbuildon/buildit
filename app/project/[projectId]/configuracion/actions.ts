@@ -15,6 +15,7 @@ import {
   countAssignedBlockedTasks,
   countAssignedCompletedTasks,
   getAssignedTaskIdsForUnit,
+  isUnitProgressComplete,
   unitHasBlockedTasks,
 } from "@/lib/projects/dashboardProgress"
 import { buildRubroProgressContext } from "@/lib/projects/buildRubroProgressContext"
@@ -141,7 +142,8 @@ export type DashboardStats = {
   totalUnits: number
   generalProgress: number
   completedUnits: number
-  completedTasksThisWeek: number | null
+  certifiedTasks: number
+  certifiedTasksThisWeek: number
   blockedTasks: number | null
 }
 
@@ -210,7 +212,14 @@ export async function getDashboardData(
   const weekAgo = new Date()
   weekAgo.setDate(weekAgo.getDate() - 7)
 
-  const completedTasksThisWeek = countAssignedCompletedTasks(
+  const certifiedTasks = countAssignedCompletedTasks(
+    assignmentsByUnit,
+    allTaskIds,
+    unitIds,
+    entries,
+  )
+
+  const certifiedTasksThisWeek = countAssignedCompletedTasks(
     assignmentsByUnit,
     allTaskIds,
     unitIds,
@@ -288,7 +297,7 @@ export async function getDashboardData(
     rubroProgress,
   )
   const allUnits = dashboardFloors.flatMap((floor) => floor.units)
-  const completedUnits = allUnits.filter((unit) => unit.progress === 100).length
+  const completedUnits = allUnits.filter((unit) => isUnitProgressComplete(unit.progress)).length
 
   return {
     floors: dashboardFloors,
@@ -297,7 +306,8 @@ export async function getDashboardData(
       totalUnits: allUnits.length,
       generalProgress,
       completedUnits,
-      completedTasksThisWeek,
+      certifiedTasks,
+      certifiedTasksThisWeek,
       blockedTasks,
     },
   }

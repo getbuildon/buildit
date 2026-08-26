@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useTransition } from "react"
 import { Plus, X } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 import {
   cancelBackofficeProjectSubscription,
@@ -34,6 +33,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
+import { useInvalidateBackoffice } from "@/lib/backoffice/invalidateBackofficeQueries"
 import { cn } from "@/lib/utils"
 
 const FIELD_CLASSNAME =
@@ -113,7 +113,7 @@ export function ProyectoFormDialog({
   onOpenChange,
   project,
 }: ProyectoFormDialogProps) {
-  const router = useRouter()
+  const invalidateBackoffice = useInvalidateBackoffice()
   const isEditing = project !== null
   const [form, setForm] = useState(emptyFormState)
   const [formError, setFormError] = useState<string | null>(null)
@@ -231,7 +231,7 @@ export function ProyectoFormDialog({
       setSubscriptionDetails((current) =>
         current ? { ...current, status: "cancelled" } : current,
       )
-      router.refresh()
+      void invalidateBackoffice()
     })
   }
 
@@ -277,7 +277,7 @@ export function ProyectoFormDialog({
       }
 
       onOpenChange(false)
-      router.refresh()
+      void invalidateBackoffice()
     })
   }
 

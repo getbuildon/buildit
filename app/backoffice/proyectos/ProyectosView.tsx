@@ -30,6 +30,7 @@ import {
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { formatArgentinaTableDate } from "@/lib/datetime/argentinaDateTime"
+import { useInvalidateBackoffice } from "@/lib/backoffice/invalidateBackofficeQueries"
 import type { BackofficeProjectStatusKind } from "@/lib/backoffice/proyectosQuery"
 import {
   hasActiveProyectosFilters,
@@ -49,6 +50,7 @@ type ProyectosViewProps = {
   initialSearch: string
   initialPlanSlugs: string[]
   initialStatuses: BackofficeProjectStatusKind[]
+  isRefreshing?: boolean
 }
 
 const TABLE_GRID =
@@ -174,7 +176,7 @@ function ProjectRowActions({
   onEdit: () => void
   onBilling: () => void
 }) {
-  const router = useRouter()
+  const invalidateBackoffice = useInvalidateBackoffice()
   const [open, setOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [cancelSubscriptionOpen, setCancelSubscriptionOpen] = useState(false)
@@ -199,7 +201,7 @@ function ProjectRowActions({
 
       setDeleteOpen(false)
       setOpen(false)
-      router.refresh()
+      void invalidateBackoffice()
     })
   }
 
@@ -216,7 +218,7 @@ function ProjectRowActions({
 
       setCancelSubscriptionOpen(false)
       setOpen(false)
-      router.refresh()
+      void invalidateBackoffice()
     })
   }
 
@@ -382,10 +384,12 @@ export function ProyectosView({
   initialSearch,
   initialPlanSlugs,
   initialStatuses,
+  isRefreshing = false,
 }: ProyectosViewProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [isPending, startTransition] = useTransition()
+  const [isNavigating, startTransition] = useTransition()
+  const isPending = isNavigating || isRefreshing
   const [searchInput, setSearchInput] = useState(initialSearch)
   const [formOpen, setFormOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)

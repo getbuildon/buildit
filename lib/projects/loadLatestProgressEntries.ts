@@ -25,12 +25,24 @@ export async function loadLatestProgressEntries(
   projectId: string,
   options: LoadLatestProgressEntriesOptions = {},
 ): Promise<LatestProgressEntry[]> {
-  const { data, error } = await supabase.rpc("latest_progress_entries", {
-    p_project_id: projectId,
-    p_unit_id: options.unitId ?? null,
-    p_statuses: options.statuses ?? null,
-  })
+  const params: {
+    p_project_id: string
+    p_unit_id?: string
+    p_statuses?: Array<"draft" | "submitted" | "approved" | "rejected">
+  } = { p_project_id: projectId }
 
-  if (error || !data) return []
-  return data as LatestProgressEntry[]
+  if (options.unitId) {
+    params.p_unit_id = options.unitId
+  }
+  if (options.statuses && options.statuses.length > 0) {
+    params.p_statuses = options.statuses
+  }
+
+  const { data, error } = await supabase.rpc("latest_progress_entries", params)
+
+  if (error) {
+    throw new Error(error.message || "No se pudieron cargar los avances.")
+  }
+
+  return (data ?? []) as LatestProgressEntry[]
 }

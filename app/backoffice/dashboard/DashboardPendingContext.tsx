@@ -15,11 +15,19 @@ type DashboardPendingContextValue = {
 const DashboardPendingContext =
   createContext<DashboardPendingContextValue | null>(null)
 
-export function DashboardPendingProvider({ children }: { children: ReactNode }) {
+export function DashboardPendingProvider({
+  children,
+  isRefreshing = false,
+}: {
+  children: ReactNode
+  isRefreshing?: boolean
+}) {
   const [isPending, startTransition] = useTransition()
 
   return (
-    <DashboardPendingContext.Provider value={{ isPending, startTransition }}>
+    <DashboardPendingContext.Provider
+      value={{ isPending: isPending || isRefreshing, startTransition }}
+    >
       {children}
     </DashboardPendingContext.Provider>
   )

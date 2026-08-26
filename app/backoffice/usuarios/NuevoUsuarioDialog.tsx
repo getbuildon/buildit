@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useTransition } from "react"
 import { Plus } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 import { createBackofficeUser } from "@/app/backoffice/usuarios/actions"
 import { Button } from "@/components/ui/button"
@@ -16,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
+import { useInvalidateBackoffice } from "@/lib/backoffice/invalidateBackofficeQueries"
 
 type NuevoUsuarioDialogProps = {
   open: boolean
@@ -40,7 +40,7 @@ export function NuevoUsuarioDialog({
   open,
   onOpenChange,
 }: NuevoUsuarioDialogProps) {
-  const router = useRouter()
+  const invalidateBackoffice = useInvalidateBackoffice()
   const [form, setForm] = useState(emptyFormState)
   const [formError, setFormError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -99,7 +99,7 @@ export function NuevoUsuarioDialog({
       setSuccessMessage(
         `Enviamos un correo a ${form.email.trim()} para que complete el registro y cree su contraseña.`,
       )
-      router.refresh()
+      void invalidateBackoffice()
     })
   }
 

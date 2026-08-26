@@ -9,10 +9,12 @@ export async function loadUnitTaskAssignmentsByUnit(
     .select("unit_id, rubro_task_id")
     .eq("project_id", projectId)
 
-  if (error || !data) return {}
+  if (error) {
+    throw new Error(error.message || "No se pudieron cargar las tareas asignadas.")
+  }
 
   const byUnit: Record<string, string[]> = {}
-  for (const row of data) {
+  for (const row of data ?? []) {
     if (!byUnit[row.unit_id]) byUnit[row.unit_id] = []
     byUnit[row.unit_id].push(row.rubro_task_id)
   }

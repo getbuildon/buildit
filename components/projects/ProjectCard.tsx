@@ -6,6 +6,7 @@ import { Building2, TrendingUp } from "lucide-react"
 import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import type { HomeProjectListItem } from "@/lib/projects/types"
 import type { ProjectHomeProgress } from "@/lib/projects/homeProjectProgress"
+import { progressBarWidthPercent } from "@/lib/projects/dashboardProgress"
 import { projectDashboardHref } from "@/lib/project/routes"
 import {
   HOME_COLORS,
@@ -154,7 +155,7 @@ export function ProjectCard({ project, progress }: ProjectCardProps) {
                 <div
                   className="h-full rounded-full"
                   style={{
-                    width: `${generalProgress}%`,
+                    width: `${progressBarWidthPercent(generalProgress)}%`,
                     backgroundImage: PROJECT_PROGRESS_GRADIENT,
                   }}
                 />

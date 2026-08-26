@@ -1,19 +1,31 @@
 import type { ReactNode } from "react"
 
 import { getProfileData } from "@/app/project/[projectId]/perfil/actions"
-import { BackofficeShell } from "@/components/backoffice-shell/BackofficeShell"
+import { BackofficeShellFromPromise } from "@/components/backoffice-shell/BackofficeShell"
 import { requireBackofficeUser } from "@/lib/auth/backofficeAccess"
-import { toSidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
+import {
+  toSidebarUserProfile,
+  type SidebarUserProfile,
+} from "@/lib/profile/sidebarUserProfile"
 
 type BackofficeLayoutProps = {
   children: ReactNode
 }
 
-export default async function BackofficeLayout({ children }: BackofficeLayoutProps) {
+async function loadBackofficeUserProfile(): Promise<SidebarUserProfile> {
   const user = await requireBackofficeUser()
   const profileData = await getProfileData()
   const userProfile = toSidebarUserProfile(profileData, user.email)
   userProfile.roleLabel = "Administración"
+  return userProfile
+}
 
-  return <BackofficeShell userProfile={userProfile}>{children}</BackofficeShell>
+export default function BackofficeLayout({ children }: BackofficeLayoutProps) {
+  const userProfilePromise = loadBackofficeUserProfile()
+
+  return (
+    <BackofficeShellFromPromise userProfilePromise={userProfilePromise}>
+      {children}
+    </BackofficeShellFromPromise>
+  )
 }

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useTransition } from "react"
 import { Plus, X } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 import {
   createBackofficeCompany,
@@ -22,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
+import { useInvalidateBackoffice } from "@/lib/backoffice/invalidateBackofficeQueries"
 
 const FIELD_CLASSNAME =
   "h-[42px] rounded-xl border-[#edeef0] bg-white text-sm leading-[1.4] text-[#18191b] placeholder:text-[#696e77] shadow-none focus-visible:border-[#ff7433] focus-visible:ring-0"
@@ -79,7 +79,7 @@ export function EmpresaFormDialog({
   onOpenChange,
   company,
 }: EmpresaFormDialogProps) {
-  const router = useRouter()
+  const invalidateBackoffice = useInvalidateBackoffice()
   const isEditing = company !== null
   const [form, setForm] = useState(emptyFormState)
   const [formError, setFormError] = useState<string | null>(null)
@@ -171,7 +171,7 @@ export function EmpresaFormDialog({
       }
 
       onOpenChange(false)
-      router.refresh()
+      void invalidateBackoffice()
     })
   }
 

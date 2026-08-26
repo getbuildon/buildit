@@ -36,6 +36,7 @@ type DashboardViewProps = {
   compareFrom?: string
   compareTo?: string
   comparePeriodLabel?: string
+  isRefreshing?: boolean
 }
 
 function MetricCard({
@@ -85,7 +86,7 @@ function MetricCard({
 
 export function DashboardView(props: DashboardViewProps) {
   return (
-    <DashboardPendingProvider>
+    <DashboardPendingProvider isRefreshing={props.isRefreshing}>
       <DashboardViewContent {...props} />
     </DashboardPendingProvider>
   )

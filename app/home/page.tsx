@@ -110,6 +110,11 @@ function HomePage() {
               />
             ))}
       </div>
+      {progressQuery.isError ? (
+        <p className="mt-4 text-center text-sm text-white/80">
+          No pudimos cargar el progreso de las obras. Probá de nuevo en un momento.
+        </p>
+      ) : null}
 
       {shell ? <BackofficeAccessCallout canAccess={shell.canSeeBackoffice} /> : null}
     </HomePageLayout>

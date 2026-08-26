@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { formatArgentinaTableDate } from "@/lib/datetime/argentinaDateTime"
 import { formatCollaborationProjectCount } from "@/lib/backoffice/collaborationProjectCounts"
+import { useInvalidateBackoffice } from "@/lib/backoffice/invalidateBackofficeQueries"
 import type { BackofficeUsersStatusKind } from "@/lib/backoffice/usuariosQuery"
 import {
   hasActiveUsuariosFilters,
@@ -37,6 +38,7 @@ type UsuariosViewProps = {
   result: BackofficeUsersResult
   initialSearch: string
   initialStatuses: BackofficeUsersStatusKind[]
+  isRefreshing?: boolean
 }
 
 const TABLE_GRID =
@@ -127,7 +129,7 @@ function UserRowActions({
   user: BackofficeUserRow
   disabled?: boolean
 }) {
-  const router = useRouter()
+  const invalidateBackoffice = useInvalidateBackoffice()
   const [open, setOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -149,7 +151,7 @@ function UserRowActions({
       }
 
       setOpen(false)
-      router.refresh()
+      void invalidateBackoffice()
     })
   }
 
@@ -166,7 +168,7 @@ function UserRowActions({
 
       setDeleteOpen(false)
       setOpen(false)
-      router.refresh()
+      void invalidateBackoffice()
     })
   }
 
@@ -295,10 +297,12 @@ export function UsuariosView({
   result,
   initialSearch,
   initialStatuses,
+  isRefreshing = false,
 }: UsuariosViewProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [isPending, startTransition] = useTransition()
+  const [isNavigating, startTransition] = useTransition()
+  const isPending = isNavigating || isRefreshing
   const [searchInput, setSearchInput] = useState(initialSearch)
   const [createUserOpen, setCreateUserOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)

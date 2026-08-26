@@ -264,6 +264,9 @@ export function CargarAvanceTaskPanel({
   selectedUnitCount,
   showUnitMismatchDisclaimer,
 }: CargarAvanceTaskPanelProps) {
+  const selectedRubroName =
+    availableRubros.find((rubro) => rubro.id === selectedRubroId)?.name ?? "rubro"
+
   return (
     <div className="flex flex-col gap-6">
       <div className="rounded-[14px] border border-[#edeef0] bg-white p-4 shadow-[0_0_5px_rgba(243,103,31,0.08)] sm:p-6">
@@ -289,7 +292,7 @@ export function CargarAvanceTaskPanel({
       <div className="rounded-[14px] border border-[#edeef0] bg-white p-4 shadow-[0_0_5px_rgba(243,103,31,0.08)] sm:p-6">
         <div className="mb-4 flex flex-col gap-1">
           <h3 className="text-[16px] font-normal leading-[1.4] text-[#314158]">
-            Estado de Trabajos por Tarea
+            Estado de avance de {selectedRubroName}
           </h3>
           <p className="text-[14px] leading-[1.4] text-[#777b84]">
             Hacé click en cada tarea realizada para agregar detalles
