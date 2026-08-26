@@ -16,6 +16,7 @@ import {
   uploadProfileAvatar,
 } from "@/lib/profile/profileAvatar.client"
 import { updateProfileData, getProfileData } from "@/app/project/[projectId]/perfil/actions"
+import { PerfilTenantSkeleton } from "@/app/project/[projectId]/skeletons"
 
 type FeedbackState = { type: "success" | "error"; message: string } | null
 
@@ -93,7 +94,7 @@ function BrandSaveButton({
 
 export function PerfilView({ projectId, showBackButton = false }: PerfilViewProps) {
   const router = useRouter()
-  const { user, refreshSession } = useAuth()
+  const { user, loading: authLoading, refreshSession } = useAuth()
   const avatarInputRef = useRef<HTMLInputElement>(null)
 
   const [firstName, setFirstName] = useState("")
@@ -102,6 +103,7 @@ export function PerfilView({ projectId, showBackButton = false }: PerfilViewProp
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [roleBadge, setRoleBadge] = useState<string | null>(null)
   const [roleLabel, setRoleLabel] = useState<string | null>(null)
+  const [profileReady, setProfileReady] = useState(false)
   const [profileLoading, setProfileLoading] = useState(false)
   const [avatarLoading, setAvatarLoading] = useState(false)
   const [profileFeedback, setProfileFeedback] = useState<FeedbackState>(null)
@@ -118,18 +120,38 @@ export function PerfilView({ projectId, showBackButton = false }: PerfilViewProp
   const [passwordFeedback, setPasswordFeedback] = useState<FeedbackState>(null)
 
   useEffect(() => {
-    if (!user?.id) return
-    void getProfileData(projectId).then((data) => {
-      if (!data) return
-      setFirstName(data.first_name)
-      setLastName(data.last_name)
-      setPhone(data.phone || "")
-      setEmail(data.email)
-      setAvatarUrl(data.avatar_url)
-      setRoleBadge(data.role_badge)
-      setRoleLabel(data.role_label)
-    })
-  }, [user?.id, projectId])
+    if (authLoading) return
+    if (!user?.id) {
+      setProfileReady(true)
+      return
+    }
+
+    let cancelled = false
+    setProfileReady(false)
+    void getProfileData(projectId)
+      .then((data) => {
+        if (cancelled) return
+        if (data) {
+          setFirstName(data.first_name)
+          setLastName(data.last_name)
+          setPhone(data.phone || "")
+          setEmail(data.email)
+          setAvatarUrl(data.avatar_url)
+          setRoleBadge(data.role_badge)
+          setRoleLabel(data.role_label)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setProfileReady(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id, projectId, authLoading])
+
+  if (authLoading || !profileReady) {
+    return <PerfilTenantSkeleton showBackButton={showBackButton} />
+  }
 
   const fullName =
     [firstName.trim(), lastName.trim()].filter(Boolean).join(" ") ||

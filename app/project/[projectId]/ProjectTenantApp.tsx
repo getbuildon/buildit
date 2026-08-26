@@ -34,6 +34,17 @@ import { PortalClientesView } from "./portal-clientes/PortalClientesView"
 import { getTrabajoDiarioData, type TrabajoDiarioData } from "./trabajo-diario/actions"
 import { DashboardView } from "./trabajo-diario/DashboardView"
 import { getUnitDetailData } from "./unidades/actions"
+import {
+  CertificacionesPageSkeleton,
+  ClientesPageSkeleton,
+  ConfiguracionPageSkeleton,
+  DashboardPageSkeleton,
+  EquipoPageSkeleton,
+  MiUnidadPageSkeleton,
+  PortalClientesPageSkeleton,
+  TrabajoDiarioPageSkeleton,
+  UnitDetailPageSkeleton,
+} from "./skeletons"
 
 type ProjectTenantAppProps = {
   projectId: string
@@ -139,7 +150,7 @@ function DashboardSection({ projectId }: { projectId: string }) {
     gcTime: PROJECT_QUERY_GC_MS,
   })
 
-  if (query.isPending) return <SectionPending />
+  if (query.isPending) return <DashboardPageSkeleton />
   if (query.isError || !query.data) {
     return <SectionError message="No pudimos cargar el dashboard." />
   }
@@ -162,7 +173,7 @@ function TrabajoDiarioSection({ projectId }: { projectId: string }) {
     gcTime: PROJECT_QUERY_GC_MS,
   })
 
-  if (query.isPending) return <SectionPending />
+  if (query.isPending) return <TrabajoDiarioPageSkeleton />
   if (query.isError || !query.data) {
     return <SectionError message="No pudimos cargar el trabajo diario." />
   }
@@ -181,7 +192,7 @@ function CertificacionesSection({ projectId }: { projectId: string }) {
     gcTime: PROJECT_QUERY_GC_MS,
   })
 
-  if (query.isPending) return <SectionPending />
+  if (query.isPending) return <CertificacionesPageSkeleton />
   if (query.isError || !query.data) {
     return <SectionError message="No pudimos cargar las certificaciones." />
   }
@@ -196,7 +207,7 @@ function EquipoSection({ projectId }: { projectId: string }) {
     gcTime: PROJECT_QUERY_GC_MS,
   })
 
-  if (query.isPending) return <SectionPending />
+  if (query.isPending) return <EquipoPageSkeleton />
   if (query.isError) {
     return (
       <SectionError
@@ -220,7 +231,7 @@ function ClientesSection({ projectId }: { projectId: string }) {
     gcTime: PROJECT_QUERY_GC_MS,
   })
 
-  if (query.isPending) return <SectionPending />
+  if (query.isPending) return <ClientesPageSkeleton />
   if (query.isError) {
     return (
       <SectionError
@@ -248,7 +259,7 @@ function ConfiguracionSection({ projectId }: { projectId: string }) {
     gcTime: PROJECT_QUERY_GC_MS,
   })
 
-  if (query.isPending) return <SectionPending />
+  if (query.isPending) return <ConfiguracionPageSkeleton />
   if (query.isError || !query.data) {
     return <SectionError message="No pudimos cargar la configuración." />
   }
@@ -272,7 +283,7 @@ function PortalClientesSection({ projectId }: { projectId: string }) {
     gcTime: PROJECT_QUERY_GC_MS,
   })
 
-  if (query.isPending) return <SectionPending />
+  if (query.isPending) return <PortalClientesPageSkeleton />
   if (query.isError) {
     return (
       <SectionError
@@ -308,7 +319,7 @@ function MiUnidadSection({ projectId }: { projectId: string }) {
     gcTime: PROJECT_QUERY_GC_MS,
   })
 
-  if (query.isPending) return <SectionPending />
+  if (query.isPending) return <MiUnidadPageSkeleton />
   if (query.isError || !query.data) {
     return <SectionError message="No pudimos cargar tu unidad." />
   }
@@ -334,7 +345,7 @@ function UnitSection({ projectId, unitId }: { projectId: string; unitId: string 
     gcTime: PROJECT_QUERY_GC_MS,
   })
 
-  if (query.isPending) return <SectionPending />
+  if (query.isPending) return <UnitDetailPageSkeleton />
   if (query.isError || !query.data) {
     return <SectionError message="No encontramos esta unidad." />
   }
