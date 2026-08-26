@@ -100,22 +100,13 @@ export function DashboardPageSkeleton() {
         />
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {(
-            [
-              "bg-[#eff6ff]",
-              "bg-[#e6f7ed]",
-              "bg-[#fefbe9]",
-              "bg-[#feebec]",
-            ] as const
-          ).map((iconBg) => (
+          {Array.from({ length: 4 }, (_, index) => (
             <GhostCard
-              key={iconBg}
+              key={index}
               className="flex min-w-0 flex-col gap-4 px-3 py-3 sm:gap-6 sm:px-4 sm:py-[17px]"
             >
               <div className="flex items-center gap-3">
-                <div
-                  className={`size-[31px] shrink-0 rounded-[10px] ${iconBg}`}
-                />
+                <Skeleton className="size-[31px] shrink-0 rounded-[10px]" />
                 <GhostBar className="h-7 w-14 rounded-[8px]" />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -144,7 +135,7 @@ export function DashboardPageSkeleton() {
                   {Array.from({ length: index === 0 ? 3 : 4 }, (_, unitIndex) => (
                     <div
                       key={unitIndex}
-                      className="flex w-[200px] shrink-0 flex-col gap-2 rounded-[8px] border border-[#edeef0] bg-[#fbfdff] px-[9px] py-[13px]"
+                      className="flex w-[200px] shrink-0 flex-col gap-2 rounded-[8px] border border-[#edeef0] bg-white px-[9px] py-[13px]"
                     >
                       <div className="flex items-center justify-between">
                         <GhostBar className="h-3 w-10 rounded-[4px]" />
@@ -209,21 +200,16 @@ export function CertificacionesPageSkeleton() {
       />
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        {(
-          [
-            { icon: "bg-[#e6f4fe]", labelWidth: "w-[92px]" },
-            { icon: "bg-[#feebec]", labelWidth: "w-[140px]" },
-          ] as const
-        ).map((stat) => (
+        {(["w-[92px]", "w-[140px]"] as const).map((labelWidth) => (
           <GhostCard
-            key={stat.icon}
+            key={labelWidth}
             className="flex flex-1 flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:py-[17px]"
           >
             <div className="flex items-center gap-3">
-              <div className={`size-[31px] shrink-0 rounded-[10px] ${stat.icon}`} />
+              <Skeleton className="size-[31px] shrink-0 rounded-[10px]" />
               <GhostBar className="h-7 w-8 rounded-[8px]" />
             </div>
-            <GhostBar className={`h-4 ${stat.labelWidth} rounded-[6px]`} />
+            <GhostBar className={`h-4 ${labelWidth} rounded-[6px]`} />
           </GhostCard>
         ))}
       </div>
