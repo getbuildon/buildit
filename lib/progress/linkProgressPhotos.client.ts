@@ -1,7 +1,7 @@
 "use client"
 
 import type { CargarAvanceTaskDraft } from "@/lib/projects/cargarAvance"
-import type { RegisterProgressAttachmentInput } from "@/app/[projectId]/trabajo-diario/actions"
+import type { RegisterProgressAttachmentInput } from "@/app/project/[projectId]/trabajo-diario/actions"
 import {
   uploadProgressPhotosWithLimit,
   type UploadedProgressPhoto,

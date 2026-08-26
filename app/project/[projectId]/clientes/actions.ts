@@ -1,10 +1,10 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
-import { checkProjectPermission } from "@/lib/project/projectAccess"
+import { checkProjectPermission, checkProjectSectionAccess } from "@/lib/project/projectAccess"
+import { revalidateProjectPath } from "@/lib/project/revalidateProjectPath"
 import { assertCanAddClientAccess, loadClientSeatSummary } from "@/lib/company/projectSubscriptionLimits"
 import type { ClientSeatSummary } from "@/lib/company/subscriptionTypes"
 import { getUnitPillLabel } from "@/lib/projects/floorLabels"
@@ -61,6 +61,8 @@ export async function getProjectClientSeatSummary(
   projectId: string,
 ): Promise<ClientSeatSummary | null> {
   await requireAuthenticatedUser()
+  const section = await checkProjectSectionAccess(projectId, "clientes")
+  if (!section.ok) return null
   const supabase = await createClient()
   return loadClientSeatSummary(supabase, projectId)
 }
@@ -311,6 +313,10 @@ export async function getProjectClientsData(
   projectId: string,
 ): Promise<ProjectClientsData> {
   await requireAuthenticatedUser()
+  const section = await checkProjectSectionAccess(projectId, "clientes")
+  if (!section.ok) {
+    throw new Error(section.error)
+  }
   const admin = createAdminClient()
   const supabase = await createClient()
 
@@ -515,7 +521,7 @@ export async function addProjectClientInvitation(
       return { ok: false, error: "No se pudo cargar el cliente agregado." }
     }
 
-    revalidatePath(`/${projectId}/clientes`)
+    revalidateProjectPath(projectId, "clientes")
     return { ok: true, kind: "client_added", client: created }
   }
 
@@ -596,7 +602,7 @@ export async function addProjectClientInvitation(
       ),
     } satisfies ProjectClientInvitation)
 
-  revalidatePath(`/${projectId}/clientes`)
+  revalidateProjectPath(projectId, "clientes")
   return { ok: true, kind: "invitation", invitation: created }
 }
 
@@ -664,7 +670,7 @@ export async function updateProjectClientInvitation(
     return { ok: false, error: "No se pudo cargar la invitación actualizada." }
   }
 
-  revalidatePath(`/${projectId}/clientes`)
+  revalidateProjectPath(projectId, "clientes")
   return { ok: true, invitation: updated }
 }
 
@@ -713,7 +719,7 @@ export async function updateProjectClient(
     return { ok: false, error: "No se pudo cargar el cliente actualizado." }
   }
 
-  revalidatePath(`/${projectId}/clientes`)
+  revalidateProjectPath(projectId, "clientes")
   return { ok: true, client: updated }
 }
 
@@ -738,7 +744,7 @@ export async function revokeClientInvitation(
 
   await admin.from("client_invitation_units").delete().eq("invitation_id", invitationId)
 
-  revalidatePath(`/${projectId}/clientes`)
+  revalidateProjectPath(projectId, "clientes")
   return { ok: true }
 }
 
@@ -769,6 +775,6 @@ export async function removeProjectClient(
     if (error) return { ok: false, error: error.message }
   }
 
-  revalidatePath(`/${projectId}/clientes`)
+  revalidateProjectPath(projectId, "clientes")
   return { ok: true }
 }

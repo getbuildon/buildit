@@ -1,7 +1,6 @@
 "use server"
 
 import { differenceInDays } from "date-fns"
-import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
@@ -9,7 +8,8 @@ import {
   formatArgentinaTaskDate,
   formatArgentinaTaskTime,
 } from "@/lib/datetime/argentinaDateTime"
-import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
+import { checkProjectPermission, checkProjectSectionAccess } from "@/lib/project/projectAccess"
+import { revalidateProjectPath } from "@/lib/project/revalidateProjectPath"
 import { hasProjectPermission } from "@/lib/project/projectPermissions"
 import { buildTaskCodeMap } from "@/lib/projects/unitDetailTasks"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
@@ -69,10 +69,14 @@ export async function getCertificacionesData(
   const user = await getAuthenticatedUserOrNull()
   if (!user) return null
 
+  const section = await checkProjectSectionAccess(id, "certificaciones")
+  if (!section.ok) return null
+  const accessContext = section.context
+
   const supabase = await createClient()
   const admin = createAdminClient()
 
-  const [floorsResult, unitsResult, assignments, groupsResult, entriesResult, accessContext] =
+  const [floorsResult, unitsResult, assignments, groupsResult, entriesResult] =
     await Promise.all([
       supabase
         .from("project_floors")
@@ -117,7 +121,6 @@ export async function getCertificacionesData(
         .eq("project_id", id)
         .in("status", ["submitted", "approved"])
         .order("created_at", { ascending: false }),
-      getProjectAccessContext(id),
     ])
 
   if (floorsResult.error || unitsResult.error || groupsResult.error || entriesResult.error) {
@@ -385,9 +388,9 @@ export async function certifyProgressEntries(
     certifiedCount += 1
   }
 
-  revalidatePath(`/${id}/certificaciones`)
-  revalidatePath(`/${id}/trabajo-diario`)
-  revalidatePath(`/${id}`)
+  revalidateProjectPath(id, "certificaciones")
+  revalidateProjectPath(id, "trabajo-diario")
+  revalidateProjectPath(id)
 
   return { ok: true, certifiedCount }
 }

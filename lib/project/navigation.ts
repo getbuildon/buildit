@@ -4,6 +4,7 @@ import {
   isNavSegmentAllowed,
   type ProjectPermissions,
 } from "@/lib/project/projectPermissions"
+import { projectHref } from "@/lib/project/routes"
 
 export type ProjectNavItem = {
   label: string
@@ -41,7 +42,7 @@ export function isProjectNavActive(
   projectId: string,
   segment: string,
 ): boolean {
-  const base = `/${projectId}`
+  const base = projectHref(projectId)
   if (!segment) {
     return pathname === base || pathname === `${base}/`
   }

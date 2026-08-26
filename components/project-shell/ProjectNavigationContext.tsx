@@ -11,6 +11,8 @@ import {
 } from "react"
 import { usePathname, useRouter } from "next/navigation"
 
+import { isProjectDashboardPath } from "@/lib/project/routes"
+
 type ProjectNavigationContextValue = {
   isNavigating: boolean
   pendingHref: string | null
@@ -28,10 +30,6 @@ export function normalizeProjectPath(path: string) {
   return path
 }
 
-function getProjectNavTargetDepth(href: string) {
-  return normalizeProjectPath(href).split("/").filter(Boolean).length
-}
-
 export function hasReachedProjectNavHref(pathname: string, href: string) {
   const current = normalizeProjectPath(pathname)
   const target = normalizeProjectPath(href)
@@ -40,8 +38,8 @@ export function hasReachedProjectNavHref(pathname: string, href: string) {
     return true
   }
 
-  // Dashboard vive en /{projectId}; no debe absorber sub-rutas del proyecto.
-  if (getProjectNavTargetDepth(target) === 1) {
+  // Dashboard vive en /project/{id}; no debe absorber sub-rutas del proyecto.
+  if (isProjectDashboardPath(target)) {
     return false
   }
 

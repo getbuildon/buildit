@@ -6,8 +6,16 @@ import {
   isLoginAudience,
 } from "@/lib/auth/loginAudience"
 import { readPublicSupabaseConfigFromEnv } from "@/lib/auth/publicSupabaseConfig"
+import { legacyProjectRedirectPath } from "@/lib/project/routes"
 
 export async function middleware(request: NextRequest) {
+  const legacyPath = legacyProjectRedirectPath(request.nextUrl.pathname)
+  if (legacyPath) {
+    const url = request.nextUrl.clone()
+    url.pathname = legacyPath
+    return NextResponse.redirect(url, 308)
+  }
+
   const config = readPublicSupabaseConfigFromEnv()
   if (!config) {
     return NextResponse.next({ request })

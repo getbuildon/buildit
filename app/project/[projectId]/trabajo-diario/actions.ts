@@ -1,6 +1,5 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
@@ -10,6 +9,7 @@ import {
   formatArgentinaLongDate,
 } from "@/lib/datetime/argentinaDateTime"
 import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
+import { revalidateProjectPath } from "@/lib/project/revalidateProjectPath"
 import { canAccessUnitProgress } from "@/lib/project/projectAccessContext"
 import { hasStrictProjectPermission } from "@/lib/project/projectPermissions"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
@@ -574,7 +574,7 @@ export async function saveCargarAvance(
 
   if (insertError) return { ok: false, error: insertError.message }
 
-  revalidatePath(`/${projectId}/trabajo-diario`)
+  revalidateProjectPath(projectId, "trabajo-diario")
   return {
     ok: true,
     entries: (inserted ?? []).map((row) => ({
@@ -636,7 +636,7 @@ export async function registerProgressAttachments(
   const { error: insertError } = await supabase.from("attachments").insert(rows)
   if (insertError) return { ok: false, error: insertError.message }
 
-  revalidatePath(`/${id}/trabajo-diario`)
+  revalidateProjectPath(id, "trabajo-diario")
   return { ok: true }
 }
 
@@ -893,6 +893,6 @@ export async function updateTrabajoDiarioTask(
 
   if (insertError) return { ok: false, error: insertError.message }
 
-  revalidatePath(`/${projectId}/trabajo-diario`)
+  revalidateProjectPath(projectId, "trabajo-diario")
   return { ok: true, entryId: inserted.id }
 }

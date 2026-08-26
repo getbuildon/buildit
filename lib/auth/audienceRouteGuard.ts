@@ -3,7 +3,7 @@ import {
   PORTAL_CLIENTE_PATH,
   type LoginAudience,
 } from "@/lib/auth/loginAudience"
-import { isReservedProjectRouteSegment } from "@/lib/project/reservedRouteSegments"
+import { parseProjectPath, projectHref } from "@/lib/project/routes"
 
 const TEAM_ONLY_PREFIXES = [
   "/home",
@@ -18,16 +18,6 @@ function isTeamOnlyPath(pathname: string) {
   return TEAM_ONLY_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   )
-}
-
-function parseProjectPath(pathname: string) {
-  const parts = pathname.split("/").filter(Boolean)
-  if (parts.length === 0) return null
-
-  const [projectId, ...restParts] = parts
-  if (isReservedProjectRouteSegment(projectId)) return null
-
-  return { projectId, rest: restParts.join("/") }
 }
 
 function isClientAllowedProjectRest(rest: string) {
@@ -52,7 +42,7 @@ export function audienceRedirectPath(
 
     const project = parseProjectPath(pathname)
     if (project && !isClientAllowedProjectRest(project.rest)) {
-      return `/${project.projectId}/mi-unidad`
+      return projectHref(project.projectId, "mi-unidad")
     }
   }
 
@@ -63,7 +53,7 @@ export function audienceRedirectPath(
 
     const project = parseProjectPath(pathname)
     if (project && (project.rest === "mi-unidad" || project.rest.startsWith("mi-unidad/"))) {
-      return `/${project.projectId}`
+      return projectHref(project.projectId)
     }
   }
 

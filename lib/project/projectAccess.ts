@@ -13,11 +13,14 @@ import {
 import {
   getProjectPermissions,
   hasProjectPermission,
-  isNavSegmentAllowed,
   resolveAssignedUnitIds,
   type ProjectPermissionKey,
 } from "@/lib/project/projectPermissions"
 import { projectHref } from "@/lib/project/routes"
+import {
+  tenantRouteFromSegment,
+  tenantRouteRedirectHref,
+} from "@/lib/project/tenantSection"
 
 export type { ProjectAccessContext } from "@/lib/project/projectAccessContext"
 
@@ -172,21 +175,37 @@ export async function assertProjectSectionAccess(
     redirect("/home")
   }
 
-  if (context.loginAudience === "cliente") {
-    if (segment !== "mi-unidad") {
-      redirect(projectHref(projectId, "mi-unidad"))
-    }
-    return context
-  }
-
-  if (segment === "mi-unidad") {
-    redirect(projectHref(projectId))
-  }
-
-  if (!isNavSegmentAllowed(context.permissions, segment)) {
-    redirect(projectHref(projectId))
+  const redirectTo = tenantRouteRedirectHref(
+    context,
+    projectId,
+    tenantRouteFromSegment(segment),
+  )
+  if (redirectTo) {
+    redirect(redirectTo)
   }
   return context
+}
+
+export async function checkProjectSectionAccess(
+  projectId: string,
+  segment: string,
+): Promise<
+  { ok: true; context: ProjectAccessContext } | { ok: false; error: string }
+> {
+  const context = await getProjectAccessContext(projectId)
+  if (!context) {
+    return { ok: false, error: "No tenés acceso a este proyecto." }
+  }
+
+  const redirectTo = tenantRouteRedirectHref(
+    context,
+    projectId,
+    tenantRouteFromSegment(segment),
+  )
+  if (redirectTo) {
+    return { ok: false, error: "No tenés permiso para ver esta sección." }
+  }
+  return { ok: true, context }
 }
 
 export async function assertUnitDetailAccess(

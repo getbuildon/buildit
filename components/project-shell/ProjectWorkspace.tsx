@@ -4,9 +4,7 @@ import { type ReactNode, useRef, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { BuiltItIsoIcon } from "@/components/brand/BuiltItIsoIcon"
 import { ProjectNavLinks } from "@/components/project-shell/ProjectNavLinks"
-import { useProjectNavigation } from "@/components/project-shell/ProjectNavigationContext"
 import { SidebarSwitchProjectButton } from "@/components/project-shell/SidebarSwitchProjectButton"
-import { Spinner } from "@/components/ui/spinner"
 import { SHELL_COLORS, SHELL_LAYOUT } from "@/lib/project/designTokens"
 import type { UserProjectListItem } from "@/lib/projects/types"
 import type { SidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
@@ -193,8 +191,6 @@ type ProjectWorkspaceProps = {
 }
 
 export function ProjectWorkspace({ project, userProfile, children }: ProjectWorkspaceProps) {
-  const { isNavigating } = useProjectNavigation()
-
   return (
     <div
       className="flex h-full min-h-0 w-full flex-col overflow-hidden lg:flex-row"
@@ -211,15 +207,6 @@ export function ProjectWorkspace({ project, userProfile, children }: ProjectWork
 
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <main className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain">
-          {isNavigating ? (
-            <div
-              className="absolute inset-0 z-20 flex items-center justify-center bg-[#fefcfb]/70"
-              aria-live="polite"
-              aria-busy="true"
-            >
-              <Spinner className="size-8 text-[#ff7433]" />
-            </div>
-          ) : null}
           <div
             className="mx-auto flex w-full flex-col px-4 pb-4 pt-4 lg:px-6 lg:pb-6 lg:pt-6"
             style={{

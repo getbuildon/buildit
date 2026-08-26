@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
 import { useToast } from "@/components/ui/toast"
-import { submitPlanUpgradeRequest } from "@/app/[projectId]/equipo/actions"
+import { submitPlanUpgradeRequest } from "@/app/project/[projectId]/equipo/actions"
 import type { ProjectUserType } from "@/lib/projects/createProjectDraft"
 import { FORM_MODAL_DIALOG } from "@/lib/project/designTokens"
 import { cn } from "@/lib/utils"

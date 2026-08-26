@@ -3,7 +3,7 @@ import type {
   TrabajoDiarioRubroGroup,
   TrabajoDiarioRubroTask,
   TrabajoDiarioUnit,
-} from "@/app/[projectId]/trabajo-diario/actions"
+} from "@/app/project/[projectId]/trabajo-diario/actions"
 import {
   getUnitDisplayCode,
 } from "@/lib/projects/floorLabels"

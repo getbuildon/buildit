@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import type { ReactNode } from "react"
-import { getProfileData } from "@/app/[projectId]/perfil/actions"
+import { getProfileData } from "@/app/project/[projectId]/perfil/actions"
 import { CompanyWorkspace } from "@/components/company-shell/CompanyWorkspace"
 import { getCompanyById } from "@/lib/company/getCompanies"
 import { formatCompanyRole } from "@/lib/company/formatCompanyRole"

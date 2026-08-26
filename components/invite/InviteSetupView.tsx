@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Eye, EyeOff, Lock } from "lucide-react"
 import { completeInvitationSetup, type InvitationSetupData } from "@/app/invite/setup/actions"
+import { projectHref } from "@/lib/project/routes"
 import { validateNewPasswordFields, PASSWORD_REQUIREMENTS_HINT } from "@/lib/auth/passwordValidation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -68,7 +69,7 @@ export function InviteSetupView({ data }: InviteSetupViewProps) {
         setError(result.error)
         return
       }
-      router.replace(`/${result.projectId}`)
+      router.replace(projectHref(result.projectId))
     } catch {
       setError("No pudimos completar la configuración. Intentá de nuevo.")
     } finally {

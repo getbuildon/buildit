@@ -15,7 +15,7 @@ import {
   compressProfileAvatar,
   uploadProfileAvatar,
 } from "@/lib/profile/profileAvatar.client"
-import { updateProfileData, getProfileData } from "@/app/[projectId]/perfil/actions"
+import { updateProfileData, getProfileData } from "@/app/project/[projectId]/perfil/actions"
 
 type FeedbackState = { type: "success" | "error"; message: string } | null
 

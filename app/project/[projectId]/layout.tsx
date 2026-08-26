@@ -7,7 +7,7 @@ import { getProjectSetupStatus } from "@/app/projects/new/actions"
 import { assertProjectRoute } from "@/lib/project/assertProjectRoute"
 import { getProjectAccessContext } from "@/lib/project/projectAccess"
 import { getProjectById } from "@/lib/projects/listUserProjects"
-import { getProfileData } from "@/app/[projectId]/perfil/actions"
+import { getProfileData } from "@/app/project/[projectId]/perfil/actions"
 import { toSidebarUserProfile } from "@/lib/profile/sidebarUserProfile"
 
 type ProjectLayoutProps = {

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-import { getProfileData } from "@/app/[projectId]/perfil/actions"
+import { getProfileData } from "@/app/project/[projectId]/perfil/actions"
 import { BackofficeShell } from "@/components/backoffice-shell/BackofficeShell"
 import { requireBackofficeUser } from "@/lib/auth/backofficeAccess"
 import { toSidebarUserProfile } from "@/lib/profile/sidebarUserProfile"

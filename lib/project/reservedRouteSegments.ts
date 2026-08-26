@@ -12,6 +12,7 @@ export const RESERVED_PROJECT_ROUTE_SEGMENTS = new Set([
   "login",
   "perfil",
   "portal-cliente",
+  "project",
   "projects",
   "recovery-password",
   "register",

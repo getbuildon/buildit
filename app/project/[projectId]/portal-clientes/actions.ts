@@ -1,9 +1,10 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
-import { checkProjectPermission } from "@/lib/project/projectAccess"
+import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
+import { hasProjectPermission } from "@/lib/project/projectPermissions"
+import { revalidateProjectPath } from "@/lib/project/revalidateProjectPath"
 import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
 import type { MiUnidadAssignedUnit } from "@/lib/projects/miUnidadTypes"
 import { displayNameFromEmail } from "@/lib/projects/mockProjects"
@@ -163,6 +164,15 @@ export async function getPortalClientesPreviewContext(
 export async function getPortalClientesData(
   projectId: string,
 ): Promise<PortalClientesData> {
+  const context = await getProjectAccessContext(projectId)
+  if (
+    !context ||
+    (!hasProjectPermission(context.permissions, "configureProject") &&
+      context.permissions.clientPortal !== true)
+  ) {
+    throw new Error("No tenés permiso para ver el portal de clientes.")
+  }
+
   const supabase = await createClient()
 
   const [newsResult, milestonesResult, projectResult] = await Promise.all([
@@ -300,8 +310,8 @@ export async function savePortalClientesContent(
     }
   }
 
-  revalidatePath(`/${input.projectId}/portal-clientes`)
-  revalidatePath(`/${input.projectId}/mi-unidad`)
+  revalidateProjectPath(input.projectId, "portal-clientes")
+  revalidateProjectPath(input.projectId, "mi-unidad")
 
   const data = await getPortalClientesData(input.projectId)
   return { ok: true, data }

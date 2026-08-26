@@ -19,6 +19,7 @@ import {
 import { getUnitTypeIcon } from "@/lib/projects/unitTypeIcons"
 import { getUnitDashboardLabel } from "@/lib/projects/unitTypes"
 import { DASHBOARD_SHADOW, DASHBOARD_TYPE } from "@/lib/project/dashboardDesignTokens"
+import { projectHref } from "@/lib/project/routes"
 import { cn } from "@/lib/utils"
 import type { ProjectBasics, DashboardFloor, DashboardStats } from "../configuracion/actions"
 
@@ -195,7 +196,7 @@ function UnitCard({
 
   return (
     <Link
-      href={`/${projectId}/unidades/${unit.id}`}
+      href={projectHref(projectId, `unidades/${unit.id}`)}
       className="flex w-[200px] shrink-0 flex-col gap-2 rounded-[8px] border border-[#edeef0] bg-[#fbfdff] px-[9px] py-[13px] transition-colors hover:border-[#ff7433]/40 hover:bg-white"
     >
       <div className="flex flex-col gap-[2px]">

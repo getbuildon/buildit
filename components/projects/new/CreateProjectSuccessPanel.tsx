@@ -8,6 +8,7 @@ import {
   CREATE_PROJECT_COLORS,
   CREATE_PROJECT_TYPE,
 } from "@/lib/projects/createProjectTokens"
+import { projectHref } from "@/lib/project/routes"
 import { cn } from "@/lib/utils"
 
 type CreateProjectSuccessPanelProps = {
@@ -22,7 +23,7 @@ export function CreateProjectSuccessPanel({
   const router = useRouter()
 
   const goToProject = useCallback(() => {
-    router.push(`/${projectId}`)
+    router.push(projectHref(projectId))
     router.refresh()
   }, [router, projectId])
 

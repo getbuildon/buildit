@@ -9,7 +9,7 @@ import {
 import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
 import type { MiUnidadAssignedUnit, MiUnidadPageData } from "@/lib/projects/miUnidadTypes"
 import { fetchProjectWeather, resolveWeatherLocation } from "@/lib/weather/openMeteo"
-import { getPortalClientesData } from "@/app/[projectId]/portal-clientes/actions"
+import { getPortalClientesData } from "@/app/project/[projectId]/portal-clientes/actions"
 
 function resolveMiUnidadUnitIds(
   clientUnitIds: string[],

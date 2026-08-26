@@ -3,7 +3,7 @@ import {
   getProjectUnits,
   getProjectRubroGroups,
   getUnitTaskAssignments,
-} from "@/app/[projectId]/configuracion/actions"
+} from "@/app/project/[projectId]/configuracion/actions"
 import type {
   CreateProjectDraft,
   ProjectTeamRole,

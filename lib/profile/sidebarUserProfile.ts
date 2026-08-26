@@ -1,4 +1,4 @@
-import type { ProfileData } from "@/app/[projectId]/perfil/actions"
+import type { ProfileData } from "@/app/project/[projectId]/perfil/actions"
 import { displayNameFromEmail } from "@/lib/projects/mockProjects"
 import { getUserInitials } from "@/lib/profile/userInitials"
 

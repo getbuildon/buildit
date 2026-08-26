@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { requireAuthenticatedUser } from "@/lib/authHelpers"
-import { checkProjectPermission } from "@/lib/project/projectAccess"
+import { checkProjectPermission, checkProjectSectionAccess } from "@/lib/project/projectAccess"
 import { assertCanAddProjectSeat, loadTeamSeatSummary } from "@/lib/company/projectSubscriptionLimits"
 import type { TeamSeatSummary } from "@/lib/company/subscriptionTypes"
 import { buildPlanUpgradeRequestEmail } from "@/lib/email/buildPlanUpgradeRequestEmail"
@@ -55,12 +55,18 @@ export async function getProjectTeamSeatSummary(
   projectId: string,
 ): Promise<TeamSeatSummary | null> {
   await requireAuthenticatedUser()
+  const section = await checkProjectSectionAccess(projectId, "equipo")
+  if (!section.ok) return null
   const supabase = await createClient()
   return loadTeamSeatSummary(supabase, projectId)
 }
 
 export async function getProjectTeamData(projectId: string): Promise<ProjectTeamData> {
   const user = await requireAuthenticatedUser()
+  const section = await checkProjectSectionAccess(projectId, "equipo")
+  if (!section.ok) {
+    throw new Error(section.error)
+  }
   const admin = createAdminClient()
   const supabase = await createClient()
 

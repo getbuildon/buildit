@@ -166,3 +166,6 @@ vite.config.ts.timestamp-*
 
 # Supabase email templates con logo embebido (generadas desde supabase/templates/*.html)
 supabase/templates/generated/
+
+# Codex
+.codex

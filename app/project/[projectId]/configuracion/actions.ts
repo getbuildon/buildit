@@ -1,10 +1,10 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { formatTotalSurfaceFromNumber } from "@/lib/projects/totalSurfaceInput"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
-import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
+import { checkProjectPermission, checkProjectSectionAccess } from "@/lib/project/projectAccess"
+import { revalidateProjectPath } from "@/lib/project/revalidateProjectPath"
 import {
   calculateFloorProgressPercent,
   calculateProjectProgressPercent,
@@ -151,8 +151,9 @@ export async function getDashboardData(
   const user = await getAuthenticatedUserOrNull()
   if (!user) return null
 
-  const accessContext = await getProjectAccessContext(id)
-  if (!accessContext) return null
+  const access = await checkProjectSectionAccess(id, "")
+  if (!access.ok) return null
+  const accessContext = access.context
 
   const supabase = await createClient()
 
@@ -470,7 +471,7 @@ export async function updateProjectBasics(
     return { ok: false, error: error.message }
   }
 
-  revalidatePath(`/${id}/configuracion`)
+  revalidateProjectPath(id, "configuracion")
   return { ok: true }
 }
 
@@ -578,7 +579,7 @@ export async function saveProjectStructure(
   const result = await syncProjectStructure(supabase, id, floors)
   if (!result.ok) return result
 
-  revalidatePath(`/${id}/configuracion`)
+  revalidateProjectPath(id, "configuracion")
   return {
     ok: true,
     floorIdByDraftId: result.floorIdByDraftId,
@@ -602,7 +603,7 @@ export async function saveProjectRubros(
   const result = await syncProjectRubros(supabase, id, groups)
   if (!result.ok) return result
 
-  revalidatePath(`/${id}/configuracion`)
+  revalidateProjectPath(id, "configuracion")
   return {
     ok: true,
     groupIdByDraftId: result.groupIdByDraftId,

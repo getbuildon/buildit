@@ -1,3 +1,8 @@
+import {
+  isProjectDashboardPath,
+  parseProjectPath,
+} from "@/lib/project/routes"
+
 export type AppRouteLoadingType =
   | "home"
   | "project"
@@ -6,19 +11,13 @@ export type AppRouteLoadingType =
   | "perfil"
   | "create-project"
 
-const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
-  "home",
-  "login",
-  "recovery-password",
-  "perfil",
-])
-
 export function normalizeAppPath(path: string) {
-  if (path.length > 1 && path.endsWith("/")) {
-    return path.slice(0, -1)
+  const withoutQuery = path.split("?")[0] ?? path
+  if (withoutQuery.length > 1 && withoutQuery.endsWith("/")) {
+    return withoutQuery.slice(0, -1)
   }
 
-  return path
+  return withoutQuery
 }
 
 export function getAppRouteLoadingType(href: string): AppRouteLoadingType | null {
@@ -40,25 +39,20 @@ export function getAppRouteLoadingType(href: string): AppRouteLoadingType | null
     return "perfil"
   }
 
-  const basePath = path.split("?")[0]
-  if (basePath === "/projects/new") {
+  if (path === "/projects/new") {
     return "create-project"
   }
 
-  const segments = path.split("/").filter(Boolean)
-  if (segments.length === 2 && segments[1] === "perfil") {
+  const project = parseProjectPath(path)
+  if (project?.rest === "perfil" || project?.rest.startsWith("perfil/")) {
     return "perfil"
   }
 
-  if (segments.length === 0) {
-    return null
+  if (project) {
+    return "project"
   }
 
-  if (RESERVED_TOP_LEVEL_SEGMENTS.has(segments[0])) {
-    return null
-  }
-
-  return "project"
+  return null
 }
 
 export function hasReachedAppRoute(pathname: string, href: string) {
@@ -95,8 +89,7 @@ export function hasReachedAppRoute(pathname: string, href: string) {
       return true
     }
 
-    const targetDepth = target.split("/").filter(Boolean).length
-    if (targetDepth === 1) {
+    if (isProjectDashboardPath(target)) {
       return false
     }
 

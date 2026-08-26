@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { BackButton } from "@/components/ui/BackButton"
+import { projectHref } from "@/lib/project/routes"
 import {
   Dialog,
   DialogContent,
@@ -237,7 +238,7 @@ export function UnitDetailView({ projectId, data }: UnitDetailViewProps) {
 
   return (
     <div className="flex flex-col gap-[19px] py-6">
-      <BackButton href={`/${projectId}`} label="Volver al panel" variant="panel" />
+      <BackButton href={projectHref(projectId)} label="Volver al panel" variant="panel" />
 
       <div className="flex flex-col gap-4 lg:flex-row">
         <div
