@@ -2,11 +2,15 @@
 
 import Link from "next/link"
 import { Building2, TrendingUp } from "lucide-react"
+import { CompanyLogoMark } from "@/components/company/CompanyLogoMark"
 
 import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import type { HomeProjectListItem } from "@/lib/projects/types"
 import type { ProjectHomeProgress } from "@/lib/projects/homeProjectProgress"
-import { progressBarWidthPercent } from "@/lib/projects/dashboardProgress"
+import {
+  formatProgressPercentLabel,
+  progressBarWidthPercent,
+} from "@/lib/projects/dashboardProgress"
 import { projectDashboardHref } from "@/lib/project/routes"
 import {
   HOME_COLORS,
@@ -22,10 +26,6 @@ import { cn } from "@/lib/utils"
 type ProjectCardProps = {
   project: HomeProjectListItem
   progress?: ProjectHomeProgress
-}
-
-function formatWeeklyDelta(delta: number): string {
-  return `${delta}%`
 }
 
 export function ProjectCard({ project, progress }: ProjectCardProps) {
@@ -60,12 +60,15 @@ export function ProjectCard({ project, progress }: ProjectCardProps) {
         <div className="flex flex-col gap-4">
           <div className="flex h-12 items-start justify-between">
             <div
-              className="flex size-12 items-center justify-center rounded-[14px] bg-[#ff7433]"
-              style={{
-                boxShadow: PROJECT_ICON_SHADOW,
-              }}
+              className="shrink-0 rounded-[14px]"
+              style={{ boxShadow: PROJECT_ICON_SHADOW }}
             >
-              <Building2 className="size-6 text-white" aria-hidden />
+              <CompanyLogoMark
+                logoUrl={project.companyLogoUrl}
+                alt={`Logo de ${project.name}`}
+                className="flex size-12 items-center justify-center rounded-[14px] bg-[#ff7433]"
+                fallback={<Building2 className="size-6 text-white" aria-hidden />}
+              />
             </div>
 
             {isDraft ? (
@@ -95,7 +98,7 @@ export function ProjectCard({ project, progress }: ProjectCardProps) {
                     className={HOME_TYPE.progressBadge}
                     style={{ color: weeklyBadgeColor }}
                   >
-                    {formatWeeklyDelta(weeklyDelta)}
+                    {formatProgressPercentLabel(weeklyDelta)}
                   </span>
                 </div>
                 <div

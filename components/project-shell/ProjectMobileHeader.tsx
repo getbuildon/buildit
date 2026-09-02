@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { BuiltItIsoIcon } from "@/components/brand/BuiltItIsoIcon"
+import { CompanyLogoMark } from "@/components/company/CompanyLogoMark"
 import {
   ProfileMenuLogoutIcon,
   ProfileMenuProfileIcon,
@@ -101,12 +102,12 @@ export function ProjectMobileHeader({
     >
       <div className="flex h-[80px] items-center justify-between gap-3 px-6">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div
-            className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[#ff7433]"
-            aria-hidden
-          >
-            <BuiltItIsoIcon className="size-[18px] text-white" />
-          </div>
+          <CompanyLogoMark
+            logoUrl={project.companyLogoUrl}
+            alt={`Logo de ${project.organizationName || "la empresa"}`}
+            className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-[#e2e8f0] bg-[#ff7433]"
+            fallback={<BuiltItIsoIcon className="size-[18px] text-white" />}
+          />
           <div className="min-w-0">
             <p className="truncate text-[13px] font-semibold leading-[18.2px] text-black">
               {project.organizationName || "Organización"}

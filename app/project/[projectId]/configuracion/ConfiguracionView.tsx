@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react"
 import { createPortal } from "react-dom"
 import { AlertCircle, Building2, CalendarDays, Check, ChevronDown, MapPin } from "lucide-react"
+import { CompanyLogoMark } from "@/components/company/CompanyLogoMark"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
@@ -996,9 +997,12 @@ export function ConfiguracionView({
           ) : null}
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-4">
-            <div className="flex size-16 shrink-0 items-center justify-center rounded-[10px] bg-[#ff7433] sm:size-20">
-              <Building2 className="size-8 text-white sm:size-10" aria-hidden />
-            </div>
+            <CompanyLogoMark
+              logoUrl={project.companyLogoUrl}
+              alt={`Logo de ${project.companyName || "la empresa"}`}
+              className="size-16 shrink-0 rounded-[10px] border border-[#e2e8f0] bg-[#ff7433] sm:size-20"
+              fallback={<Building2 className="size-8 text-white sm:size-10" aria-hidden />}
+            />
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <FieldLabel error={basicFieldErrors.projectName}>Nombre del Proyecto *</FieldLabel>
               <Input

@@ -1,8 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { AlertCircle, CheckCircle, Save } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
+import { AlertCircle, Building2, CheckCircle, Save } from "lucide-react"
 import { BackButton } from "@/components/ui/BackButton"
+import { CompanyLogoMark } from "@/components/company/CompanyLogoMark"
+import {
+  compressCompanyLogo,
+  revokeCompanyLogoPreview,
+  uploadCompanyLogo,
+  type CompanyLogoDraft,
+} from "@/lib/company/companyLogo.client"
+import { cn } from "@/lib/utils"
 import { getCompanyInfo, updateCompanyInfo, type CompanyInfo } from "../settings/actions"
 
 type Feedback = { type: "success" | "error"; message: string } | null
@@ -15,13 +24,19 @@ type InformacionViewProps = {
 }
 
 export function InformacionView({ companyId }: InformacionViewProps) {
+  const router = useRouter()
+  const logoInputRef = useRef<HTMLInputElement>(null)
   const [company, setCompany] = useState<CompanyInfo | null>(null)
   const [name, setName] = useState("")
   const [legalName, setLegalName] = useState("")
   const [country, setCountry] = useState("")
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [logoDraft, setLogoDraft] = useState<CompanyLogoDraft | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [logoProcessing, setLogoProcessing] = useState(false)
   const [feedback, setFeedback] = useState<Feedback>(null)
+  const previewLogoUrl = logoDraft?.previewUrl ?? logoUrl
 
   useEffect(() => {
     void getCompanyInfo(companyId).then((data) => {
@@ -30,10 +45,40 @@ export function InformacionView({ companyId }: InformacionViewProps) {
         setName(data.name)
         setLegalName(data.legal_name || "")
         setCountry(data.country || "")
+        setLogoUrl(data.logo_url)
       }
       setLoading(false)
     })
   }, [companyId])
+
+  const handleLogoSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null
+    event.target.value = ""
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      setFeedback({ type: "error", message: "Seleccioná una imagen válida." })
+      return
+    }
+
+    setFeedback(null)
+    setLogoProcessing(true)
+
+    try {
+      const compressed = await compressCompanyLogo(file)
+      revokeCompanyLogoPreview(logoDraft)
+      setLogoDraft({
+        file: compressed,
+        previewUrl: URL.createObjectURL(compressed),
+      })
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : "No se pudo procesar el logo."
+      setFeedback({ type: "error", message })
+    } finally {
+      setLogoProcessing(false)
+    }
+  }
 
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -45,14 +90,36 @@ export function InformacionView({ companyId }: InformacionViewProps) {
     }
 
     setSaving(true)
+
+    let nextLogoUrl: string | undefined
+    if (logoDraft) {
+      const upload = await uploadCompanyLogo(companyId, logoDraft.file)
+      if (!upload.ok) {
+        setSaving(false)
+        setFeedback({ type: "error", message: upload.error })
+        return
+      }
+      nextLogoUrl = upload.publicUrl
+    }
+
     const result = await updateCompanyInfo({
       companyId,
       name,
       legal_name: legalName,
       country,
+      ...(nextLogoUrl !== undefined ? { logo_url: nextLogoUrl } : {}),
     })
-    setSaving(false)
 
+    if (result.ok) {
+      if (nextLogoUrl !== undefined) {
+        revokeCompanyLogoPreview(logoDraft)
+        setLogoDraft(null)
+        setLogoUrl(nextLogoUrl)
+      }
+      router.refresh()
+    }
+
+    setSaving(false)
     setFeedback(
       result.ok
         ? { type: "success", message: "Cambios guardados correctamente." }
@@ -86,6 +153,50 @@ export function InformacionView({ companyId }: InformacionViewProps) {
         onSubmit={handleSave}
         className="flex flex-col gap-4 rounded-[16px] border border-[#edeef0] bg-white p-[21px] shadow-[0_0_5px_rgba(243,103,31,0.08)]"
       >
+        <div className="flex flex-col gap-2">
+          <p className="text-[12px] leading-[1.4] text-[#43484e]">Logo de la empresa</p>
+          <button
+            type="button"
+            onClick={() => logoInputRef.current?.click()}
+            disabled={saving || logoProcessing}
+            className="group flex w-full items-center gap-4 rounded-[12px] border border-transparent p-2 text-left transition-colors hover:border-[#edeef0] hover:bg-[#fafafa] disabled:cursor-wait disabled:opacity-70"
+          >
+            <span
+              className={cn(
+                "relative size-16 shrink-0 overflow-hidden rounded-[10px] border border-[#e2e8f0] transition-colors group-hover:border-[#cad5e2]",
+                previewLogoUrl ? "bg-transparent" : "bg-[#ff7433]",
+              )}
+            >
+              <CompanyLogoMark
+                logoUrl={previewLogoUrl}
+                alt="Logo de la empresa"
+                className="size-16"
+                fallback={<Building2 className="size-7 text-white" aria-hidden />}
+              />
+              {logoProcessing ? (
+                <span className="absolute inset-0 flex items-center justify-center bg-[#ff7433]/80 text-[11px] font-medium text-white">
+                  …
+                </span>
+              ) : null}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[14px] font-medium leading-[1.4] text-[#1d293d] transition-colors group-hover:text-[#ff7433]">
+                {previewLogoUrl ? "Cambiar logo" : "Subir logo"}
+              </span>
+              <span className="block text-[12px] leading-[1.4] text-[#696e77]">
+                Se muestra en el menú y en las obras. JPG, PNG o WebP, hasta 10 MB.
+              </span>
+            </span>
+          </button>
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(event) => void handleLogoSelect(event)}
+          />
+        </div>
+
         <div className="flex flex-col gap-1">
           <label htmlFor="company-name" className="text-[12px] leading-[1.4] text-[#43484e]">
             Nombre de la Empresa *
@@ -161,7 +272,7 @@ export function InformacionView({ companyId }: InformacionViewProps) {
 
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || logoProcessing}
           className="inline-flex h-[44px] w-fit items-center gap-2 rounded-[10px] bg-[#ff7433] px-4 py-3 text-[14px] font-normal text-white shadow-[0_0_5px_rgba(243,103,31,0.08)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
         >
           <Save className="size-4" aria-hidden />

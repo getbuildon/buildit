@@ -41,6 +41,7 @@ const statusStyles: Record<TrabajoDiarioTaskStatus, string> = {
   Completado: "bg-[#d6f1e3] text-[#208368]",
   "En Proceso": "bg-[#fff7c2] text-[#4f3422]",
   Bloqueado: "bg-[#ffdbdc] text-[#641723]",
+  Certificada: "bg-[#e6f4fe] text-[#0f5fa0]",
 }
 
 type ViewMode = "list" | "load"

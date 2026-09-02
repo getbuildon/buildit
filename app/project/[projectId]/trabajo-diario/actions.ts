@@ -11,7 +11,10 @@ import {
 import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
 import { revalidateProjectPath } from "@/lib/project/revalidateProjectPath"
 import { canAccessUnitProgress } from "@/lib/project/projectAccessContext"
-import { hasStrictProjectPermission } from "@/lib/project/projectPermissions"
+import {
+  hasStrictProjectPermission,
+  type ProjectPermissions,
+} from "@/lib/project/projectPermissions"
 import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
 import {
   getUnitTaskKey,
@@ -59,7 +62,7 @@ export type RegisterProgressAttachmentInput = {
 
 export type RegisterProgressAttachmentsResult = { ok: true } | { ok: false; error: string }
 
-export type TrabajoDiarioTaskStatus = "Completado" | "En Proceso" | "Bloqueado"
+export type TrabajoDiarioTaskStatus = "Completado" | "En Proceso" | "Bloqueado" | "Certificada"
 
 export type TrabajoDiarioTaskAttachment = {
   id: string
@@ -168,8 +171,49 @@ function mapProgressStatus(
   progressState: string,
 ): TrabajoDiarioTaskStatus {
   if (status === "rejected") return "Bloqueado"
+  if (status === "approved") return "Certificada"
+  if (progressState === "completed") return "Completado"
+  return "En Proceso"
+}
+
+/** En el historial, el entry certificado sigue siendo el avance “Completado”. */
+function mapHistoryWorkStatus(
+  status: string,
+  progressState: string,
+): Exclude<TrabajoDiarioTaskHistoryStatus, "Certificada"> {
+  if (status === "rejected") return "Bloqueado"
   if (progressState === "completed" || status === "approved") return "Completado"
   return "En Proceso"
+}
+
+const CERTIFIED_STATUS_LOCKED_ERROR =
+  "No tenés permiso para cambiar el estado de una tarea certificada."
+
+async function assertCanChangeCertifiedUnitTasks(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  projectId: string,
+  unitIds: string[],
+  taskIds: string[],
+  permissions: ProjectPermissions,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (hasStrictProjectPermission(permissions, "certifyTasks")) {
+    return { ok: true }
+  }
+
+  const uniqueUnitIds = [...new Set(unitIds)]
+  const targetTaskIds = new Set(taskIds)
+
+  for (const unitId of uniqueUnitIds) {
+    const latest = await loadLatestProgressEntries(supabase, projectId, { unitId })
+    const certified = latest.some(
+      (entry) => targetTaskIds.has(entry.task_id) && entry.status === "approved",
+    )
+    if (certified) {
+      return { ok: false, error: CERTIFIED_STATUS_LOCKED_ERROR }
+    }
+  }
+
+  return { ok: true }
 }
 
 async function getAttachmentsByEntry(
@@ -738,7 +782,7 @@ export async function getTrabajoDiarioTaskDetail(
     const rowOccurredAt = row.submitted_at ?? row.created_at
     return {
       id: row.id,
-      status: mapProgressStatus(row.status, row.progress_state),
+      status: mapHistoryWorkStatus(row.status, row.progress_state),
       comment: row.comment,
       occurredAt: rowOccurredAt,
       formattedDate: formatArgentinaDateTime(rowOccurredAt),
@@ -819,6 +863,15 @@ export async function updateTrabajoDiarioTask(
   if (!canAccessUnitProgress(permission.context, entry.unit_id)) {
     return { ok: false, error: "No tenés permiso para editar tareas de esta unidad." }
   }
+
+  const certifiedLock = await assertCanChangeCertifiedUnitTasks(
+    supabase,
+    projectId,
+    [entry.unit_id],
+    [entry.task_id],
+    permission.context.permissions,
+  )
+  if (!certifiedLock.ok) return certifiedLock
 
   const assignments = await getUnitTaskAssignments(projectId)
   if (!isTaskAssignedToUnit(assignments.byUnit, entry.unit_id, entry.task_id)) {

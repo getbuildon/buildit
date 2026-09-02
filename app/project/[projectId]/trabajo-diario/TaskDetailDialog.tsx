@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react"
 import {
   AlertCircle,
+  BadgeCheck,
   Camera,
   CheckCircle2,
   ChevronDown,
@@ -20,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
+import { useToast } from "@/components/ui/toast"
 import { ProgressPhotoGalleryDialog } from "@/components/progress/ProgressPhotoGalleryDialog"
 import { ProgressPhotoUpload } from "@/components/progress/ProgressPhotoUpload"
 import {
@@ -31,7 +33,16 @@ import {
 } from "@/lib/projects/cargarAvance"
 import { buildAttachmentsForSingleEntry } from "@/lib/progress/linkProgressPhotos.client"
 import { getFloorDisplayLabel } from "@/lib/projects/floorLabels"
+import {
+  CERTIFICACION_CONFIRM,
+  CERTIFICACION_MODAL,
+} from "@/lib/project/certificacionesDesignTokens"
 import { cn } from "@/lib/utils"
+import {
+  CertificarTareaDialog,
+  type CertificarTareaSummary,
+} from "../certificaciones/CertificarTareaDialog"
+import { certifyProgressEntries } from "../certificaciones/actions"
 import {
   useStrictProjectPermission,
 } from "@/components/project-shell/ProjectAccessProvider"
@@ -107,6 +118,7 @@ const STATUS_BUTTON_STYLES: Array<{
 function mapTrabajoDiarioStatusToDraft(status: TrabajoDiarioTaskStatus): EditableTaskStatus {
   switch (status) {
     case "Completado":
+    case "Certificada":
       return "completed"
     case "En Proceso":
       return "in_progress"
@@ -189,6 +201,15 @@ function StatusOptionIcon({
 }
 
 function DetailStatusPill({ status }: { status: TrabajoDiarioTaskStatus }) {
+  if (status === "Certificada") {
+    return (
+      <span className={cn(DETAIL_STATUS_PILL_CLASSNAME, "bg-[#e6f4fe] text-[#0f5fa0]")}>
+        <TaskStatusIcon status={status} />
+        Certificada
+      </span>
+    )
+  }
+
   const draftStatus = mapTrabajoDiarioStatusToDraft(status)
 
   return (
@@ -310,14 +331,25 @@ export function TaskDetailDialog({
   const [galleryTitle, setGalleryTitle] = useState("")
   const [galleryDescription, setGalleryDescription] = useState<string | undefined>()
   const [galleryPhotos, setGalleryPhotos] = useState<TrabajoDiarioTaskAttachment[]>([])
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [isCertifying, setIsCertifying] = useState(false)
+  const [certifyError, setCertifyError] = useState<string | null>(null)
+  const toast = useToast()
   const canEditTasks = useStrictProjectPermission("editTasks")
+  const canCertifyTasks = useStrictProjectPermission("certifyTasks")
   const canViewAuditLog = useStrictProjectPermission("viewAuditLog")
+  const canEditStatus =
+    canEditTasks && (detail?.status !== "Certificada" || canCertifyTasks)
+  const showCertifyButton =
+    canCertifyTasks && mode === "view" && detail?.status === "Completado"
 
   useEffect(() => {
     if (!open || !entryId) {
       setDetail(null)
       setMode("view")
       setSaveError(null)
+      setConfirmOpen(false)
+      setCertifyError(null)
       return
     }
 
@@ -347,8 +379,50 @@ export function TaskDetailDialog({
       setDraftComment("")
       setSaveError(null)
       setSaveStatus(null)
+      setConfirmOpen(false)
+      setCertifyError(null)
     }
     onOpenChange(nextOpen)
+  }
+
+  const certifySummary: CertificarTareaSummary | null = detail
+    ? {
+        taskName: detail.taskName,
+        floorLabel: getFloorDisplayLabel({
+          name: detail.floorName,
+          identifier: detail.floorIdentifier,
+        }),
+        unitLabel: detail.unitLabel,
+        rubroName: detail.rubroName,
+        authorName: detail.registeredByName,
+      }
+    : null
+
+  const handleConfirmCertify = async (notes: string) => {
+    if (!entryId || !canCertifyTasks) return
+
+    setIsCertifying(true)
+    setCertifyError(null)
+
+    const result = await certifyProgressEntries(
+      projectId,
+      [entryId],
+      notes.trim() ? { [entryId]: notes } : undefined,
+    )
+
+    setIsCertifying(false)
+
+    if (!result.ok) {
+      setCertifyError(result.error)
+      toast.error(result.error)
+      return
+    }
+
+    setConfirmOpen(false)
+    const refreshed = await getTrabajoDiarioTaskDetail(projectId, entryId)
+    setDetail(refreshed)
+    toast.success("Tarea certificada exitosamente")
+    onSaved()
   }
 
   const handleStartEdit = () => {
@@ -487,7 +561,7 @@ export function TaskDetailDialog({
               ) : null}
             </div>
 
-            {mode === "view" && detail && canEditTasks ? (
+            {mode === "view" && detail && canEditStatus ? (
               <button
                 type="button"
                 onClick={handleStartEdit}
@@ -655,14 +729,40 @@ export function TaskDetailDialog({
 
         <div className="border-t border-[#edeef0] px-4 pt-4 pb-5 sm:px-6 sm:pt-5 sm:pb-6">
           {mode === "view" ? (
-            <Button
-              variant="brand"
-              size="brand"
-              className="h-[44px] w-full rounded-[12px] text-[14px] font-medium shadow-[0_4px_14px_rgba(241,132,77,0.35)]"
-              onClick={() => handleOpenChange(false)}
-            >
-              Cerrar
-            </Button>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              {showCertifyButton ? (
+                <button
+                  type="button"
+                  onClick={() => handleOpenChange(false)}
+                  className={CERTIFICACION_CONFIRM.cancelBtn}
+                >
+                  Cerrar
+                </button>
+              ) : (
+                <Button
+                  variant="brand"
+                  size="brand"
+                  className="h-[44px] w-full rounded-[12px] text-[14px] font-medium shadow-[0_4px_14px_rgba(241,132,77,0.35)]"
+                  onClick={() => handleOpenChange(false)}
+                >
+                  Cerrar
+                </Button>
+              )}
+              {showCertifyButton ? (
+                <button
+                  type="button"
+                  disabled={isCertifying}
+                  onClick={() => {
+                    setCertifyError(null)
+                    setConfirmOpen(true)
+                  }}
+                  className={CERTIFICACION_MODAL.certifyBtn}
+                >
+                  <BadgeCheck className="size-4 shrink-0" aria-hidden />
+                  Certificar
+                </button>
+              ) : null}
+            </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -694,6 +794,18 @@ export function TaskDetailDialog({
         title={galleryTitle}
         description={galleryDescription}
         photos={galleryPhotos}
+      />
+
+      <CertificarTareaDialog
+        open={confirmOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setCertifyError(null)
+          setConfirmOpen(nextOpen)
+        }}
+        summary={certifySummary}
+        isCertifying={isCertifying}
+        error={certifyError}
+        onConfirm={(notes) => void handleConfirmCertify(notes)}
       />
     </Dialog>
   )

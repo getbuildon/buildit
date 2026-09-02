@@ -2,6 +2,7 @@ export type UserProjectListItem = {
   projectId: string
   company_id: string
   organizationName: string
+  companyLogoUrl: string | null
   name: string
   address: string
   floors: number
@@ -20,4 +21,5 @@ export type HomeProjectListItem = {
   address: string
   floors: number
   status: UserProjectListItem["status"]
+  companyLogoUrl: string | null
 }

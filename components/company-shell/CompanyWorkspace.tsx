@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { type ReactNode, useState } from "react"
 import { ArrowLeftRight, ChevronDown } from "lucide-react"
 import { BuiltItIsoIcon } from "@/components/brand/BuiltItIsoIcon"
+import { CompanyLogoMark } from "@/components/company/CompanyLogoMark"
 import {
   matchesCompanyNavHref,
   useCompanyNavigation,
@@ -50,17 +51,12 @@ function CompanySidebar({ company, userProfile }: CompanySidebarProps) {
         className="flex shrink-0 items-center border-b"
         style={{ padding: "16px", gap: "12px", borderColor: "#dadada" }}
       >
-        <div
-          className="flex shrink-0 items-center justify-center"
-          style={{
-            width: "36px",
-            height: "36px",
-            borderRadius: "10px",
-            backgroundColor: "#ff7433",
-          }}
-        >
-          <BuiltItIsoIcon className="size-5 text-white" />
-        </div>
+        <CompanyLogoMark
+          logoUrl={company.logoUrl}
+          alt={`Logo de ${company.name}`}
+          className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-[#e2e8f0] bg-[#ff7433]"
+          fallback={<BuiltItIsoIcon className="size-5 text-white" />}
+        />
 
         <div className="min-w-0 flex-1">
           <p

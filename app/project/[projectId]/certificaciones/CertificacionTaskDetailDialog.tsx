@@ -83,6 +83,7 @@ const STATUS_BUTTON_STYLES: Array<{
 function mapTrabajoDiarioStatusToDraft(status: TrabajoDiarioTaskStatus): EditableTaskStatus {
   switch (status) {
     case "Completado":
+    case "Certificada":
       return "completed"
     case "En Proceso":
       return "in_progress"
@@ -489,7 +490,10 @@ export function CertificacionTaskDetailDialog({
                 ) : null}
               </div>
 
-              {mode === "view" && detail && canEditTasks ? (
+              {mode === "view" &&
+              detail &&
+              canEditTasks &&
+              (certificationStatus !== "certified" || canCertify) ? (
                 <button
                   type="button"
                   onClick={handleStartEdit}

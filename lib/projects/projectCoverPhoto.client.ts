@@ -1,12 +1,11 @@
 "use client"
 
-import imageCompression from "browser-image-compression"
 import { createClient } from "@/utils/supabase/client"
+import { compressImageHighQuality } from "@/lib/images/compressImage"
 import {
   buildProjectCoverStoragePath,
   MAX_PROJECT_COVER_BYTES,
   MAX_PROJECT_COVER_SOURCE_BYTES,
-  PROJECT_COVER_COMPRESSION,
   PROJECT_COVERS_BUCKET,
 } from "@/lib/projects/projectCoverPhotoConfig"
 
@@ -23,19 +22,11 @@ export function revokeProjectCoverPreview(draft: ProjectCoverImageDraft | null) 
 }
 
 export async function compressProjectCoverPhoto(file: File): Promise<File> {
-  if (file.size > MAX_PROJECT_COVER_SOURCE_BYTES) {
-    throw new Error("La imagen supera el límite de 20 MB.")
-  }
-
-  const compressed = await imageCompression(file, PROJECT_COVER_COMPRESSION)
-
-  if (compressed.size > MAX_PROJECT_COVER_BYTES) {
-    throw new Error(
-      `La imagen "${file.name}" sigue siendo muy pesada después de comprimirla. Probá con otra foto.`,
-    )
-  }
-
-  return compressed
+  return compressImageHighQuality(file, {
+    maxSourceBytes: MAX_PROJECT_COVER_SOURCE_BYTES,
+    maxOutputBytes: MAX_PROJECT_COVER_BYTES,
+    sourceLimitLabel: "20 MB",
+  })
 }
 
 export async function uploadProjectCoverPhoto(

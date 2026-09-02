@@ -39,6 +39,7 @@ export type ProjectBasics = {
   totalSurface: string
   companyId: string | null
   companyName: string | null
+  companyLogoUrl: string | null
 }
 
 export type UpdateProjectBasicsInput = {
@@ -399,17 +400,20 @@ async function fetchProjectBasics(
 ): Promise<ProjectBasics | null> {
   const { data, error } = await supabase
     .from("projects")
-    .select("id, name, location, start_date, end_date, total_surface_m2, company_id, companies(name)")
+    .select("id, name, location, start_date, end_date, total_surface_m2, company_id, companies(name, logo_url)")
     .eq("id", id)
     .maybeSingle()
 
   if (error || !data) return null
 
-  const companyRaw = data.companies as { name: string } | { name: string }[] | null
-  const companyName = companyRaw
+  const companyRaw = data.companies as
+    | { name: string; logo_url?: string | null }
+    | { name: string; logo_url?: string | null }[]
+    | null
+  const company = companyRaw
     ? Array.isArray(companyRaw)
-      ? (companyRaw[0]?.name ?? null)
-      : companyRaw.name
+      ? (companyRaw[0] ?? null)
+      : companyRaw
     : null
 
   return {
@@ -420,7 +424,8 @@ async function fetchProjectBasics(
     endDate: data.end_date ?? "",
     totalSurface: formatTotalSurfaceM2(data.total_surface_m2),
     companyId: data.company_id ?? null,
-    companyName,
+    companyName: company?.name ?? null,
+    companyLogoUrl: company?.logo_url ?? null,
   }
 }
 

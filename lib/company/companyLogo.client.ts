@@ -3,42 +3,38 @@
 import { createClient } from "@/utils/supabase/client"
 import { compressImageHighQuality } from "@/lib/images/compressImage"
 import {
-  buildPortalNewsStoragePath,
-  MAX_PORTAL_NEWS_IMAGE_BYTES,
-  MAX_PORTAL_NEWS_SOURCE_BYTES,
-  PROJECT_PORTAL_NEWS_BUCKET,
-} from "@/lib/projects/portalNewsPhotoConfig"
+  buildCompanyLogoStoragePath,
+  COMPANY_LOGOS_BUCKET,
+  MAX_COMPANY_LOGO_BYTES,
+  MAX_COMPANY_LOGO_SOURCE_BYTES,
+} from "@/lib/company/companyLogoConfig"
 
-export type PortalNewsImageDraft = {
+export type CompanyLogoDraft = {
   file: File
   previewUrl: string
-  fileName: string
-  fileSize: number
-  fileType: string
 }
 
-export function revokePortalNewsPreview(draft: PortalNewsImageDraft | null) {
+export function revokeCompanyLogoPreview(draft: CompanyLogoDraft | null) {
   if (draft?.previewUrl) URL.revokeObjectURL(draft.previewUrl)
 }
 
-export async function compressPortalNewsImage(file: File): Promise<File> {
+export async function compressCompanyLogo(file: File): Promise<File> {
   return compressImageHighQuality(file, {
-    maxSourceBytes: MAX_PORTAL_NEWS_SOURCE_BYTES,
-    maxOutputBytes: MAX_PORTAL_NEWS_IMAGE_BYTES,
+    maxSourceBytes: MAX_COMPANY_LOGO_SOURCE_BYTES,
+    maxOutputBytes: MAX_COMPANY_LOGO_BYTES,
     sourceLimitLabel: "10 MB",
   })
 }
 
-export async function uploadPortalNewsImage(
-  projectId: string,
-  newsId: string,
+export async function uploadCompanyLogo(
+  companyId: string,
   file: File,
 ): Promise<{ ok: true; publicUrl: string } | { ok: false; error: string }> {
   const supabase = createClient()
-  const storagePath = buildPortalNewsStoragePath(projectId, newsId)
+  const storagePath = buildCompanyLogoStoragePath(companyId)
 
   const { error: uploadError } = await supabase.storage
-    .from(PROJECT_PORTAL_NEWS_BUCKET)
+    .from(COMPANY_LOGOS_BUCKET)
     .upload(storagePath, file, {
       cacheControl: "3600",
       contentType: file.type || "image/webp",
@@ -46,11 +42,11 @@ export async function uploadPortalNewsImage(
     })
 
   if (uploadError) {
-    return { ok: false, error: `No se pudo subir la imagen: ${uploadError.message}` }
+    return { ok: false, error: `No se pudo subir el logo: ${uploadError.message}` }
   }
 
   const { data: publicUrlData } = supabase.storage
-    .from(PROJECT_PORTAL_NEWS_BUCKET)
+    .from(COMPANY_LOGOS_BUCKET)
     .getPublicUrl(storagePath)
 
   return { ok: true, publicUrl: `${publicUrlData.publicUrl}?t=${Date.now()}` }

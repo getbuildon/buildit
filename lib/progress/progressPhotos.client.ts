@@ -1,11 +1,11 @@
 "use client"
 
-import imageCompression from "browser-image-compression"
 import { createClient } from "@/utils/supabase/client"
+import { compressImageHighQuality } from "@/lib/images/compressImage"
 import {
   buildProgressPhotoStoragePath,
   MAX_PROGRESS_PHOTO_BYTES,
-  PROGRESS_PHOTO_COMPRESSION,
+  MAX_PROGRESS_PHOTO_SOURCE_BYTES,
   PROGRESS_PHOTOS_BUCKET,
 } from "@/lib/progress/progressPhotoConfig"
 
@@ -18,24 +18,12 @@ export type UploadedProgressPhoto = {
 }
 
 export async function compressProgressPhoto(file: File): Promise<File> {
-  let compressed: File
-
-  try {
-    compressed = await imageCompression(file, PROGRESS_PHOTO_COMPRESSION)
-  } catch {
-    compressed = await imageCompression(file, {
-      ...PROGRESS_PHOTO_COMPRESSION,
-      fileType: undefined,
-    })
-  }
-
-  if (compressed.size > MAX_PROGRESS_PHOTO_BYTES) {
-    throw new Error(
-      `La imagen "${file.name}" sigue siendo muy pesada después de comprimirla. Probá con otra foto.`,
-    )
-  }
-
-  return compressed
+  return compressImageHighQuality(file, {
+    maxSourceBytes: MAX_PROGRESS_PHOTO_SOURCE_BYTES,
+    maxOutputBytes: MAX_PROGRESS_PHOTO_BYTES,
+    sourceLimitLabel: "20 MB",
+    useWebWorker: false,
+  })
 }
 
 export async function uploadProgressPhotos(

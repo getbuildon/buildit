@@ -27,6 +27,10 @@ import {
   DASHBOARD_PROGRESS_TRACK_COLOR,
 } from "@/lib/projects/dashboardProgressBarColors"
 import {
+  formatProgressPercentLabel,
+  progressBarWidthPercent,
+} from "@/lib/projects/dashboardProgress"
+import {
   matchesUnitTaskFilter,
   type UnitDetailTaskFilter,
   type UnitDetailTaskGroup,
@@ -258,7 +262,9 @@ export function UnitDetailView({ projectId, data }: UnitDetailViewProps) {
 
             <div className="flex shrink-0 gap-10">
               <div className="flex flex-col items-center gap-1">
-                <span className={UNIT_DETAIL_TYPE.statValue}>{data.progressPercent}%</span>
+                <span className={UNIT_DETAIL_TYPE.statValue}>
+                  {formatProgressPercentLabel(data.progressPercent)}
+                </span>
                 <span className={UNIT_DETAIL_TYPE.statLabel}>progreso general</span>
               </div>
               <div className="flex flex-col items-center gap-1">
@@ -280,7 +286,7 @@ export function UnitDetailView({ projectId, data }: UnitDetailViewProps) {
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
-                    width: `${data.progressPercent}%`,
+                    width: `${progressBarWidthPercent(data.progressPercent)}%`,
                     backgroundColor: getDashboardProgressBarColor(data.progressPercent),
                   }}
                 />

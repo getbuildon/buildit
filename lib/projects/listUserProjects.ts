@@ -14,6 +14,7 @@ type ProjectRow = {
   location: string | null
   company_id: string
   company_name: string | null
+  company_logo_url: string | null
   status: UserProjectListItem["status"]
 }
 
@@ -44,6 +45,7 @@ function toUserProjectListItem(
     projectId: project.id,
     company_id: project.company_id,
     organizationName: project.company_name || "",
+    companyLogoUrl: project.company_logo_url,
     name: project.name,
     address: project.location?.trim() || "Sin dirección",
     floors: counts.floors,
@@ -67,6 +69,7 @@ function normalizeProjects(rows: unknown[]): ProjectRow[] {
         location: item.location,
         company_id: item.company_id,
         company_name: company?.name ?? null,
+        company_logo_url: company?.logo_url ?? null,
         status: item.status ?? "active",
       })
     }
@@ -80,7 +83,7 @@ async function collectAccessibleProjectRows(
 ): Promise<ProjectRow[]> {
   const { data: memberships } = await supabase
     .from("project_members")
-    .select(`project:projects ( id, name, location, company_id, status, company:companies ( name ) )`)
+    .select(`project:projects ( id, name, location, company_id, status, company:companies ( name, logo_url ) )`)
     .eq("user_id", userId)
     .eq("is_active", true)
 
@@ -101,7 +104,7 @@ async function collectAccessibleProjectRows(
           location,
           company_id,
           status,
-          company:companies ( name )
+          company:companies ( name, logo_url )
         )
       )`,
     )
@@ -128,7 +131,7 @@ async function collectAccessibleProjectRows(
     const companyIds = companyMemberships.map((cm) => cm.company_id)
     const { data: rawProjects } = await supabase
       .from("projects")
-      .select("id, name, location, company_id, status, company:companies ( name )")
+      .select("id, name, location, company_id, status, company:companies ( name, logo_url )")
       .in("company_id", companyIds)
 
     companyProjects = normalizeProjects(rawProjects || [])
@@ -176,7 +179,7 @@ export async function getProjectById(
 
   const withCompany = await supabase
     .from("projects")
-    .select("id, name, location, company_id, status, company:companies(name)")
+    .select("id, name, location, company_id, status, company:companies(name, logo_url)")
     .eq("id", id)
     .maybeSingle()
 
@@ -197,7 +200,7 @@ export async function getProjectById(
     location: string | null
     company_id: string
     status?: UserProjectListItem["status"]
-    company?: { name?: string } | { name?: string }[] | null
+    company?: { name?: string; logo_url?: string | null } | { name?: string; logo_url?: string | null }[] | null
   }
   const company = Array.isArray(r.company) ? r.company[0] : r.company
   const project: ProjectRow = {
@@ -206,6 +209,7 @@ export async function getProjectById(
     location: r.location,
     company_id: r.company_id,
     company_name: company?.name ?? null,
+    company_logo_url: company?.logo_url ?? null,
     status: r.status ?? "active",
   }
 
@@ -235,6 +239,7 @@ export async function listHomeProjects(): Promise<HomeProjectListItem[]> {
     address: project.location?.trim() || "Sin dirección",
     floors: floorCounts.get(project.id) ?? 0,
     status: project.status,
+    companyLogoUrl: project.company_logo_url,
   }))
 }
 

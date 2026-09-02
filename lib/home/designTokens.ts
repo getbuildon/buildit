@@ -52,7 +52,7 @@ export const HOME_LAYOUT = {
   question:
     "text-base font-normal leading-[1.4] text-balance sm:text-[18px] md:text-[20px] md:leading-7",
   projectGrid:
-    "mt-8 flex w-full flex-wrap justify-center gap-4 pb-12 sm:mt-10 sm:gap-5 sm:pb-14 md:mt-12 md:gap-5 md:pb-16",
+    "mt-8 flex w-full flex-wrap justify-center gap-4 pb-16 sm:mt-10 sm:gap-5 sm:pb-20 md:mt-12 md:gap-5 md:pb-24",
   projectCardSize: "w-full max-w-[240px] min-h-[245px] sm:w-[240px] sm:max-w-none",
   pageFooter:
     "sticky bottom-0 z-20 w-full shrink-0 bg-[#371f15]/90 backdrop-blur-md",

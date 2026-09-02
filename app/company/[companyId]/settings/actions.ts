@@ -8,6 +8,7 @@ export type CompanyInfo = {
   name: string
   legal_name: string | null
   country: string | null
+  logo_url: string | null
 }
 
 export type UpdateCompanyInfoInput = {
@@ -15,6 +16,7 @@ export type UpdateCompanyInfoInput = {
   name: string
   legal_name?: string
   country?: string
+  logo_url?: string
 }
 
 export type UpdateResult = { ok: true } | { ok: false; error: string }
@@ -37,7 +39,7 @@ export async function getCompanyInfo(companyId: string): Promise<CompanyInfo | n
   // Obtener info de la company
   const { data: company, error } = await supabase
     .from("companies")
-    .select("id, name, legal_name, country")
+    .select("id, name, legal_name, country, logo_url")
     .eq("id", companyId)
     .maybeSingle()
 
@@ -74,6 +76,7 @@ export async function updateCompanyInfo(input: UpdateCompanyInfoInput): Promise<
       name,
       legal_name: input.legal_name?.trim() || null,
       country: input.country?.trim() || null,
+      ...(input.logo_url !== undefined ? { logo_url: input.logo_url } : {}),
     })
     .eq("id", input.companyId)
 
