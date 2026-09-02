@@ -33,9 +33,8 @@ export function FieldLabelWithTooltip({
       </label>
       <div className="group relative flex shrink-0 items-center">
         <Info
-          className="size-3 text-[#45556c]"
+          className="size-3 text-[#45556c] outline-none"
           aria-label={tooltip}
-          tabIndex={0}
         />
         <div
           role="tooltip"

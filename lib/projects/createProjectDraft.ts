@@ -173,6 +173,25 @@ export function createDefaultFloor(floorIndex: number): StructureFloorDraft {
   }
 }
 
+export function cloneStructureUnit(unit: StructureUnitDraft): StructureUnitDraft {
+  return {
+    ...unit,
+    id: newId("unit"),
+    planImage: null,
+    renderImage: null,
+    planRemoved: false,
+    renderRemoved: false,
+  }
+}
+
+export function cloneStructureFloor(floor: StructureFloorDraft): StructureFloorDraft {
+  return {
+    ...floor,
+    id: newId("floor"),
+    units: floor.units.map(cloneStructureUnit),
+  }
+}
+
 function makeRubro(name: string, weightPercent = ""): RubroItemDraft {
   return {
     id: newId("rubro"),

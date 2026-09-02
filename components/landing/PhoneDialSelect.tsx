@@ -28,7 +28,7 @@ export function PhoneDialSelect({ value, onValueChange }: PhoneDialSelectProps) 
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger
         aria-label="Código de país telefónico"
-        className="h-auto w-auto shrink-0 rounded-none border-0 border-r border-[#dee5ed] bg-transparent p-0 pr-2 shadow-none focus:ring-0 data-[size=default]:h-auto [&>:first-child]:flex-none [&>svg:last-child]:hidden"
+        className="h-auto w-auto shrink-0 rounded-none border-0 border-r border-[#dee5ed] bg-transparent p-0 pr-2 shadow-none focus-visible:ring-0 data-[size=default]:h-auto [&>:first-child]:flex-none [&>svg:last-child]:hidden"
       >
         <span className="flex items-center gap-1">
           <SelectValue aria-label={option.label}>

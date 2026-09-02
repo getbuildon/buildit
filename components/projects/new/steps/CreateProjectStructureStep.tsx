@@ -1,7 +1,22 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Building2, Plus, Trash2, X } from "lucide-react"
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import { Building2, Copy, Plus, SquarePlus, Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
@@ -25,6 +40,8 @@ import { FieldErrorTooltip } from "@/components/ui/field-error-tooltip"
 import { normalizeTotalSurfaceInput } from "@/lib/projects/totalSurfaceInput"
 import {
   STRUCTURE_UNIT_TYPES,
+  cloneStructureFloor,
+  cloneStructureUnit,
   countStructureUnits,
   createDefaultFloor,
   createDefaultUnit,
@@ -60,6 +77,19 @@ import {
   newItemHighlightClass,
   useNewItemHighlight,
 } from "@/components/projects/new/useNewItemHighlight"
+
+function StructureDragHandleIcon() {
+  return (
+    <svg width="7" height="12" viewBox="0 0 7 12" fill="#c45c26" aria-hidden>
+      <circle cx="1.5" cy="1.5" r="1.05" />
+      <circle cx="5.5" cy="1.5" r="1.05" />
+      <circle cx="1.5" cy="6" r="1.05" />
+      <circle cx="5.5" cy="6" r="1.05" />
+      <circle cx="1.5" cy="10.5" r="1.05" />
+      <circle cx="5.5" cy="10.5" r="1.05" />
+    </svg>
+  )
+}
 
 const STRUCTURE_DELETE_CONFIRM = {
   title: "Confirmar cambios",
@@ -160,6 +190,39 @@ export function CreateProjectStructureStep({
       ],
     })
     markAsNew(unit.id)
+  }
+
+  const duplicateFloor = (floorId: string) => {
+    const floor = draft.floors.find((item) => item.id === floorId)
+    if (!floor) return
+    const clone = cloneStructureFloor(floor)
+    const index = draft.floors.findIndex((item) => item.id === floorId)
+    const next = [...draft.floors]
+    next.splice(index + 1, 0, clone)
+    setFloors(next)
+    markAsNew(clone.id)
+    for (const unit of clone.units) markAsNew(unit.id)
+  }
+
+  const duplicateUnit = (floorId: string, unitId: string) => {
+    const floor = draft.floors.find((item) => item.id === floorId)
+    const unit = floor?.units.find((item) => item.id === unitId)
+    if (!floor || !unit) return
+    const clone = cloneStructureUnit(unit)
+    const index = floor.units.findIndex((item) => item.id === unitId)
+    const units = [...floor.units]
+    units.splice(index + 1, 0, clone)
+    updateFloor(floorId, { units })
+    markAsNew(clone.id)
+  }
+
+  const reorderUnits = (floorId: string, activeId: string, overId: string) => {
+    const floor = draft.floors.find((item) => item.id === floorId)
+    if (!floor || activeId === overId) return
+    const oldIndex = floor.units.findIndex((unit) => unit.id === activeId)
+    const newIndex = floor.units.findIndex((unit) => unit.id === overId)
+    if (oldIndex < 0 || newIndex < 0) return
+    updateFloor(floorId, { units: arrayMove(floor.units, oldIndex, newIndex) })
   }
 
   const updateUnit = (
@@ -282,11 +345,16 @@ export function CreateProjectStructureStep({
                 fieldErrors={fieldErrors[floor.id]}
                 onUpdateFloor={(patch) => updateFloor(floor.id, patch)}
                 onRemoveFloor={() => requestRemoveFloor(floor.id)}
+                onDuplicateFloor={() => duplicateFloor(floor.id)}
                 onAddUnit={() => addUnit(floor.id)}
                 onUpdateUnit={(unitId, patch) =>
                   updateUnit(floor.id, unitId, patch)
                 }
+                onDuplicateUnit={(unitId) => duplicateUnit(floor.id, unitId)}
                 onRemoveUnit={(unitId) => requestRemoveUnit(floor.id, unitId)}
+                onReorderUnits={(activeId, overId) =>
+                  reorderUnits(floor.id, activeId, overId)
+                }
                 isUnitHighlighted={isHighlighted}
               />
             ))}
@@ -372,9 +440,12 @@ type StructureFloorCardProps = {
   fieldErrors?: StructureFloorFieldErrors
   onUpdateFloor: (patch: Partial<StructureFloorDraft>) => void
   onRemoveFloor: () => void
+  onDuplicateFloor: () => void
   onAddUnit: () => void
   onUpdateUnit: (unitId: string, patch: Partial<StructureUnitDraft>) => void
+  onDuplicateUnit: (unitId: string) => void
   onRemoveUnit: (unitId: string) => void
+  onReorderUnits: (activeId: string, overId: string) => void
   isUnitHighlighted: (unitId: string) => boolean
 }
 
@@ -384,31 +455,40 @@ function StructureFloorCard({
   fieldErrors,
   onUpdateFloor,
   onRemoveFloor,
+  onDuplicateFloor,
   onAddUnit,
   onUpdateUnit,
+  onDuplicateUnit,
   onRemoveUnit,
+  onReorderUnits,
   isUnitHighlighted,
 }: StructureFloorCardProps) {
   const nameError = fieldErrors?.name
   const identifierError = fieldErrors?.identifier
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const overId = event.over?.id
+    if (!overId) return
+    onReorderUnits(String(event.active.id), String(overId))
+  }
 
   return (
     <div
       data-new-item-id={floor.id}
       data-structure-floor-id={floor.id}
       className={cn(
-        "flex w-full flex-col rounded-[10px] border bg-white p-3",
+        "flex w-full flex-col gap-6 rounded-[10px] bg-white p-3",
         newItemHighlightClass(isHighlighted),
       )}
       style={{
         maxWidth: STRUCTURE_STEP_LAYOUT.floorCardMaxWidth,
-        borderColor: STRUCTURE_STEP_COLORS.floorCardBorder,
         boxShadow: "0 0 7.5px rgba(0, 0, 0, 0.05)",
       }}
     >
-      <div
-        className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:gap-2.5"
-      >
+      <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:gap-2.5">
         <div className="grid grid-cols-1 gap-2.5 sm:flex sm:min-w-0 sm:flex-1 sm:items-start sm:gap-2.5">
         <CreateProjectFormField
           label="Nombre del Nivel *"
@@ -421,7 +501,7 @@ function StructureFloorCard({
         >
           <Input
             id={`floor-name-${floor.id}`}
-            placeholder="Ej. Nivel 1"
+            placeholder="Ej. Planta Baja"
             value={floor.name}
             onChange={(e) => onUpdateFloor({ name: e.target.value })}
             className={structureFloorInputClassName}
@@ -481,46 +561,72 @@ function StructureFloorCard({
         </CreateProjectFormField>
         </div>
 
-        <div className="flex shrink-0 items-center gap-4 sm:px-6">
-          <button
-            type="button"
-            onClick={onAddUnit}
-            className="inline-flex items-center gap-1 text-[12px] font-medium leading-[1.4] transition-opacity hover:opacity-80"
-            style={{ color: STRUCTURE_STEP_COLORS.floorAction }}
-          >
-            <Plus className="size-3" aria-hidden />
-            Agregar Unidad
-          </button>
+        <div className="flex shrink-0 items-center gap-4 sm:px-3 sm:pb-2">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={onDuplicateFloor}
+              className="inline-flex items-center gap-1 text-[12px] font-medium leading-[1.4] text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
+            >
+              <Copy className="size-3.5" strokeWidth={1.75} aria-hidden />
+              Duplicar Nivel
+            </button>
+            <button
+              type="button"
+              onClick={onAddUnit}
+              className="inline-flex items-center gap-1 text-[12px] font-medium leading-[1.4] text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
+            >
+              <SquarePlus className="size-3.5" strokeWidth={1.75} aria-hidden />
+              Agregar Local
+            </button>
+          </div>
           <button
             type="button"
             onClick={onRemoveFloor}
-            className="inline-flex shrink-0 cursor-pointer items-center justify-center transition-opacity hover:opacity-80"
-            style={{ color: STRUCTURE_STEP_COLORS.delete }}
+            className="inline-flex size-[17px] shrink-0 cursor-pointer items-center justify-center text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
             aria-label={`Eliminar ${floor.name}`}
           >
-            <Trash2 className="size-3.5" aria-hidden />
+            <Trash2 className="size-[17px]" strokeWidth={1.75} aria-hidden />
           </button>
         </div>
       </div>
 
-      {floor.units.length === 0 ? (
-        <p className="py-1.5 text-center text-[12px] font-normal leading-4 text-[#afb3ba]">
-          No hay unidades configuradas
-        </p>
-      ) : (
-        <div className="mt-3 flex w-full flex-col gap-2">
-          {floor.units.map((unit) => (
-            <StructureUnitRow
-              key={unit.id}
-              unit={unit}
-              isHighlighted={isUnitHighlighted(unit.id)}
-              fieldErrors={fieldErrors?.unitErrors?.[unit.id]}
-              onUpdateUnit={(patch) => onUpdateUnit(unit.id, patch)}
-              onRemoveUnit={() => onRemoveUnit(unit.id)}
-            />
-          ))}
-        </div>
-      )}
+      <div className="flex w-full flex-col gap-2">
+        {floor.units.length > 0 ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={floor.units.map((unit) => unit.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {floor.units.map((unit) => (
+                <StructureUnitRow
+                  key={unit.id}
+                  unit={unit}
+                  isHighlighted={isUnitHighlighted(unit.id)}
+                  fieldErrors={fieldErrors?.unitErrors?.[unit.id]}
+                  onUpdateUnit={(patch) => onUpdateUnit(unit.id, patch)}
+                  onDuplicateUnit={() => onDuplicateUnit(unit.id)}
+                  onRemoveUnit={() => onRemoveUnit(unit.id)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={onAddUnit}
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[10px] border border-dashed bg-white text-[14px] font-medium leading-5 tracking-[-0.15px] text-[#696e77] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
+          style={{ borderColor: STRUCTURE_STEP_COLORS.addLocalBorder }}
+        >
+          <Plus className="size-4" strokeWidth={1.75} aria-hidden />
+          Agregar local
+        </button>
+      </div>
     </div>
   )
 }
@@ -530,6 +636,7 @@ type StructureUnitRowProps = {
   isHighlighted: boolean
   fieldErrors?: StructureUnitFieldErrors
   onUpdateUnit: (patch: Partial<StructureUnitDraft>) => void
+  onDuplicateUnit: () => void
   onRemoveUnit: () => void
 }
 
@@ -538,6 +645,7 @@ function StructureUnitRow({
   isHighlighted,
   fieldErrors,
   onUpdateUnit,
+  onDuplicateUnit,
   onRemoveUnit,
 }: StructureUnitRowProps) {
   const codeError = fieldErrors?.code
@@ -546,23 +654,39 @@ function StructureUnitRow({
   const variantLabel = getUnitVariantFieldLabel(unit.type)
   const variantField = getUnitVariantField(unit.type)
   const variantValue = variantField === "officeSize" ? unit.officeSize : unit.roomCount
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: unit.id })
 
   return (
     <div
+      ref={setNodeRef}
       data-new-item-id={unit.id}
       data-structure-unit-id={unit.id}
       className={cn(
-        "w-full rounded-[4px] px-3 pt-3 pb-3",
+        "w-full overflow-hidden rounded-[4px] pr-3",
         newItemHighlightClass(isHighlighted),
       )}
       style={{
         backgroundColor: STRUCTURE_STEP_COLORS.unitRowBg,
-        maxWidth: STRUCTURE_STEP_LAYOUT.floorCardInnerWidth,
         minHeight: STRUCTURE_STEP_LAYOUT.unitRowMinHeight,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.55 : 1,
       }}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-end gap-2">
+      <div className="flex items-stretch gap-2">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="flex w-[15px] shrink-0 cursor-grab items-center justify-center self-stretch px-1 py-0.5 touch-none outline-none active:cursor-grabbing"
+          style={{ backgroundColor: STRUCTURE_STEP_COLORS.dragHandleBg }}
+          aria-label="Arrastrar para reordenar"
+        >
+          <StructureDragHandleIcon />
+        </button>
+
+        <div className="flex min-w-0 flex-1 flex-wrap items-end gap-2 py-2 sm:flex-nowrap">
           <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.type)}>
             <span className={structureLabelClassName} style={structureMutedLabelStyle}>
               Tipo
@@ -756,14 +880,24 @@ function StructureUnitRow({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onRemoveUnit}
-          className="inline-flex size-4 shrink-0 cursor-pointer items-center justify-center self-center text-[#ce2c31] transition-opacity hover:opacity-80"
-          aria-label="Eliminar unidad"
-        >
-          <X className="size-4" aria-hidden />
-        </button>
+        <div className="flex w-12 shrink-0 items-center justify-end gap-2 self-center">
+          <button
+            type="button"
+            onClick={onDuplicateUnit}
+            className="inline-flex size-3.5 items-center justify-center text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
+            aria-label="Duplicar local"
+          >
+            <Copy className="size-3.5" strokeWidth={1.75} aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={onRemoveUnit}
+            className="inline-flex size-3.5 cursor-pointer items-center justify-center text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
+            aria-label="Eliminar local"
+          >
+            <Trash2 className="size-3.5" strokeWidth={1.75} aria-hidden />
+          </button>
+        </div>
       </div>
     </div>
   )

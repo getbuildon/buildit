@@ -670,7 +670,7 @@ export function CertificacionTaskDetailDialog({
                     onChange={(event) => setDraftComment(event.target.value)}
                     rows={4}
                     placeholder="Describí el motivo del cambio de Estado..."
-                    className="w-full resize-none rounded-[10px] border border-[#afb3ba] bg-white px-3 py-2.5 text-[14px] leading-[1.4] text-[#272a2d] outline-none focus:border-[#ff7433]"
+                    className="w-full resize-none rounded-[10px] border border-[#afb3ba] bg-white px-3 py-2.5 text-[14px] leading-[1.4] text-[#272a2d] outline-none focus-visible:border-[#ff7433]"
                   />
                 </div>
 

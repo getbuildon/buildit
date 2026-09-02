@@ -341,7 +341,7 @@ export function CargarAvanceTaskPanel({
                     type="button"
                     onClick={() => onToggleTask(task.id)}
                     aria-expanded={expanded}
-                    className="flex min-h-[52px] w-full items-center gap-3 px-3.5 py-3 text-left outline-none transition-colors hover:bg-[#fafafa] focus:outline-none focus-visible:outline-none sm:h-[52px] sm:py-0"
+                    className="flex min-h-[52px] w-full items-center gap-3 px-3.5 py-3 text-left outline-none transition-colors hover:bg-[#fafafa] focus-visible:outline-none sm:h-[52px] sm:py-0"
                   >
                     <TaskStatusIcon status={draft.taskStatus} />
                     <span className="min-w-0 flex-1 truncate text-[14px] leading-[1.4] text-[#272a2d]">
@@ -443,7 +443,7 @@ export function CargarAvanceTaskPanel({
                                 }
                                 rows={3}
                                 placeholder="Agrega notas sobre esta tarea..."
-                                className="w-full resize-none rounded-[10px] border border-[#afb3ba] bg-white px-3 py-2.5 text-[14px] text-[#272a2d] outline-none focus:border-[#ff7433]"
+                                className="w-full resize-none rounded-[10px] border border-[#afb3ba] bg-white px-3 py-2.5 text-[14px] text-[#272a2d] outline-none focus-visible:border-[#ff7433]"
                               />
                             </div>
 

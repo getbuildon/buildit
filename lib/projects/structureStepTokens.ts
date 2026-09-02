@@ -26,11 +26,14 @@ export const STRUCTURE_STEP_COLORS = {
   unitInputBorder: "#e2e8f0",
   /** Contenedor “Unidades por Piso” — crema base del paso */
   unitsSectionBg: "#fff7f0",
-  /** Fondo de cada fila de unidad — contraste cálido vs card blanca del piso */
-  unitRowBg: "#fff6f1",
+  /** Fondo de cada fila de local — Figma 2277:3225 */
+  unitRowBg: "#fff7f0",
+  dragHandleBg: "rgba(255, 234, 224, 0.7)",
   /** Borde de la card de piso — misma gama que summaryBorder */
   floorCardBorder: "#ffeae0",
-  floorAction: "#321a10",
+  floorAction: "#5a6169",
+  addLocalBorder: "#afb3ba",
+  addLocalText: "#696e77",
   delete: "#ce2c31",
   summaryBg: "#fff6f1",
   summaryBorder: "#ffeae0",
@@ -77,15 +80,15 @@ export const structureUnitSelectItemClassName = "text-[12px] leading-[1.4] track
 
 /** Figma 1833:3277 — anchos por columna de unidad (responsive en mobile). */
 export const structureUnitFieldColumnClassName = {
-  type: "w-full min-w-[140px] shrink-0 basis-[calc(50%-4px)] sm:basis-auto sm:w-[169px]",
-  compact: "w-[calc(50%-4px)] min-w-[72px] shrink-0 sm:w-20",
-  attach: "w-full min-w-[100px] shrink-0 basis-full sm:basis-auto sm:w-[120px]",
+  type: "w-full min-w-[140px] shrink-0 basis-[calc(50%-4px)] sm:basis-auto sm:w-[169px] sm:min-w-[169px]",
+  compact: "w-[calc(50%-4px)] min-w-[72px] shrink-0 sm:w-20 sm:min-w-20",
+  attach: "w-full min-w-[100px] shrink-0 basis-full sm:basis-auto sm:w-[120px] sm:min-w-[120px]",
 } as const
 
 export const structureAttachButtonClassName = cn(
   "flex w-full min-w-0 cursor-pointer items-center justify-center gap-1 rounded-[4px] border bg-white px-2 py-1.5",
-  "text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#43484e]",
-  "transition-colors hover:bg-[#fafafa]",
+  "text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#45556c]",
+  "transition-colors hover:bg-[#fafafa] [&_svg]:size-3",
 )
 
 export const structureAttachButtonStyle = {
