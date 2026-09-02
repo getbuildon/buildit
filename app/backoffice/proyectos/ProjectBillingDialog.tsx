@@ -22,14 +22,18 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
+import { BACKOFFICE_DIALOG } from "@/lib/backoffice/designTokens"
 import { useInvalidateBackoffice } from "@/lib/backoffice/invalidateBackofficeQueries"
 import { formatArgentinaTableDate } from "@/lib/datetime/argentinaDateTime"
 import {
+  computeBillingEntryNetUsd,
   formatBillingBalanceLabel,
   formatBillingUsd,
+  formatBillingUsdOrDash,
   getBillingEntryTypeLabel,
   getManualPaymentMethodLabel,
   MANUAL_PAYMENT_METHODS,
+  parseOptionalUsdAmount,
   type ManualPaymentMethod,
 } from "@/lib/backoffice/subscriptionBilling"
 import { cn } from "@/lib/utils"
@@ -49,6 +53,8 @@ type EntryFormMode = "payment" | "charge"
 
 type EntryFormState = {
   amountUsd: string
+  discountUsd: string
+  interestUsd: string
   effectiveAt: Date
   paymentMethod: ManualPaymentMethod
   note: string
@@ -57,6 +63,8 @@ type EntryFormState = {
 function emptyEntryForm(): EntryFormState {
   return {
     amountUsd: "",
+    discountUsd: "",
+    interestUsd: "",
     effectiveAt: new Date(),
     paymentMethod: "transferencia",
     note: "",
@@ -150,44 +158,56 @@ function BillingHistoryTable({ billing }: { billing: SubscriptionBillingSummary 
 
   return (
     <div className="overflow-hidden rounded-xl border border-[#edeef0]">
-      <div className="grid grid-cols-[88px_minmax(0,1fr)_minmax(0,1.2fr)_96px] gap-2 border-b border-[#f4f5f6] bg-[#fafafa] px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-[#777b84]">
-        <span>Fecha</span>
-        <span>Tipo</span>
-        <span>Detalle</span>
-        <span className="text-right">Monto</span>
-      </div>
-      <div className="max-h-64 overflow-y-auto">
-        {billing.entries.map((entry) => (
-          <div
-            key={entry.id}
-            className="grid grid-cols-[88px_minmax(0,1fr)_minmax(0,1.2fr)_96px] gap-2 border-b border-[#f4f5f6] px-3 py-2.5 last:border-b-0"
-          >
-            <span className="whitespace-nowrap text-xs tabular-nums text-[#696e77]">
-              {formatArgentinaTableDate(entry.effectiveAt)}
-            </span>
-            <span className="text-xs font-medium text-[#363a3f]">
-              {getBillingEntryTypeLabel(entry.entryType)}
-              {entry.paymentMethod
-                ? ` · ${getManualPaymentMethodLabel(entry.paymentMethod)}`
-                : null}
-            </span>
-            <span className="truncate text-xs text-[#696e77]">
-              {entry.description ?? "—"}
-            </span>
-            <span
-              className={cn(
-                "text-right text-xs font-medium tabular-nums",
-                entry.amountUsd > 0
-                  ? "text-[#c2410c]"
-                  : entry.amountUsd < 0
-                    ? "text-[#208368]"
-                    : "text-[#363a3f]",
-              )}
-            >
-              {formatBillingUsd(entry.amountUsd, { signed: true })}
-            </span>
+      <div className="overflow-x-auto">
+        <div className="min-w-[640px]">
+          <div className="grid grid-cols-[80px_minmax(72px,1fr)_minmax(80px,1.2fr)_72px_72px_88px] gap-2 border-b border-[#f4f5f6] bg-[#fafafa] px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-[#777b84]">
+            <span>Fecha</span>
+            <span>Tipo</span>
+            <span>Detalle</span>
+            <span className="text-right">Descuento</span>
+            <span className="text-right">Interés</span>
+            <span className="text-right">Monto</span>
           </div>
-        ))}
+          <div className="max-h-64 overflow-y-auto">
+            {billing.entries.map((entry) => (
+              <div
+                key={entry.id}
+                className="grid grid-cols-[80px_minmax(72px,1fr)_minmax(80px,1.2fr)_72px_72px_88px] gap-2 border-b border-[#f4f5f6] px-3 py-2.5 last:border-b-0"
+              >
+                <span className="whitespace-nowrap text-xs tabular-nums text-[#696e77]">
+                  {formatArgentinaTableDate(entry.effectiveAt)}
+                </span>
+                <span className="text-xs font-medium text-[#363a3f]">
+                  {getBillingEntryTypeLabel(entry.entryType)}
+                  {entry.paymentMethod
+                    ? ` · ${getManualPaymentMethodLabel(entry.paymentMethod)}`
+                    : null}
+                </span>
+                <span className="truncate text-xs text-[#696e77]">
+                  {entry.description ?? "—"}
+                </span>
+                <span className="text-right text-xs tabular-nums text-[#696e77]">
+                  {formatBillingUsdOrDash(entry.discountUsd)}
+                </span>
+                <span className="text-right text-xs tabular-nums text-[#696e77]">
+                  {formatBillingUsdOrDash(entry.interestUsd)}
+                </span>
+                <span
+                  className={cn(
+                    "text-right text-xs font-medium tabular-nums",
+                    entry.amountUsd > 0
+                      ? "text-[#c2410c]"
+                      : entry.amountUsd < 0
+                        ? "text-[#208368]"
+                        : "text-[#363a3f]",
+                  )}
+                >
+                  {formatBillingUsd(entry.amountUsd, { signed: true })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -258,20 +278,46 @@ export function ProjectBillingDialog({
 
     setFormError(null)
     const amountUsd = Number(entryForm.amountUsd.replace(",", "."))
+    const discount = parseOptionalUsdAmount(entryForm.discountUsd, "descuento")
+    if (!discount.ok) {
+      setFormError(discount.error)
+      return
+    }
+    const interest = parseOptionalUsdAmount(entryForm.interestUsd, "interés")
+    if (!interest.ok) {
+      setFormError(interest.error)
+      return
+    }
+
+    const netUsd = computeBillingEntryNetUsd({
+      amountUsd,
+      discountUsd: discount.value,
+      interestUsd: interest.value,
+      kind: entryFormMode,
+    })
+    if (netUsd === 0) {
+      setFormError("El neto (monto − descuento + interés) no puede ser cero.")
+      return
+    }
 
     startSave(async () => {
+      const extras = {
+        discountUsd: discount.value,
+        interestUsd: interest.value,
+        note: entryForm.note.trim() || undefined,
+      }
       const result =
         entryFormMode === "payment"
           ? await recordBackofficeManualPayment(project.id, {
               amountUsd,
               paidAt: entryForm.effectiveAt.toISOString(),
               paymentMethod: entryForm.paymentMethod,
-              note: entryForm.note.trim() || undefined,
+              ...extras,
             })
           : await recordBackofficeManualCharge(project.id, {
               amountUsd,
               effectiveAt: entryForm.effectiveAt.toISOString(),
-              note: entryForm.note.trim() || undefined,
+              ...extras,
             })
 
       if (!result.ok) {
@@ -287,11 +333,28 @@ export function ProjectBillingDialog({
   }
 
   const isPaymentForm = entryFormMode === "payment"
+  const previewAmount = Number(entryForm.amountUsd.replace(",", "."))
+  const previewDiscount = parseOptionalUsdAmount(entryForm.discountUsd, "descuento")
+  const previewInterest = parseOptionalUsdAmount(entryForm.interestUsd, "interés")
+  const previewNet =
+    entryFormMode &&
+    Number.isFinite(previewAmount) &&
+    previewAmount > 0 &&
+    previewDiscount.ok &&
+    previewInterest.ok
+      ? computeBillingEntryNetUsd({
+          amountUsd: previewAmount,
+          discountUsd: previewDiscount.value,
+          interestUsd: previewInterest.value,
+          kind: entryFormMode,
+        })
+      : null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto border-[#edeef0] p-0">
-        <DialogHeader className="border-b border-[#f4f5f6] px-6 py-5">
+      <DialogContent className={cn(BACKOFFICE_DIALOG.content, "max-w-3xl")}>
+        <div className={BACKOFFICE_DIALOG.shell}>
+        <DialogHeader className={BACKOFFICE_DIALOG.header}>
           <DialogTitle className="text-lg font-semibold text-[#18191b]">
             Facturación
           </DialogTitle>
@@ -302,7 +365,7 @@ export function ProjectBillingDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 px-6 py-5">
+        <div className={cn(BACKOFFICE_DIALOG.body, "space-y-5")}>
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Spinner className="size-5 text-[#777b84]" />
@@ -382,6 +445,44 @@ export function ProjectBillingDialog({
                     </div>
 
                     <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="entry-discount" className={LABEL_CLASSNAME}>
+                        Descuento (USD)
+                      </Label>
+                      <Input
+                        id="entry-discount"
+                        inputMode="decimal"
+                        value={entryForm.discountUsd}
+                        onChange={(event) =>
+                          setEntryForm((current) => ({
+                            ...current,
+                            discountUsd: event.target.value,
+                          }))
+                        }
+                        placeholder="0"
+                        className={FIELD_CLASSNAME}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="entry-interest" className={LABEL_CLASSNAME}>
+                        Interés (USD)
+                      </Label>
+                      <Input
+                        id="entry-interest"
+                        inputMode="decimal"
+                        value={entryForm.interestUsd}
+                        onChange={(event) =>
+                          setEntryForm((current) => ({
+                            ...current,
+                            interestUsd: event.target.value,
+                          }))
+                        }
+                        placeholder="0"
+                        className={FIELD_CLASSNAME}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
                       <Label className={LABEL_CLASSNAME}>
                         {isPaymentForm ? "Fecha de pago" : "Fecha del cargo"}
                       </Label>
@@ -452,6 +553,15 @@ export function ProjectBillingDialog({
                     </div>
                   </div>
 
+                  {previewNet != null ? (
+                    <p className="pt-3 text-xs leading-5 text-[#696e77]">
+                      Neto (monto − descuento + interés):{" "}
+                      <span className="font-medium tabular-nums text-[#18191b]">
+                        {formatBillingUsd(previewNet, { signed: true })}
+                      </span>
+                    </p>
+                  ) : null}
+
                   {formError ? (
                     <p className="pt-3 text-xs text-[#dc3e42]">{formError}</p>
                   ) : null}
@@ -487,6 +597,7 @@ export function ProjectBillingDialog({
               <BillingHistoryTable billing={billing} />
             </>
           ) : null}
+        </div>
         </div>
       </DialogContent>
     </Dialog>

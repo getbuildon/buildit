@@ -27,6 +27,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
+import { BACKOFFICE_DIALOG } from "@/lib/backoffice/designTokens"
 import { useInvalidateBackoffice } from "@/lib/backoffice/invalidateBackofficeQueries"
 import { COMPANY_ROLES, formatCompanyRole } from "@/lib/company/formatCompanyRole"
 import { cn } from "@/lib/utils"
@@ -319,9 +320,9 @@ export function EmpresaFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] max-w-[560px] flex-col gap-0 overflow-hidden p-0">
-        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className="shrink-0 border-b border-[#f4f5f6] px-6 py-5">
+      <DialogContent className={cn(BACKOFFICE_DIALOG.content, "max-w-[560px]")}>
+        <form onSubmit={handleSubmit} className={BACKOFFICE_DIALOG.shell}>
+          <div className={BACKOFFICE_DIALOG.header}>
             <DialogHeader className="gap-1.5">
               <DialogTitle className="font-recoleta text-[22px] font-normal leading-[1.2] text-[#272a2d]">
                 {isEditing ? "Editar empresa" : "Nueva empresa"}
@@ -334,7 +335,7 @@ export function EmpresaFormDialog({
             </DialogHeader>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-5">
+          <div className={cn(BACKOFFICE_DIALOG.body, "flex flex-col gap-4")}>
             <div className="flex flex-col gap-1.5">
               <FieldLabel htmlFor="company-name" required>
                 Nombre
@@ -609,7 +610,7 @@ export function EmpresaFormDialog({
             ) : null}
           </div>
 
-          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[#f4f5f6] px-6 py-4">
+          <div className={cn(BACKOFFICE_DIALOG.footer, "flex items-center justify-end gap-2")}>
             <Button
               type="button"
               variant="outline"

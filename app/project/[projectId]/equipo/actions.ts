@@ -450,7 +450,7 @@ export async function removeTeamMember(
   const permission = await checkProjectPermission(projectId, "editPermissions")
   if (!permission.ok) return permission
 
-  const user = await requireAuthenticatedUser()
+  await requireAuthenticatedUser()
   const supabase = await createClient()
 
   const { data: memberRow } = await supabase
@@ -462,10 +462,6 @@ export async function removeTeamMember(
 
   if (!memberRow) {
     return { ok: false, error: "Miembro no encontrado." }
-  }
-
-  if (memberRow.user_id === user.id) {
-    return { ok: false, error: "No podés eliminar tu propio acceso." }
   }
 
   if (memberRow.user_type_id) {

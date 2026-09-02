@@ -10,6 +10,8 @@ export type SubscriptionBillingEntry = {
   projectId: string
   entryType: SubscriptionBillingEntryType
   amountUsd: number
+  discountUsd: number
+  interestUsd: number
   description: string | null
   effectiveAt: string
   paymentMethod: string | null
@@ -65,6 +67,38 @@ export function summarizeBillingEntries(
     debtUsd: 0,
     receivableUsd: roundUsd(Math.max(0, balanceUsd)),
   }
+}
+
+export function formatBillingUsdOrDash(value: number): string {
+  if (value <= 0) return "—"
+  return formatBillingUsd(value)
+}
+
+export function parseOptionalUsdAmount(
+  raw: string,
+  label: string,
+): { ok: true; value: number } | { ok: false; error: string } {
+  const trimmed = raw.trim()
+  if (!trimmed) return { ok: true, value: 0 }
+
+  const value = Number(trimmed.replace(",", "."))
+  if (!Number.isFinite(value) || value < 0) {
+    return { ok: false, error: `Ingresá un ${label} válido (0 o más).` }
+  }
+
+  return { ok: true, value: Math.round(value * 100) / 100 }
+}
+
+/** Neto firmado: positivo aumenta deuda, negativo la reduce. */
+export function computeBillingEntryNetUsd(input: {
+  amountUsd: number
+  discountUsd: number
+  interestUsd: number
+  kind: "charge" | "payment"
+}): number {
+  const base =
+    input.kind === "payment" ? -Math.abs(input.amountUsd) : Math.abs(input.amountUsd)
+  return roundUsd(base - input.discountUsd + input.interestUsd)
 }
 
 export function formatBillingUsd(value: number, options?: { signed?: boolean }): string {

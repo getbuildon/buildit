@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { BACKOFFICE_DIALOG } from "@/lib/backoffice/designTokens"
 import {
   BACKOFFICE_PLAN_FILTER_GROUPS,
   BACKOFFICE_PROJECT_STATUS_FILTER_OPTIONS,
@@ -158,8 +159,9 @@ export function ProyectosFiltersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[480px] gap-0 overflow-visible p-0">
-        <div className="border-b border-[#f4f5f6] px-6 py-5">
+      <DialogContent className={cn(BACKOFFICE_DIALOG.content, "max-w-[480px]")}>
+        <div className={BACKOFFICE_DIALOG.shell}>
+        <div className={BACKOFFICE_DIALOG.header}>
           <DialogHeader className="gap-1.5">
             <DialogTitle className="font-recoleta text-[22px] font-normal leading-[1.2] text-[#272a2d]">
               Filtros
@@ -170,7 +172,7 @@ export function ProyectosFiltersDialog({
           </DialogHeader>
         </div>
 
-        <div className="flex max-h-[min(70vh,520px)] flex-col gap-6 overflow-y-auto px-6 py-5">
+        <div className={cn(BACKOFFICE_DIALOG.body, "flex flex-col gap-6")}>
           <section className="flex flex-col gap-4">
             <p className={SECTION_LABEL_CLASSNAME}>Subscripción</p>
 
@@ -224,7 +226,7 @@ export function ProyectosFiltersDialog({
           </section>
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t border-[#f4f5f6] px-6 py-4">
+        <div className={cn(BACKOFFICE_DIALOG.footer, "flex items-center justify-between gap-2")}>
           <Button
             type="button"
             variant="outline"
@@ -242,6 +244,7 @@ export function ProyectosFiltersDialog({
           >
             Aplicar filtros
           </Button>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

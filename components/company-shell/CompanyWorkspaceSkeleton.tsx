@@ -3,7 +3,7 @@
 import { Skeleton } from "@/components/ui/skeleton"
 import { SHELL_COLORS, SHELL_LAYOUT } from "@/lib/project/designTokens"
 
-const NAV_ITEM_COUNT = 2
+const NAV_ITEM_COUNT = 3
 
 export function CompanyWorkspaceSkeleton() {
   return (

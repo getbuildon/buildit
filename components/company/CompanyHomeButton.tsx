@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Check, ChevronDown } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 
 import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -74,7 +74,6 @@ export function CompanyHomeButton({
           Empresas
         </p>
         {companies.map((company) => {
-          const isCurrent = company.id === companyId
           const href = companyHref(company.id)
           return (
             <Link
@@ -83,12 +82,9 @@ export function CompanyHomeButton({
               onClick={(event) => {
                 event.preventDefault()
                 setOpen(false)
-                if (!isCurrent) navigate(href)
+                navigate(href)
               }}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-[8px] px-2.5 py-2 text-left transition-colors hover:bg-[#edeef0]",
-                isCurrent && "bg-[#edeef0]",
-              )}
+              className="flex w-full items-center rounded-[8px] px-2.5 py-2 text-left transition-colors hover:bg-[#edeef0]"
             >
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[14px] font-medium leading-5 text-[#272a2d]">
@@ -98,9 +94,6 @@ export function CompanyHomeButton({
                   {formatCompanyRole(company.role)}
                 </span>
               </span>
-              {isCurrent ? (
-                <Check className="size-4 shrink-0 text-[#5a6169]" aria-hidden />
-              ) : null}
             </Link>
           )
         })}

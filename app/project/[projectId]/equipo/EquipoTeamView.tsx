@@ -393,6 +393,11 @@ function MemberRow({
       <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-end gap-2 md:col-start-4">
         <RowActionButton
           label={`Editar a ${member.firstName} ${member.lastName}`}
+          tooltip={
+            isProtectedProjectOwnerMember(member.userType)
+              ? "El owner no se puede editar ni eliminar"
+              : undefined
+          }
           disabled={!canEdit}
           onClick={onEdit}
         >
@@ -400,6 +405,11 @@ function MemberRow({
         </RowActionButton>
         <RowActionButton
           label={`Eliminar a ${member.firstName} ${member.lastName}`}
+          tooltip={
+            isProtectedProjectOwnerMember(member.userType)
+              ? "El owner no se puede editar ni eliminar"
+              : undefined
+          }
           disabled={!canRemove}
           onClick={onRemove}
         >
@@ -665,7 +675,14 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       setMembers((prev) => prev.filter((m) => m.memberId !== memberId))
       setRemovingMemberId(null)
       void refreshSeatSummary()
-      if (removedMember) {
+      if (removedMember?.isYou) {
+        setSelfJoin({
+          firstName: removedMember.firstName,
+          lastName: removedMember.lastName,
+          email: removedMember.email,
+        })
+        toast.success("Saliste del equipo de la obra.")
+      } else if (removedMember) {
         toast.success(
           `${removedMember.firstName} ${removedMember.lastName} fue eliminado del equipo.`,
         )
@@ -976,12 +993,10 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
                   member={member}
                   canEdit={
                     canEditPermissions &&
-                    !member.isYou &&
                     !isProtectedProjectOwnerMember(member.userType)
                   }
                   canRemove={
                     canEditPermissions &&
-                    !member.isYou &&
                     !isProtectedProjectOwnerMember(member.userType)
                   }
                   onEdit={() => setEditingMemberId(member.memberId)}
@@ -1127,11 +1142,13 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
           if (isRemoving) return
           if (!open) setRemovingMemberId(null)
         }}
-        title="¿Eliminar miembro?"
+        title={removingMember?.isYou ? "¿Salir del equipo?" : "¿Eliminar miembro?"}
         description={
-          removingMember
-            ? `Se quitará a ${removingMember.firstName} ${removingMember.lastName} del equipo de trabajo del proyecto. ¿Deseás continuar?`
-            : ""
+          removingMember?.isYou
+            ? "Vas a salir del equipo de esta obra. Seguirás pudiendo administrarla desde la empresa."
+            : removingMember
+              ? `Se quitará a ${removingMember.firstName} ${removingMember.lastName} del equipo de trabajo del proyecto. ¿Deseás continuar?`
+              : ""
         }
         confirmLabel="Eliminar"
         loading={isRemoving}

@@ -53,7 +53,11 @@ import type {
   SubscriptionBillingEntry,
   SubscriptionBillingSummary,
 } from "@/lib/backoffice/subscriptionBilling"
-import { summarizeBillingEntries } from "@/lib/backoffice/subscriptionBilling"
+import {
+  computeBillingEntryNetUsd,
+  parseOptionalUsdAmount,
+  summarizeBillingEntries,
+} from "@/lib/backoffice/subscriptionBilling"
 import { createAdminClient } from "@/utils/supabase/admin"
 
 export type { BackofficeProjectSubscriptionInput } from "@/lib/backoffice/projectSubscriptionForm"
@@ -1821,12 +1825,16 @@ export type BackofficeManualPaymentInput = {
   paidAt: string
   paymentMethod: ManualPaymentMethod
   note?: string
+  discountUsd?: number
+  interestUsd?: number
 }
 
 export type BackofficeManualChargeInput = {
   amountUsd: number
   effectiveAt: string
   note?: string
+  discountUsd?: number
+  interestUsd?: number
 }
 
 async function insertManualBillingEntry(
@@ -1840,6 +1848,8 @@ async function insertManualBillingEntry(
     effectiveAt: Date
     paymentMethod?: ManualPaymentMethod
     note?: string
+    discountUsd?: number
+    interestUsd?: number
   },
 ): Promise<BackofficeProjectActionResult> {
   const { data: subscription } = await admin
@@ -1848,8 +1858,19 @@ async function insertManualBillingEntry(
     .eq("project_id", options.projectId)
     .maybeSingle()
 
-  const signedAmount =
-    options.entryType === "payment" ? -options.amountUsd : options.amountUsd
+  const signedAmount = computeBillingEntryNetUsd({
+    amountUsd: options.amountUsd,
+    discountUsd: options.discountUsd ?? 0,
+    interestUsd: options.interestUsd ?? 0,
+    kind: options.entryType === "payment" ? "payment" : "charge",
+  })
+
+  if (signedAmount === 0) {
+    return {
+      ok: false,
+      error: "El neto (monto − descuento + interés) no puede ser cero.",
+    }
+  }
 
   const defaultDescription =
     options.entryType === "payment"
@@ -1863,6 +1884,8 @@ async function insertManualBillingEntry(
     project_subscription_id: subscription?.id ?? null,
     entry_type: options.entryType,
     amount_usd: signedAmount,
+    discount_usd: options.discountUsd ?? 0,
+    interest_usd: options.interestUsd ?? 0,
     description,
     effective_at: options.effectiveAt.toISOString(),
     payment_method: options.paymentMethod ?? null,
@@ -1882,6 +1905,8 @@ function mapBillingEntryRow(row: {
   project_id: string
   entry_type: string
   amount_usd: number | string
+  discount_usd?: number | string | null
+  interest_usd?: number | string | null
   description: string | null
   effective_at: string
   payment_method: string | null
@@ -1892,6 +1917,8 @@ function mapBillingEntryRow(row: {
     projectId: row.project_id,
     entryType: row.entry_type as SubscriptionBillingEntry["entryType"],
     amountUsd: Number(row.amount_usd),
+    discountUsd: Number(row.discount_usd ?? 0),
+    interestUsd: Number(row.interest_usd ?? 0),
     description: row.description,
     effectiveAt: row.effective_at,
     paymentMethod: row.payment_method,
@@ -1908,7 +1935,7 @@ export async function getBackofficeProjectBilling(
   const { data, error } = await admin
     .from("subscription_billing_entries")
     .select(
-      "id, project_id, entry_type, amount_usd, description, effective_at, payment_method, created_at",
+      "id, project_id, entry_type, amount_usd, discount_usd, interest_usd, description, effective_at, payment_method, created_at",
     )
     .eq("project_id", projectId)
     .order("effective_at", { ascending: false })
@@ -1960,6 +1987,11 @@ export async function recordBackofficeManualPayment(
     return { ok: false, error: "Ingresá un monto válido mayor a cero." }
   }
 
+  const discount = parseOptionalUsdAmount(String(input.discountUsd ?? 0), "descuento")
+  if (!discount.ok) return discount
+  const interest = parseOptionalUsdAmount(String(input.interestUsd ?? 0), "interés")
+  if (!interest.ok) return interest
+
   const paidAt = new Date(input.paidAt)
   if (Number.isNaN(paidAt.getTime())) {
     return { ok: false, error: "Ingresá una fecha de pago válida." }
@@ -1983,6 +2015,8 @@ export async function recordBackofficeManualPayment(
     effectiveAt: paidAt,
     paymentMethod: input.paymentMethod,
     note: input.note,
+    discountUsd: discount.value,
+    interestUsd: interest.value,
   })
 }
 
@@ -1997,6 +2031,11 @@ export async function recordBackofficeManualCharge(
   if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
     return { ok: false, error: "Ingresá un monto válido mayor a cero." }
   }
+
+  const discount = parseOptionalUsdAmount(String(input.discountUsd ?? 0), "descuento")
+  if (!discount.ok) return discount
+  const interest = parseOptionalUsdAmount(String(input.interestUsd ?? 0), "interés")
+  if (!interest.ok) return interest
 
   const effectiveAt = new Date(input.effectiveAt)
   if (Number.isNaN(effectiveAt.getTime())) {
@@ -2020,5 +2059,7 @@ export async function recordBackofficeManualCharge(
     amountUsd,
     effectiveAt,
     note: input.note,
+    discountUsd: discount.value,
+    interestUsd: interest.value,
   })
 }

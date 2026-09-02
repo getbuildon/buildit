@@ -33,6 +33,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
+import { BACKOFFICE_DIALOG } from "@/lib/backoffice/designTokens"
 import { useInvalidateBackoffice } from "@/lib/backoffice/invalidateBackofficeQueries"
 import { cn } from "@/lib/utils"
 
@@ -284,9 +285,9 @@ export function ProyectoFormDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[560px] gap-0 overflow-visible p-0">
-          <form onSubmit={handleSubmit} className="flex flex-col">
-            <div className="border-b border-[#f4f5f6] px-6 py-5">
+        <DialogContent className={cn(BACKOFFICE_DIALOG.content, "max-w-[560px]")}>
+          <form onSubmit={handleSubmit} className={BACKOFFICE_DIALOG.shell}>
+            <div className={BACKOFFICE_DIALOG.header}>
               <DialogHeader className="gap-1.5">
                 <DialogTitle className="font-recoleta text-[22px] font-normal leading-[1.2] text-[#272a2d]">
                   {isEditing ? "Editar proyecto" : "Nuevo proyecto"}
@@ -299,7 +300,7 @@ export function ProyectoFormDialog({
               </DialogHeader>
             </div>
 
-            <div className="flex max-h-[min(70vh,640px)] flex-col gap-4 overflow-y-auto px-6 py-5">
+            <div className={cn(BACKOFFICE_DIALOG.body, "flex flex-col gap-4")}>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="project-name" className={LABEL_CLASSNAME}>
                   Nombre
@@ -461,7 +462,7 @@ export function ProyectoFormDialog({
               ) : null}
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-[#f4f5f6] px-6 py-4">
+            <div className={cn(BACKOFFICE_DIALOG.footer, "flex items-center justify-end gap-2")}>
               <Button
                 type="button"
                 variant="outline"

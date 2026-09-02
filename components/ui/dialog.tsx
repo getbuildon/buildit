@@ -53,7 +53,7 @@ function DialogContent({
   presentation?: "default" | "sheet"
 }) {
   const contentClassName = cn(
-    "z-50 flex max-h-[90vh] w-full flex-col overflow-hidden outline-none",
+    "z-50 flex max-h-[90vh] min-h-0 w-full flex-col overflow-hidden outline-none",
     presentation === "sheet"
       ? "dialog-content-sheet fixed inset-0 top-0 left-0 h-[100dvh] max-h-[100dvh] max-w-none rounded-none border-0 bg-white shadow-none"
       : "dialog-content-center relative max-w-[680px] rounded-[14px] border border-[#edeef0] bg-white shadow-[0_8px_32px_rgba(24,25,27,0.12)]",
@@ -80,22 +80,24 @@ function DialogContent({
           ) : null}
         </DialogPrimitive.Content>
       ) : (
-        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-6">
-          <DialogPrimitive.Content
-            data-slot="dialog-content"
-            className={cn(contentClassName, "pointer-events-auto")}
-            {...props}
-          >
-            {children}
-            {showCloseButton ? (
-              <DialogPrimitive.Close
-                className="absolute top-5 right-5 flex size-5 items-center justify-center rounded text-[#43484e] outline-none transition-colors hover:bg-[#edeef0] focus-visible:outline-none disabled:pointer-events-none"
-                aria-label="Cerrar"
-              >
-                <X className="size-4" />
-              </DialogPrimitive.Close>
-            ) : null}
-          </DialogPrimitive.Content>
+        <div className="pointer-events-none fixed inset-0 z-50 overflow-y-auto p-6">
+          <div className="flex min-h-full items-center justify-center">
+            <DialogPrimitive.Content
+              data-slot="dialog-content"
+              className={cn(contentClassName, "pointer-events-auto")}
+              {...props}
+            >
+              {children}
+              {showCloseButton ? (
+                <DialogPrimitive.Close
+                  className="absolute top-5 right-5 flex size-5 items-center justify-center rounded text-[#43484e] outline-none transition-colors hover:bg-[#edeef0] focus-visible:outline-none disabled:pointer-events-none"
+                  aria-label="Cerrar"
+                >
+                  <X className="size-4" />
+                </DialogPrimitive.Close>
+              ) : null}
+            </DialogPrimitive.Content>
+          </div>
         </div>
       )}
     </DialogPortal>
