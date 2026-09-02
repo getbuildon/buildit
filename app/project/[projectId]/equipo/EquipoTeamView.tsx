@@ -369,7 +369,11 @@ function MemberRow({
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          {member.userTypeLabel ? (
+          {member.userType === "Owner" ? (
+            <span className="inline-flex items-center rounded-[12px] bg-[#ff7433] px-2 py-0.5 text-[10px] font-medium leading-none tracking-[-0.5px] text-[#fefcfb]">
+              Owner
+            </span>
+          ) : member.userTypeLabel ? (
             <span className="inline-flex items-center rounded-[12px] bg-[#ffeae0] px-2 py-0.5 text-[10px] font-medium leading-none tracking-[-0.5px] text-[#321a10]">
               {member.userTypeLabel}
             </span>
@@ -538,6 +542,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
   const toast = useToast()
   const queryClient = useQueryClient()
   const [members, setMembers] = useState(initialData.members)
+  const [selfJoin, setSelfJoin] = useState(initialData.selfJoin)
   const [pendingInvitations, setPendingInvitations] = useState(
     initialData.pendingInvitations,
   )
@@ -566,6 +571,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
 
   useEffect(() => {
     setMembers(initialData.members)
+    setSelfJoin(initialData.selfJoin)
     setPendingInvitations(initialData.pendingInvitations)
     setSeatSummary(initialData.seatSummary)
   }, [initialData])
@@ -619,13 +625,25 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       return
     }
 
-    setPendingInvitations((prev) => {
-      const withoutCurrent = prev.filter(
-        (item) => item.invitationId !== result.invitation.invitationId,
+    if (result.kind === "member") {
+      setMembers((prev) => [...prev, result.member])
+      if (selfJoin && result.member.email.toLowerCase() === selfJoin.email.toLowerCase()) {
+        setSelfJoin(null)
+      }
+      toast.success(
+        result.member.isYou
+          ? "Te sumaste al equipo."
+          : `${result.member.firstName} ${result.member.lastName} se sumó al equipo.`,
       )
-      return [...withoutCurrent, result.invitation]
-    })
-    toast.success(`Invitación enviada a ${result.invitation.email}.`)
+    } else {
+      setPendingInvitations((prev) => {
+        const withoutCurrent = prev.filter(
+          (item) => item.invitationId !== result.invitation.invitationId,
+        )
+        return [...withoutCurrent, result.invitation]
+      })
+      toast.success(`Invitación enviada a ${result.invitation.email}.`)
+    }
 
     void refreshSeatSummary()
     setFirstName("")
@@ -733,18 +751,15 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
   }
 
   const lowerSearch = searchQuery.toLowerCase()
+  const matchesSearch = (firstName: string, lastName: string, email: string) =>
+    `${firstName} ${lastName}`.toLowerCase().includes(lowerSearch) ||
+    email.toLowerCase().includes(lowerSearch)
   const filteredMembers = lowerSearch
-    ? members.filter(
-        (m) =>
-          `${m.firstName} ${m.lastName}`.toLowerCase().includes(lowerSearch) ||
-          m.email.toLowerCase().includes(lowerSearch),
-      )
+    ? members.filter((m) => matchesSearch(m.firstName, m.lastName, m.email))
     : members
   const filteredPending = lowerSearch
-    ? pendingInvitations.filter(
-        (i) =>
-          `${i.firstName} ${i.lastName}`.toLowerCase().includes(lowerSearch) ||
-          i.email.toLowerCase().includes(lowerSearch),
+    ? pendingInvitations.filter((i) =>
+        matchesSearch(i.firstName, i.lastName, i.email),
       )
     : pendingInvitations
 
@@ -782,28 +797,47 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
           </h1>
           {seatSummary ? <TeamSeatSummarySubtitle summary={seatSummary} /> : null}
         </div>
-        <Button
-          variant="brand"
-          size="brand"
-          onClick={() => {
-            setShowForm((v) => !v)
-            setFormError("")
-          }}
-          disabled={!canAddUsers}
-          className="w-full text-[14px] font-normal leading-5 sm:w-auto"
-        >
-          {showForm ? (
-            <>
-              <X className="size-4" aria-hidden />
-              Cancelar
-            </>
-          ) : (
-            <>
-              <Plus className="size-4" aria-hidden />
-              Agregar miembro
-            </>
-          )}
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          {selfJoin && canAddUsers && !showForm ? (
+            <Button
+              variant="outline"
+              size="brand"
+              onClick={() => {
+                setFirstName(selfJoin.firstName)
+                setLastName(selfJoin.lastName)
+                setEmail(selfJoin.email)
+                setRoleSelection("")
+                setFormError("")
+                setShowForm(true)
+              }}
+              className="w-full text-[14px] font-normal leading-5 sm:w-auto"
+            >
+              Unirme al equipo
+            </Button>
+          ) : null}
+          <Button
+            variant="brand"
+            size="brand"
+            onClick={() => {
+              setShowForm((v) => !v)
+              setFormError("")
+            }}
+            disabled={!canAddUsers}
+            className="w-full text-[14px] font-normal leading-5 sm:w-auto"
+          >
+            {showForm ? (
+              <>
+                <X className="size-4" aria-hidden />
+                Cancelar
+              </>
+            ) : (
+              <>
+                <Plus className="size-4" aria-hidden />
+                Agregar miembro
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Nuevo miembro form */}
@@ -888,7 +922,13 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
               className="w-full shrink-0 px-6 text-[14px] font-normal leading-5 sm:w-auto"
             >
               <Plus className="size-4" aria-hidden />
-              {isSubmitting ? "Invitando..." : "Agregar miembro"}
+              {isSubmitting
+                ? selfJoin && email.trim().toLowerCase() === selfJoin.email.toLowerCase()
+                  ? "Sumando..."
+                  : "Invitando..."
+                : selfJoin && email.trim().toLowerCase() === selfJoin.email.toLowerCase()
+                  ? "Unirme"
+                  : "Agregar miembro"}
             </Button>
           </div>
           {isSelectedTypeAtLimit && selectedUserType ? (
@@ -921,41 +961,40 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
           />
         </div>
 
-        {/* Members list */}
         <div
           className="rounded-[16px] border border-[#edeef0] bg-white"
           style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
         >
-          {filteredMembers.length === 0 ? (
-            <div className="px-4 py-8 text-center text-[14px] leading-5 text-[#777b84]">
-              {searchQuery ? "Sin resultados para esa búsqueda." : "No hay miembros activos."}
-            </div>
-          ) : (
-            filteredMembers.map((member) => (
-              <MemberRow
-                key={member.memberId}
-                member={member}
-                canEdit={
-                  canEditPermissions &&
-                  !member.isYou &&
-                  !isProtectedProjectOwnerMember(member.userType)
-                }
-                canRemove={
-                  canEditPermissions &&
-                  !member.isYou &&
-                  !isProtectedProjectOwnerMember(member.userType)
-                }
-                onEdit={() => setEditingMemberId(member.memberId)}
-                onRemove={() => {
-                  setRemovingMemberId(member.memberId)
-                  if (editingMemberId === member.memberId) {
-                    setEditingMemberId(null)
+            {filteredMembers.length === 0 ? (
+              <div className="px-4 py-8 text-center text-[14px] leading-5 text-[#777b84]">
+                {searchQuery ? "Sin resultados para esa búsqueda." : "No hay miembros activos."}
+              </div>
+            ) : (
+              filteredMembers.map((member) => (
+                <MemberRow
+                  key={member.memberId}
+                  member={member}
+                  canEdit={
+                    canEditPermissions &&
+                    !member.isYou &&
+                    !isProtectedProjectOwnerMember(member.userType)
                   }
-                }}
-              />
-            ))
-          )}
-        </div>
+                  canRemove={
+                    canEditPermissions &&
+                    !member.isYou &&
+                    !isProtectedProjectOwnerMember(member.userType)
+                  }
+                  onEdit={() => setEditingMemberId(member.memberId)}
+                  onRemove={() => {
+                    setRemovingMemberId(member.memberId)
+                    if (editingMemberId === member.memberId) {
+                      setEditingMemberId(null)
+                    }
+                  }}
+                />
+              ))
+            )}
+          </div>
 
         <p className="text-[12px] leading-4 text-[#777b84]">
           Mostrando {filteredMembers.length} de {members.length} miembros

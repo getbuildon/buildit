@@ -21,6 +21,9 @@ import {
   findActiveTeamMemberUserId,
   findPendingProjectInvitationByEmail,
 } from "@/lib/invitations/projectInvitationService"
+import { findProfileByEmail } from "@/lib/invitations/findProfileByEmail"
+import { loadCompanyProjectAdminIds } from "@/lib/project/companyProjectAdmins"
+import { toProjectMemberFicha } from "@/lib/projects/projectMemberFicha"
 
 export type ProjectTeamMember = {
   memberId: string
@@ -45,10 +48,17 @@ export type ProjectTeamInvitation = {
   userTypeLabel: string | null
 }
 
+export type ProjectTeamSelfJoin = {
+  firstName: string
+  lastName: string
+  email: string
+}
+
 export type ProjectTeamData = {
   members: ProjectTeamMember[]
   pendingInvitations: ProjectTeamInvitation[]
   seatSummary: TeamSeatSummary | null
+  selfJoin: ProjectTeamSelfJoin | null
 }
 
 export async function getProjectTeamSeatSummary(
@@ -70,7 +80,7 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
   const admin = createAdminClient()
   const supabase = await createClient()
 
-  const [membersRes, invitationsRes] = await Promise.all([
+  const [membersRes, invitationsRes, projectRes] = await Promise.all([
     supabase
       .from("project_members")
       .select("id, user_id, role_id, user_type_id, first_name, last_name")
@@ -81,6 +91,7 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
       .select("id, email, first_name, last_name, role_id, user_type_id")
       .eq("project_id", projectId)
       .eq("status", "pending"),
+    admin.from("projects").select("company_id").eq("id", projectId).maybeSingle(),
   ])
 
   const members = membersRes.data ?? []
@@ -139,6 +150,26 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
       }
     })
 
+  const alreadyOnTeam = teamMembers.some((member) => member.userId === user.id)
+  const companyAdminIds = projectRes.data?.company_id
+    ? await loadCompanyProjectAdminIds(admin, projectRes.data.company_id)
+    : new Set<string>()
+  const canSelfJoin = companyAdminIds.has(user.id) && !alreadyOnTeam
+
+  let selfJoin: ProjectTeamSelfJoin | null = null
+  if (canSelfJoin) {
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("first_name, last_name, email")
+      .eq("id", user.id)
+      .maybeSingle()
+    selfJoin = {
+      firstName: profile?.first_name ?? "",
+      lastName: profile?.last_name ?? "",
+      email: profile?.email ?? user.email ?? "",
+    }
+  }
+
   const pendingInvitations: ProjectTeamInvitation[] = invitations
     .filter((i) => roleById.get(i.role_id)?.slug !== clienteSlug)
     .map((i) => {
@@ -158,7 +189,7 @@ export async function getProjectTeamData(projectId: string): Promise<ProjectTeam
 
   const seatSummary = await loadTeamSeatSummary(supabase, projectId)
 
-  return { members: teamMembers, pendingInvitations, seatSummary }
+  return { members: teamMembers, pendingInvitations, seatSummary, selfJoin }
 }
 
 export async function addTeamMember(
@@ -172,6 +203,7 @@ export async function addTeamMember(
   },
 ): Promise<
   | { ok: true; kind: "invitation"; invitation: ProjectTeamInvitation }
+  | { ok: true; kind: "member"; member: ProjectTeamMember }
   | { ok: false; error: string }
 > {
   const permission = await checkProjectPermission(projectId, "addUsers")
@@ -189,6 +221,12 @@ export async function addTeamMember(
   } catch {
     return { ok: false, error: "No se pudo cargar la configuración del proyecto." }
   }
+
+  const { data: projectRow } = await admin
+    .from("projects")
+    .select("company_id")
+    .eq("id", projectId)
+    .maybeSingle()
 
   try {
     const seatCheck = await assertCanAddProjectSeat(supabase, projectId, data.userType)
@@ -209,18 +247,79 @@ export async function addTeamMember(
   const roleId = catalog.roleIds[data.role]
   const userTypeId = catalog.userTypeIds[data.userType]
 
-  const [roleRes, userTypeRes] = await Promise.all([
-    admin.from("project_roles").select("label").eq("id", roleId).single(),
-    admin.from("user_types").select("label").eq("id", userTypeId).single(),
-  ])
+  const { data: roleRes } = await admin
+    .from("project_roles")
+    .select("label")
+    .eq("id", roleId)
+    .single()
 
   const invitationPayload = {
     firstName: data.firstName.trim(),
     lastName: data.lastName.trim(),
     email: normalizedEmail,
-    roleLabel: roleRes.data?.label ?? "",
+    roleLabel: roleRes?.label ?? "",
     userType: data.userType,
     userTypeLabel: getProjectUserTypeDisplayLabel(data.userType),
+  }
+
+  const existingProfile = await findProfileByEmail(admin, normalizedEmail)
+  if (existingProfile && projectRow?.company_id) {
+    const companyAdminIds = await loadCompanyProjectAdminIds(admin, projectRow.company_id)
+    if (companyAdminIds.has(existingProfile.id)) {
+      const ficha = toProjectMemberFicha({
+        firstName: invitationPayload.firstName,
+        lastName: invitationPayload.lastName,
+      })
+      const { data: inserted, error: insertError } = await admin
+        .from("project_members")
+        .insert({
+          project_id: projectId,
+          user_id: existingProfile.id,
+          role_id: roleId,
+          user_type_id: userTypeId,
+          is_active: true,
+          ...ficha,
+        })
+        .select("id")
+        .single()
+
+      if (insertError) return { ok: false, error: insertError.message }
+
+      const pendingInvitation = await findPendingProjectInvitationByEmail(
+        admin,
+        projectId,
+        normalizedEmail,
+      )
+      if (pendingInvitation) {
+        await admin
+          .from("project_invitations")
+          .update({ status: "accepted", accepted_at: new Date().toISOString() })
+          .eq("id", pendingInvitation.id)
+      }
+
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("email, avatar_url")
+        .eq("id", existingProfile.id)
+        .maybeSingle()
+
+      return {
+        ok: true,
+        kind: "member",
+        member: {
+          memberId: inserted.id,
+          userId: existingProfile.id,
+          firstName: invitationPayload.firstName,
+          lastName: invitationPayload.lastName,
+          email: profile?.email ?? normalizedEmail,
+          roleLabel: invitationPayload.roleLabel,
+          userType: invitationPayload.userType,
+          userTypeLabel: invitationPayload.userTypeLabel,
+          avatarUrl: profile?.avatar_url ?? null,
+          isYou: existingProfile.id === user.id,
+        },
+      }
+    }
   }
 
   const pendingInvitation = await findPendingProjectInvitationByEmail(
@@ -262,12 +361,6 @@ export async function addTeamMember(
       },
     }
   }
-
-  const { data: projectRow } = await admin
-    .from("projects")
-    .select("company_id")
-    .eq("id", projectId)
-    .single()
 
   const invitationExtras = buildInvitationInsertExtras()
 
@@ -421,6 +514,24 @@ export async function updateTeamMember(
     catalog = await loadProjectCatalogIds(supabase)
   } catch {
     return { ok: false, error: "No se pudo cargar la configuración del proyecto." }
+  }
+
+  const { data: memberRow } = await supabase
+    .from("project_members")
+    .select("user_type_id")
+    .eq("id", memberId)
+    .eq("project_id", projectId)
+    .maybeSingle()
+
+  if (memberRow?.user_type_id) {
+    const { data: currentType } = await admin
+      .from("user_types")
+      .select("slug")
+      .eq("id", memberRow.user_type_id)
+      .maybeSingle()
+    if (currentType?.slug === USER_TYPE_SLUG.Owner) {
+      return { ok: false, error: "No se puede editar al propietario de la obra." }
+    }
   }
 
   try {

@@ -469,6 +469,9 @@ export function EmpresaFormDialog({
             ) : (
             <div className="flex flex-col gap-3">
               <p className={LABEL_CLASSNAME}>Miembros por rol</p>
+              <p className="text-xs leading-4 text-[#777b84]">
+                Owner y Admin acceden a todas las obras. No van al equipo ni ocupan cupo.
+              </p>
               {isLoadingMembers ? (
                 <p className="text-xs leading-4 text-[#777b84]">Cargando miembros...</p>
               ) : (

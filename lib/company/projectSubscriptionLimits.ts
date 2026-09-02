@@ -93,6 +93,7 @@ export function emptySeatUsage(): ProjectSeatUsage {
 export function countSeatsByUserTypes(userTypes: ProjectUserType[]): ProjectSeatUsage {
   const usage = emptySeatUsage()
   for (const userType of userTypes) {
+    if (userType === "Owner") continue
     usage[seatBucketForUserType(userType)] += 1
   }
   return usage
@@ -222,7 +223,7 @@ export async function loadProjectSeatUsage(
   const [{ data: members }, { data: invitations }] = await Promise.all([
     supabase
       .from("project_members")
-      .select("user_type_id")
+      .select("user_id, user_type_id")
       .eq("project_id", projectId)
       .eq("is_active", true),
     supabase
@@ -252,9 +253,9 @@ export async function loadProjectSeatUsage(
   const slugById = new Map((userTypes ?? []).map((row) => [row.id, row.slug]))
 
   for (const row of [...(members ?? []), ...(invitations ?? [])]) {
-    const bucket = bucketForUserTypeSlug(
-      row.user_type_id ? slugById.get(row.user_type_id) : undefined,
-    )
+    const slug = row.user_type_id ? slugById.get(row.user_type_id) : undefined
+    if (slug === USER_TYPE_SLUG.Owner) continue
+    const bucket = bucketForUserTypeSlug(slug)
     if (bucket) usage[bucket] += 1
   }
 
@@ -288,8 +289,12 @@ export async function assertCanAddProjectSeat(
         .eq("id", member.user_type_id)
         .maybeSingle()
 
-      const bucket = bucketForUserTypeSlug(userTypeRow?.slug)
-      if (bucket && usage[bucket] > 0) usage[bucket] -= 1
+      if (userTypeRow?.slug === USER_TYPE_SLUG.Owner) {
+        // El dueño de la obra no ocupa cupo.
+      } else {
+        const bucket = bucketForUserTypeSlug(userTypeRow?.slug)
+        if (bucket && usage[bucket] > 0) usage[bucket] -= 1
+      }
     }
   }
 

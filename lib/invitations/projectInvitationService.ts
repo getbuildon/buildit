@@ -121,7 +121,7 @@ export async function acceptProjectInvitation(
   const { data: invitation, error: invitationError } = await admin
     .from("project_invitations")
     .select(
-      "id, project_id, email, first_name, last_name, phone, user_type_id, role_id, status, expires_at, project_roles(slug), user_types(slug)",
+      "id, project_id, email, first_name, last_name, phone, user_type_id, role_id, status, expires_at, project_roles(slug)",
     )
     .eq("id", invitationId)
     .maybeSingle()
@@ -174,29 +174,27 @@ export async function acceptProjectInvitation(
       })
       .eq("id", existingMember.id)
     if (fichaError) return { ok: false, error: fichaError.message }
-  } else {
-    if (existingMember) {
-      const { error: reactivateError } = await admin
-        .from("project_members")
-        .update({
-          is_active: true,
-          user_type_id: invitation.user_type_id,
-          role_id: invitation.role_id,
-          ...ficha,
-        })
-        .eq("id", existingMember.id)
-      if (reactivateError) return { ok: false, error: reactivateError.message }
-    } else {
-      const { error: memberError } = await admin.from("project_members").insert({
-        project_id: invitation.project_id,
-        user_id: userId,
+  } else if (existingMember) {
+    const { error: reactivateError } = await admin
+      .from("project_members")
+      .update({
+        is_active: true,
         user_type_id: invitation.user_type_id,
         role_id: invitation.role_id,
-        is_active: true,
         ...ficha,
       })
-      if (memberError) return { ok: false, error: memberError.message }
-    }
+      .eq("id", existingMember.id)
+    if (reactivateError) return { ok: false, error: reactivateError.message }
+  } else {
+    const { error: memberError } = await admin.from("project_members").insert({
+      project_id: invitation.project_id,
+      user_id: userId,
+      user_type_id: invitation.user_type_id,
+      role_id: invitation.role_id,
+      is_active: true,
+      ...ficha,
+    })
+    if (memberError) return { ok: false, error: memberError.message }
   }
 
   if (isClient) {

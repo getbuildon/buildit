@@ -457,8 +457,8 @@ export default function CompanyMembersPage({ params }: { params: Promise<{ compa
           💡 Roles disponibles
         </p>
         <ul style={{ fontSize: "12px", color: "#166534", margin: 0, paddingLeft: "20px" }}>
-          <li><strong>Propietario:</strong> Acceso completo a la empresa y sus proyectos</li>
-          <li><strong>Administrador:</strong> Gestiona usuarios, proyectos y configuración</li>
+          <li><strong>Propietario:</strong> Accede a todas las obras. No va al equipo ni ocupa cupo.</li>
+          <li><strong>Administrador:</strong> Accede a todas las obras. No va al equipo ni ocupa cupo. Gestiona usuarios y configuración.</li>
           <li><strong>Facturación:</strong> Acceso a la facturación y pagos</li>
           <li><strong>Miembro:</strong> Acceso de lectura a los datos de la empresa</li>
         </ul>

@@ -24,12 +24,11 @@ export function projectUserTypeFromSlug(
   return USER_TYPE_BY_SLUG.get(slug) ?? null
 }
 
-/** Etiqueta visible en equipo: los propietarios (Owner) se muestran como Admin. */
+/** Etiqueta visible en equipo. El dueño de la obra se muestra como Owner. */
 export function getProjectUserTypeDisplayLabel(
   userType: ProjectUserType | null | undefined,
 ): string | null {
   if (!userType) return null
-  if (userType === "Owner") return "Admin"
   return userType
 }
 

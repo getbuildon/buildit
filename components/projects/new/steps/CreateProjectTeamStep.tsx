@@ -130,7 +130,8 @@ export function CreateProjectTeamStep({
   return (
     <div className="flex flex-col gap-5">
       <p className="text-[14px] leading-5" style={{ color: "#18191b" }}>
-        Agrega los miembros del equipo que trabajarán en esta obra
+        Agregá los miembros del equipo que van a operar en esta obra. Quien la
+        crea entra como Owner.
       </p>
 
       {/* Nuevos miembros */}

@@ -11,11 +11,13 @@ import {
   type ProjectAccessContext,
 } from "@/lib/project/projectAccessContext"
 import {
-  getProjectPermissions,
   hasProjectPermission,
-  resolveAssignedUnitIds,
   type ProjectPermissionKey,
 } from "@/lib/project/projectPermissions"
+import {
+  companyRoleGrantsProjectAccess,
+  resolveProjectAccess,
+} from "@/lib/project/resolveProjectAccess"
 import { projectHref } from "@/lib/project/routes"
 import {
   tenantRouteFromSegment,
@@ -72,66 +74,59 @@ export async function getProjectAccessContext(
 
   const supabase = await createClient()
 
-  const { data: member } = await supabase
-    .from("project_members")
-    .select("user_type_id, user_types ( slug )")
-    .eq("project_id", id)
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .maybeSingle()
+  const [{ data: member }, { data: project }, clientUnitIds, loginAudience] =
+    await Promise.all([
+      supabase
+        .from("project_members")
+        .select("user_type_id, user_types ( slug )")
+        .eq("project_id", id)
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle(),
+      supabase.from("projects").select("company_id").eq("id", id).maybeSingle(),
+      getClientAssignedUnitIds(supabase, id, user.id),
+      getLoginAudience(),
+    ])
 
-  let userType = userTypeFromSlug(
+  const projectUserType = userTypeFromSlug(
     (() => {
-      const relation = member?.user_types as { slug: string } | { slug: string }[] | null | undefined
+      const relation = member?.user_types as
+        | { slug: string }
+        | { slug: string }[]
+        | null
+        | undefined
       if (!relation) return null
       return Array.isArray(relation) ? relation[0]?.slug : relation.slug
     })(),
   )
 
-  if (!userType) {
-    const { data: project } = await supabase
-      .from("projects")
-      .select("company_id")
-      .eq("id", id)
+  let companyRole = null
+  if (project?.company_id) {
+    const { data: companyMember } = await supabase
+      .from("company_members")
+      .select("role")
+      .eq("company_id", project.company_id)
+      .eq("user_id", user.id)
+      .eq("status", "active")
       .maybeSingle()
 
-    if (project?.company_id) {
-      const { data: companyMember } = await supabase
-        .from("company_members")
-        .select("role")
-        .eq("company_id", project.company_id)
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .in("role", ["owner", "admin"])
-        .maybeSingle()
-
-      if (companyMember?.role === "owner") userType = "Owner"
-      else if (companyMember?.role === "admin") userType = "Admin"
+    if (companyRoleGrantsProjectAccess(companyMember?.role)) {
+      companyRole = companyMember.role
     }
   }
 
-  const clientUnitIds = await getClientAssignedUnitIds(supabase, id, user.id)
-  const loginAudience = (await getLoginAudience()) ?? "equipo"
+  const resolved = resolveProjectAccess({
+    projectUserType,
+    companyRole,
+    clientUnitIds,
+    loginAudience: loginAudience ?? "equipo",
+  })
 
-  if (!userType) {
-    if (clientUnitIds.length === 0) return null
-    userType = "Cliente"
-  }
-
-  const permissions = getProjectPermissions(userType)
-  const effectivePermissions =
-    clientUnitIds.length > 0 && !permissions.clientPortal
-      ? { ...permissions, clientPortal: true as const }
-      : permissions
+  if (!resolved) return null
 
   return {
-    userType,
-    permissions: effectivePermissions,
-    assignedUnitIds:
-      loginAudience === "cliente"
-        ? clientUnitIds
-        : resolveAssignedUnitIds(effectivePermissions, clientUnitIds),
-    loginAudience,
+    ...resolved,
+    loginAudience: loginAudience ?? "equipo",
   }
 }
 

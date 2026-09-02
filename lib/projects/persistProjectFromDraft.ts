@@ -83,22 +83,21 @@ export async function persistProjectFromDraft(
     supabase.from("project_floors").delete().eq("project_id", projectId),
   ])
 
-  const { data: companyAdmins } = await adminClient
-    .from("company_members")
-    .select("user_id, role")
-    .eq("company_id", companyId)
-    .in("role", ["admin", "owner"])
+  const { data: creatorProfile } = await adminClient
+    .from("profiles")
+    .select("email")
+    .eq("id", userId)
+    .maybeSingle()
+  const creatorEmail = creatorProfile?.email?.trim().toLowerCase() ?? ""
 
-  const creatorCompanyRole = companyAdmins?.find((cm) => cm.user_id === userId)?.role
-  const creatorUserType: ProjectUserType =
-    creatorCompanyRole === "owner" ? "Owner" : "Admin"
+  const crewInvites = draft.teamMembers.filter((member) => {
+    const email = member.email.trim().toLowerCase()
+    return !creatorEmail || email !== creatorEmail
+  })
 
-  const coAdmins = (companyAdmins ?? []).filter((cm) => cm.user_id !== userId)
-  const plannedUserTypes: ProjectUserType[] = [
-    creatorUserType,
-    ...coAdmins.map((cm) => (cm.role === "owner" ? "Owner" : "Admin")),
-    ...draft.teamMembers.map((member) => member.userType),
-  ]
+  const plannedUserTypes: ProjectUserType[] = crewInvites.map(
+    (member) => member.userType,
+  )
 
   const seatValidation = await validateProjectSeatAllocation(
     supabase,
@@ -365,8 +364,8 @@ export async function persistProjectFromDraft(
     }
   }
 
-  if (draft.teamMembers.length > 0) {
-    const invitationRows = draft.teamMembers.map((member) => ({
+  if (crewInvites.length > 0) {
+    const invitationRows = crewInvites.map((member) => ({
       project_id: projectId,
       company_id: companyId,
       email: member.email.trim().toLowerCase(),
@@ -446,9 +445,8 @@ export async function ensureProjectCreatorMembership(
   supabase: SupabaseClient,
   userId: string,
   projectId: string,
-  companyId: string,
+  _companyId: string,
 ) {
-  const catalog = await loadProjectCatalogIds(supabase)
   const adminClient = createAdminClient()
 
   const { data: existingMembership } = await supabase
@@ -459,56 +457,20 @@ export async function ensureProjectCreatorMembership(
     .maybeSingle()
 
   if (!existingMembership) {
-    const { data: companyAdmins } = await adminClient
-      .from("company_members")
-      .select("user_id, role")
-      .eq("company_id", companyId)
-      .in("role", ["admin", "owner"])
-
-    const creatorCompanyRole = companyAdmins?.find((cm) => cm.user_id === userId)?.role
-    const creatorUserTypeId =
-      creatorCompanyRole === "owner"
-        ? catalog.userTypeIds.Owner
-        : catalog.userTypeIds.Admin
-
-    const coAdmins = (companyAdmins ?? []).filter((cm) => cm.user_id !== userId)
-    const fichaByUserId = await loadFichaSnapshotsFromProfiles(adminClient, [
-      userId,
-      ...coAdmins.map((cm) => cm.user_id),
-    ])
+    const catalog = await loadProjectCatalogIds(supabase)
+    const fichaByUserId = await loadFichaSnapshotsFromProfiles(adminClient, [userId])
 
     const { error: memberError } = await supabase.from("project_members").insert({
       project_id: projectId,
       user_id: userId,
       role_id: catalog.roleIds.Administrador,
-      user_type_id: creatorUserTypeId,
+      user_type_id: catalog.userTypeIds.Owner,
       is_active: true,
       ...(fichaByUserId.get(userId) ?? fichaFromProfileRow(null)),
     })
 
     if (memberError) {
       return { ok: false as const, error: memberError.message }
-    }
-
-    if (coAdmins.length > 0) {
-      const { error: coAdminError } = await adminClient
-        .from("project_members")
-        .insert(
-          coAdmins.map((cm) => ({
-            project_id: projectId,
-            user_id: cm.user_id,
-            role_id: catalog.roleIds.Administrador,
-            user_type_id:
-              cm.role === "owner"
-                ? catalog.userTypeIds.Owner
-                : catalog.userTypeIds.Admin,
-            is_active: true,
-            ...(fichaByUserId.get(cm.user_id) ?? fichaFromProfileRow(null)),
-          })),
-        )
-      if (coAdminError) {
-        return { ok: false as const, error: coAdminError.message }
-      }
     }
   }
 
