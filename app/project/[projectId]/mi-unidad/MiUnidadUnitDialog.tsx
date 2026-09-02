@@ -30,7 +30,10 @@ function formatDialogMeta(unit: MiUnidadAssignedUnit): string {
   }
 
   if (squareMeters != null) {
-    const formatted = new Intl.NumberFormat("es-AR").format(Math.round(squareMeters))
+    const formatted = new Intl.NumberFormat("es-AR", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(squareMeters)
     parts.push(`${formatted}m²`)
   }
 

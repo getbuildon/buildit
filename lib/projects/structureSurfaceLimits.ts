@@ -1,24 +1,21 @@
 import type { CreateProjectDraft, StructureFloorDraft } from "@/lib/projects/createProjectDraft"
-import { extractTotalSurfaceDigits } from "@/lib/projects/totalSurfaceInput"
+import { parseSurfaceNumber } from "@/lib/projects/totalSurfaceInput"
 
 export function formatSquareMeters(value: number): string {
-  return `${new Intl.NumberFormat("es-AR").format(Math.round(value))} m²`
+  return `${new Intl.NumberFormat("es-AR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value)} m²`
 }
 
 export function parseTotalSurfaceM2(value: string): number | null {
-  const digits = extractTotalSurfaceDigits(value)
-  if (!digits) return null
-
-  const parsed = Number(digits)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  const parsed = parseSurfaceNumber(value)
+  return parsed != null && parsed > 0 ? parsed : null
 }
 
 export function parseUnitSquareMeters(value: string): number {
-  const digits = extractTotalSurfaceDigits(value)
-  if (!digits) return 0
-
-  const parsed = Number(digits)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+  const parsed = parseSurfaceNumber(value)
+  return parsed != null && parsed > 0 ? parsed : 0
 }
 
 export function sumStructureUnitsSquareMeters(floors: StructureFloorDraft[]): number {

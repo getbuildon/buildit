@@ -14,7 +14,7 @@ const USER_TYPE_BY_SLUG = new Map<string, ProjectUserType>(
 
 /** Tipos seleccionables al invitar o editar miembros del equipo. */
 export const PROJECT_TEAM_SELECTABLE_USER_TYPES = PROJECT_USER_TYPES.filter(
-  (userType) => userType !== "Owner",
+  (userType) => userType !== "Owner" && userType !== "Cliente",
 )
 
 export function projectUserTypeFromSlug(

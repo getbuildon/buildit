@@ -147,7 +147,9 @@ async function validateUnitAssignment(
   excludeUserId?: string,
   excludeInvitationId?: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (unitIds.length === 0) return { ok: true }
+  if (unitIds.length === 0) {
+    return { ok: false, error: "Seleccioná al menos una unidad." }
+  }
 
   const { data: projectUnits, error: unitsError } = await admin
     .from("project_units")

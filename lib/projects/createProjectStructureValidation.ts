@@ -1,5 +1,5 @@
 import type { CreateProjectDraft } from "@/lib/projects/createProjectDraft"
-import { extractTotalSurfaceDigits } from "@/lib/projects/totalSurfaceInput"
+import { hasTotalSurfaceValue } from "@/lib/projects/totalSurfaceInput"
 
 export type StructureUnitFieldErrors = {
   code?: string
@@ -15,11 +15,7 @@ export type StructureFloorFieldErrors = {
 export type StructureStepFieldErrors = Record<string, StructureFloorFieldErrors>
 
 export function hasUnitSquareMetersValue(value: string): boolean {
-  const digits = extractTotalSurfaceDigits(value)
-  if (!digits) return false
-
-  const parsed = Number(digits)
-  return Number.isFinite(parsed) && parsed > 0
+  return hasTotalSurfaceValue(value)
 }
 
 const STRUCTURE_ID_DUPLICATE_MESSAGE = "Este ID ya está en uso en el proyecto."

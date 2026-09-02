@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { loadProjectPlanSurfaceLimit } from "@/lib/company/projectSubscriptionLimits"
 import { formatTotalSurfaceFromNumber } from "@/lib/projects/totalSurfaceInput"
+import { parseTotalSurfaceM2 } from "@/lib/projects/structureSurfaceLimits"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
 import { checkProjectPermission, checkProjectSectionAccess } from "@/lib/project/projectAccess"
 import { loadUnitTaskAssignmentsByUnit } from "@/lib/projects/loadUnitTaskAssignments"
@@ -88,6 +89,7 @@ export type UnitData = {
   code: string
   name: string | null
   unit_type: string | null
+  unit_category: string | null
   rooms: number | null
   area_m2: number | null
   plan_url: string | null
@@ -379,21 +381,6 @@ function formatTotalSurfaceM2(value: number | null | undefined): string {
   return formatTotalSurfaceFromNumber(value)
 }
 
-function parseOptionalNumber(value: string): number | null {
-  const trimmed = value.trim()
-  if (!trimmed) return null
-
-  let cleaned = trimmed.replace(/\s*m2\s*$/i, "").trim()
-  if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
-    cleaned = cleaned.replace(/\./g, "")
-  } else {
-    cleaned = cleaned.replace(",", ".")
-  }
-
-  const parsed = Number(cleaned)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
 async function fetchProjectBasics(
   supabase: ProjectSupabase,
   id: string,
@@ -449,7 +436,7 @@ async function fetchProjectUnits(
 ): Promise<UnitData[]> {
   const { data: units, error } = await supabase
     .from("project_units")
-    .select("id, floor_id, code, name, unit_type, room_count, square_meters, plan_url, render_url, sort_order")
+    .select("id, floor_id, code, name, unit_type, unit_category, room_count, square_meters, plan_url, render_url, sort_order")
     .eq("project_id", id)
     .order("sort_order", { ascending: true })
 
@@ -460,6 +447,7 @@ async function fetchProjectUnits(
     code: string
     name: string | null
     unit_type: string | null
+    unit_category: string | null
     room_count: number | null
     square_meters: number | null
     plan_url: string | null
@@ -471,6 +459,7 @@ async function fetchProjectUnits(
     code: u.code,
     name: u.name,
     unit_type: u.unit_type,
+    unit_category: u.unit_category,
     rooms: u.room_count,
     area_m2: u.square_meters,
     plan_url: u.plan_url ?? null,
@@ -632,7 +621,7 @@ export async function updateProjectBasics(
       location: normalizeOptional(input.location),
       start_date: normalizeOptional(input.startDate),
       end_date: normalizeOptional(input.endDate),
-      total_surface_m2: parseOptionalNumber(input.totalSurface),
+      total_surface_m2: parseTotalSurfaceM2(input.totalSurface),
     })
     .eq("id", id)
 

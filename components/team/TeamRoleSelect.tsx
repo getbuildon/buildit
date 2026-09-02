@@ -1,21 +1,23 @@
 "use client"
 
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { NestedSelect } from "@/components/ui/select"
 import { USER_TYPE_ROLES } from "@/lib/projects/createProjectDraft"
 import {
+  decodeTeamRoleSelection,
   encodeTeamRoleSelection,
   getProjectUserTypeDisplayLabel,
   PROJECT_TEAM_SELECTABLE_USER_TYPES,
 } from "@/lib/projects/projectUserTypeDisplay"
 import { cn } from "@/lib/utils"
+
+const TEAM_ROLE_GROUPS = PROJECT_TEAM_SELECTABLE_USER_TYPES.map((userType) => ({
+  id: userType,
+  label: getProjectUserTypeDisplayLabel(userType) ?? userType,
+  options: USER_TYPE_ROLES[userType].map((role) => ({
+    value: encodeTeamRoleSelection(userType, role),
+    label: role,
+  })),
+}))
 
 type TeamRoleSelectProps = {
   id: string
@@ -37,34 +39,19 @@ export function TeamRoleSelect({
   onChange,
 }: TeamRoleSelectProps) {
   return (
-    <Select value={value || undefined} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger
-        id={id}
-        aria-label={placeholder}
-        className={cn(
-          triggerClassName,
-          hasError && "border-[#eb8e90] focus-visible:border-[#eb8e90]",
-        )}
-      >
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent position="popper">
-        {PROJECT_TEAM_SELECTABLE_USER_TYPES.map((userType) => (
-          <SelectGroup key={userType}>
-            <SelectLabel className="text-[11px] font-medium uppercase tracking-wide text-[#ff7433]">
-              {getProjectUserTypeDisplayLabel(userType)}
-            </SelectLabel>
-            {USER_TYPE_ROLES[userType].map((role) => (
-              <SelectItem
-                key={encodeTeamRoleSelection(userType, role)}
-                value={encodeTeamRoleSelection(userType, role)}
-              >
-                {role}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        ))}
-      </SelectContent>
-    </Select>
+    <NestedSelect
+      id={id}
+      value={value || undefined}
+      groupId={decodeTeamRoleSelection(value)?.userType}
+      groups={TEAM_ROLE_GROUPS}
+      placeholder={placeholder}
+      disabled={disabled}
+      aria-label={placeholder}
+      triggerClassName={cn(
+        triggerClassName,
+        hasError && "border-[#eb8e90] focus-visible:border-[#eb8e90]",
+      )}
+      onValueChange={onChange}
+    />
   )
 }

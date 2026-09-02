@@ -6,7 +6,11 @@ import type {
   ProjectUserType,
 } from "@/lib/projects/createProjectDraft"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
-import { unitTypeToDbFields } from "@/lib/projects/unitTypes"
+import {
+  getCatalogUnitType,
+  resolveUnitTypeCategory,
+  unitTypeToDbFields,
+} from "@/lib/projects/unitTypes"
 import {
   getTaskInitialStatus,
   mapInitialWorkStatusToDb,
@@ -21,6 +25,7 @@ import {
   fichaFromProfileRow,
   loadFichaSnapshotsFromProfiles,
 } from "@/lib/projects/projectMemberFicha"
+import { parseTotalSurfaceM2 } from "@/lib/projects/structureSurfaceLimits"
 
 function parseOptionalNumber(value: string): number | null {
   const trimmed = value.trim()
@@ -133,6 +138,7 @@ export async function persistProjectFromDraft(
       floor_id: string
       unit_type_id: string
       unit_type: string
+      unit_category: string
       code: string | null
       name: string | null
       square_meters: number | null
@@ -156,11 +162,12 @@ export async function persistProjectFromDraft(
         unitRows.push({
           project_id: projectId,
           floor_id: floorId,
-          unit_type_id: catalog.unitTypeIds[unit.type],
+          unit_type_id: catalog.unitTypeIds[getCatalogUnitType(unit.type)],
           unit_type: unit.type,
+          unit_category: resolveUnitTypeCategory(unit.type, unit.typeCategory),
           code: unit.code.trim().slice(0, 4) || null,
           name,
-          square_meters: parseOptionalNumber(unit.squareMeters),
+          square_meters: parseTotalSurfaceM2(unit.squareMeters),
           room_count,
           sort_order: unitIndex,
           plan_url: unit.planRemoved ? null : unit.planUrl,
@@ -516,7 +523,7 @@ export function getProjectFieldUpdates(draft: CreateProjectDraft) {
   return {
     name: getProjectDisplayName(draft),
     location: draft.location.trim() || null,
-    total_surface_m2: parseOptionalNumber(draft.totalSurface),
+    total_surface_m2: parseTotalSurfaceM2(draft.totalSurface),
     start_date: parseOptionalDate(draft.startDate),
     end_date: parseOptionalDate(draft.endDate),
     building_type: draft.workStage,

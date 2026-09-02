@@ -1,11 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { normalizeUnitType } from "@/lib/projects/unitTypes"
+import { normalizeUnitType, resolveUnitTypeCategory } from "@/lib/projects/unitTypes"
 
 export type StructureUnitSaveInput = {
   id?: string
   code: string
   name: string | null
   unit_type: string | null
+  unit_category: string | null
   room_count: number | null
   area_m2: number | null
 }
@@ -44,6 +45,7 @@ type PlannedUnit = {
   code: string
   name: string | null
   unit_type: string | null
+  unit_category: string | null
   room_count: number | null
   area_m2: number | null
   sortOrder: number
@@ -155,6 +157,7 @@ function buildPlannedFloors(
       code: unit.code,
       name: unit.name,
       unit_type: unit.unit_type,
+      unit_category: unit.unit_category,
       room_count: unit.room_count,
       area_m2: unit.area_m2,
       sortOrder: unitIndex,
@@ -349,6 +352,7 @@ async function upsertUnits(
     name: string | null
     unit_type_id: string
     unit_type: string | null
+    unit_category: string
     room_count: number | null
     square_meters: number | null
     sort_order: number
@@ -377,6 +381,7 @@ async function upsertUnits(
           name: unit.name,
           unit_type_id: unitTypeId,
           unit_type: unit.unit_type,
+          unit_category: resolveUnitTypeCategory(unit.unit_type, unit.unit_category),
           room_count: unit.room_count,
           square_meters: unit.area_m2,
           sort_order: unit.sortOrder,
@@ -412,6 +417,10 @@ async function upsertUnits(
           name: plannedUnit.name,
           unit_type_id: unitTypeId,
           unit_type: plannedUnit.unit_type,
+          unit_category: resolveUnitTypeCategory(
+            plannedUnit.unit_type,
+            plannedUnit.unit_category,
+          ),
           room_count: plannedUnit.room_count,
           square_meters: plannedUnit.area_m2,
           sort_order: plannedUnit.sortOrder,

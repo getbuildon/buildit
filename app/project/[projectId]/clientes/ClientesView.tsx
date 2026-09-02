@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { HoverTooltip } from "@/components/ui/hover-tooltip"
+import { RequiredFieldCue, RequiredFieldsLegend } from "@/components/ui/required-field-cue"
 import { Spinner } from "@/components/ui/spinner"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { cn } from "@/lib/utils"
@@ -170,6 +171,11 @@ function EditClientDialog({
       }
     }
 
+    if (selectedUnitIds.length === 0) {
+      setEditError("Seleccioná al menos una unidad.")
+      return
+    }
+
     setIsSaving(true)
     setEditError("")
 
@@ -269,7 +275,7 @@ function EditClientDialog({
                   htmlFor="edit-client-first-name"
                   className="text-[12px] font-medium leading-4 text-[#43484e]"
                 >
-                  Nombre
+                  Nombre <span className="text-[#ff7433]">*</span>
                 </label>
                 <Input
                   id="edit-client-first-name"
@@ -279,6 +285,7 @@ function EditClientDialog({
                     if (editError) setEditError("")
                   }}
                   placeholder="Nombre"
+                  aria-required
                   className={clientInputClassName}
                   style={clientInputStyle}
                 />
@@ -288,7 +295,7 @@ function EditClientDialog({
                   htmlFor="edit-client-last-name"
                   className="text-[12px] font-medium leading-4 text-[#43484e]"
                 >
-                  Apellido
+                  Apellido <span className="text-[#ff7433]">*</span>
                 </label>
                 <Input
                   id="edit-client-last-name"
@@ -298,6 +305,7 @@ function EditClientDialog({
                     if (editError) setEditError("")
                   }}
                   placeholder="Apellido"
+                  aria-required
                   className={clientInputClassName}
                   style={clientInputStyle}
                 />
@@ -307,7 +315,7 @@ function EditClientDialog({
                   htmlFor="edit-client-email"
                   className="text-[12px] font-medium leading-4 text-[#43484e]"
                 >
-                  Correo electrónico
+                  Correo electrónico <span className="text-[#ff7433]">*</span>
                 </label>
                 <Input
                   id="edit-client-email"
@@ -318,6 +326,7 @@ function EditClientDialog({
                     if (editError) setEditError("")
                   }}
                   placeholder="correo@ejemplo.com"
+                  aria-required
                   className={clientInputClassName}
                   style={clientInputStyle}
                   disabled={target.type === "client"}
@@ -344,13 +353,17 @@ function EditClientDialog({
               </div>
               <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <label className="text-[12px] font-medium leading-4 text-[#43484e]">
-                  Unidades
+                  Unidades <span className="text-[#ff7433]">*</span>
                 </label>
                 <UnitMultiSelect
                   options={unitOptions}
                   selectedIds={selectedUnitIds}
-                  onChange={setSelectedUnitIds}
+                  onChange={(ids) => {
+                    setSelectedUnitIds(ids)
+                    if (editError) setEditError("")
+                  }}
                   disabled={isSaving}
+                  required
                   emptyMessage="No hay unidades disponibles."
                 />
               </div>
@@ -465,6 +478,7 @@ function UnitMultiSelect({
   selectedIds,
   onChange,
   disabled,
+  required,
   className,
   emptyMessage = "No hay unidades configuradas.",
 }: {
@@ -472,6 +486,7 @@ function UnitMultiSelect({
   selectedIds: string[]
   onChange: (ids: string[]) => void
   disabled?: boolean
+  required?: boolean
   className?: string
   emptyMessage?: string
 }) {
@@ -494,20 +509,26 @@ function UnitMultiSelect({
         <button
           type="button"
           disabled={disabled}
+          aria-required={required}
           className={cn(
             clientInputClassName,
-            "flex items-center justify-between gap-2 text-left",
+            "flex items-center gap-2 text-left",
             disabled && "cursor-not-allowed opacity-60",
             selectedLabels.length === 0 && "text-[#777b84]",
             className,
           )}
           style={clientInputStyle}
         >
-          <span className="truncate">
+          <span className="min-w-0 flex-1 truncate">
             {selectedLabels.length > 0
               ? `${selectedLabels.length} unidad${selectedLabels.length === 1 ? "" : "es"}`
               : "Unidad"}
           </span>
+          {required && selectedIds.length === 0 ? (
+            <span aria-hidden className="text-[14px] font-medium leading-none text-[#ff7433]">
+              *
+            </span>
+          ) : null}
           <ChevronDown className="size-4 shrink-0 text-[#777b84]" aria-hidden />
         </button>
       </PopoverTrigger>
@@ -586,19 +607,21 @@ function RowActionButton({
   disabled?: boolean
   children: ReactNode
 }) {
-  return (
-    <HoverTooltip text={tooltip ?? label}>
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={disabled}
-        className="inline-flex size-4 items-center justify-center text-[#777b84] disabled:cursor-not-allowed disabled:opacity-40 enabled:transition-opacity enabled:hover:opacity-80"
-        aria-label={label}
-      >
-        {children}
-      </button>
-    </HoverTooltip>
+  const button = (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex size-4 items-center justify-center text-[#777b84] disabled:cursor-not-allowed disabled:opacity-40 enabled:transition-opacity enabled:hover:opacity-80"
+      aria-label={label}
+    >
+      {children}
+    </button>
   )
+
+  if (!tooltip) return button
+
+  return <HoverTooltip text={tooltip}>{button}</HoverTooltip>
 }
 
 function ClientRow({
@@ -616,7 +639,6 @@ function ClientRow({
     <>
       <RowActionButton
         label={`Editar a ${client.firstName} ${client.lastName}`}
-        tooltip="Editar"
         disabled={!canManage}
         onClick={onEdit}
       >
@@ -624,7 +646,6 @@ function ClientRow({
       </RowActionButton>
       <RowActionButton
         label={`Eliminar a ${client.firstName} ${client.lastName}`}
-        tooltip="Eliminar"
         disabled={!canManage}
         onClick={onRemove}
       >
@@ -698,8 +719,8 @@ function PendingClientRow({
   const actions = (
     <>
       <RowActionButton
-        label={`Ver link de ${invitation.firstName} ${invitation.lastName}`}
-        tooltip="Ver link"
+        label={`Copiar link de ${invitation.firstName} ${invitation.lastName}`}
+        tooltip="Copiar link"
         disabled={!canManage || busy}
         onClick={onCopyLink}
       >
@@ -715,7 +736,6 @@ function PendingClientRow({
       </RowActionButton>
       <RowActionButton
         label={`Editar invitación de ${invitation.firstName} ${invitation.lastName}`}
-        tooltip="Editar"
         disabled={!canManage || busy}
         onClick={onEdit}
       >
@@ -723,7 +743,6 @@ function PendingClientRow({
       </RowActionButton>
       <RowActionButton
         label={`Revocar invitación de ${invitation.firstName} ${invitation.lastName}`}
-        tooltip="Revocar"
         disabled={!canManage || busy}
         onClick={onRevoke}
       >
@@ -945,6 +964,10 @@ export function ClientesView({ projectId, initialData }: Props) {
     }
     if (assignedEmails.has(trimmedEmail)) {
       setFormError("Ese correo ya está registrado.")
+      return
+    }
+    if (selectedUnitIds.length === 0) {
+      setFormError("Seleccioná al menos una unidad.")
       return
     }
 
@@ -1184,42 +1207,54 @@ export function ClientesView({ projectId, initialData }: Props) {
           className="flex flex-col gap-3 rounded-[16px] border border-[#edeef0] bg-white px-4 pb-8 pt-4"
           style={{ boxShadow: CLIENTES_CARD_SHADOW }}
         >
-          <h2 className="text-[18px] font-normal leading-[1.4] text-[#272a2d] sm:text-[20px]">
-            Nuevo cliente
-          </h2>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-[18px] font-normal leading-[1.4] text-[#272a2d] sm:text-[20px]">
+              Nuevo cliente
+            </h2>
+            <RequiredFieldsLegend className="shrink-0" />
+          </div>
 
           <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
-            <Input
-              value={firstName}
-              onChange={(e) => {
-                setFirstName(e.target.value)
-                if (formError) setFormError("")
-              }}
-              placeholder="Nombre"
-              className={cn(clientInputClassName, "min-w-0 flex-1")}
-              style={clientInputStyle}
-            />
-            <Input
-              value={lastName}
-              onChange={(e) => {
-                setLastName(e.target.value)
-                if (formError) setFormError("")
-              }}
-              placeholder="Apellido"
-              className={cn(clientInputClassName, "min-w-0 flex-1")}
-              style={clientInputStyle}
-            />
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value)
-                if (formError) setFormError("")
-              }}
-              placeholder="correo@ejemplo.com"
-              className={cn(clientInputClassName, "min-w-0 flex-1")}
-              style={clientInputStyle}
-            />
+            <RequiredFieldCue show={!firstName.trim()} className="min-w-0 flex-1">
+              <Input
+                value={firstName}
+                onChange={(e) => {
+                  setFirstName(e.target.value)
+                  if (formError) setFormError("")
+                }}
+                placeholder="Nombre"
+                aria-required
+                className={cn(clientInputClassName, "min-w-0 flex-1")}
+                style={clientInputStyle}
+              />
+            </RequiredFieldCue>
+            <RequiredFieldCue show={!lastName.trim()} className="min-w-0 flex-1">
+              <Input
+                value={lastName}
+                onChange={(e) => {
+                  setLastName(e.target.value)
+                  if (formError) setFormError("")
+                }}
+                placeholder="Apellido"
+                aria-required
+                className={cn(clientInputClassName, "min-w-0 flex-1")}
+                style={clientInputStyle}
+              />
+            </RequiredFieldCue>
+            <RequiredFieldCue show={!email.trim()} className="min-w-0 flex-1">
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (formError) setFormError("")
+                }}
+                placeholder="correo@ejemplo.com"
+                aria-required
+                className={cn(clientInputClassName, "min-w-0 flex-1")}
+                style={clientInputStyle}
+              />
+            </RequiredFieldCue>
             <Input
               value={phone}
               onChange={(e) => {
@@ -1233,8 +1268,12 @@ export function ClientesView({ projectId, initialData }: Props) {
             <UnitMultiSelect
               options={addUnitOptions}
               selectedIds={selectedUnitIds}
-              onChange={setSelectedUnitIds}
+              onChange={(ids) => {
+                setSelectedUnitIds(ids)
+                if (formError) setFormError("")
+              }}
               emptyMessage={unitsEmptyMessage}
+              required
               className="min-w-0 flex-1"
             />
             <Button
@@ -1242,10 +1281,15 @@ export function ClientesView({ projectId, initialData }: Props) {
               size="brand"
               onClick={() => void handleSubmitAdd()}
               disabled={isSubmitting}
+              aria-busy={isSubmitting}
               className="h-[44px] w-full shrink-0 px-4 text-[14px] font-normal leading-[1.4] lg:w-auto"
             >
-              <Plus className="size-4" aria-hidden />
-              {isSubmitting ? "..." : "Agregar"}
+              {isSubmitting ? (
+                <Spinner className="size-4" />
+              ) : (
+                <Plus className="size-4" aria-hidden />
+              )}
+              Agregar
             </Button>
           </div>
 

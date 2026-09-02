@@ -4,6 +4,7 @@ import {
   type CreateProjectDraft,
   type StructureUnitDraft,
 } from "@/lib/projects/createProjectDraft"
+import { resolveUnitTypeCategory } from "@/lib/projects/unitTypes"
 
 export type StoredProjectSetupDraft = {
   version: 1
@@ -61,6 +62,7 @@ export function deserializeSetupDraft(
         ...floor,
         units: floor.units.map((unit) => ({
           ...unit,
+          typeCategory: resolveUnitTypeCategory(unit.type, unit.typeCategory),
           planImage: null,
           renderImage: null,
         })),

@@ -20,7 +20,7 @@ export function LandingHeroDesktop() {
             alt=""
             fill
             priority
-            className="object-cover"
+            className="object-cover transition-none"
             sizes="100vw"
           />
           <div className="absolute inset-0 bg-[rgba(33,34,37,0.8)]" />

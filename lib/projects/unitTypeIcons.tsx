@@ -33,5 +33,5 @@ export const UNIT_TYPE_ICONS: Record<StructureUnitType, LucideIcon> = {
 export function getUnitTypeIcon(type: string | null | undefined): LucideIcon {
   const normalized = normalizeUnitType(type)
   if (normalized) return UNIT_TYPE_ICONS[normalized]
-  return Home
+  return UNIT_TYPE_ICONS.Otro
 }

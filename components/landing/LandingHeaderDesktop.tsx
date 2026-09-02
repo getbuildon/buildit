@@ -12,7 +12,7 @@ export function LandingHeaderDesktop() {
   const { openContactModal, scrollToPlans } = useLandingActions()
 
   return (
-    <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-6 py-4 lg:px-10 xl:px-20">
+    <div className="mx-auto flex h-[72px] max-w-[1280px] items-center justify-between gap-4 px-6 lg:px-10 xl:px-20">
       <div className="flex min-w-0 items-center gap-6 lg:gap-10">
         <Link href="/" aria-label="BuildOn — inicio">
           <Image

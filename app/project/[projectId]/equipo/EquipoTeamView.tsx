@@ -25,6 +25,7 @@ import {
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { Input } from "@/components/ui/input"
 import { HoverTooltip } from "@/components/ui/hover-tooltip"
+import { RequiredFieldCue, RequiredFieldsLegend } from "@/components/ui/required-field-cue"
 import { Spinner } from "@/components/ui/spinner"
 import { useToast } from "@/components/ui/toast"
 import { invalidateProjectSection } from "@/lib/project/invalidateProjectQueries"
@@ -210,7 +211,7 @@ function EditMemberDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         overlayClassName={FORM_MODAL_DIALOG.overlay}
-        className={cn(FORM_MODAL_DIALOG.content, "max-w-[calc(100vw-32px)]")}
+        className={FORM_MODAL_DIALOG.content}
         showCloseButton={false}
       >
         <div className={cn(FORM_MODAL_DIALOG.body, "px-4 py-6 sm:px-[33px] sm:py-[41px]")}>
@@ -320,19 +321,21 @@ function RowActionButton({
   onClick?: () => void
   children: ReactNode
 }) {
-  return (
-    <HoverTooltip text={tooltip ?? label}>
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={disabled}
-        className="inline-flex size-4 items-center justify-center text-[#777b84] disabled:cursor-not-allowed disabled:opacity-40 enabled:transition-opacity enabled:hover:opacity-80"
-        aria-label={label}
-      >
-        {children}
-      </button>
-    </HoverTooltip>
+  const button = (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex size-4 items-center justify-center text-[#777b84] disabled:cursor-not-allowed disabled:opacity-40 enabled:transition-opacity enabled:hover:opacity-80"
+      aria-label={label}
+    >
+      {children}
+    </button>
   )
+
+  if (!tooltip) return button
+
+  return <HoverTooltip text={tooltip}>{button}</HoverTooltip>
 }
 
 function MemberRow({
@@ -387,7 +390,6 @@ function MemberRow({
       <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-end gap-2 md:col-start-4">
         <RowActionButton
           label={`Editar a ${member.firstName} ${member.lastName}`}
-          tooltip="Editar"
           disabled={!canEdit}
           onClick={onEdit}
         >
@@ -395,7 +397,6 @@ function MemberRow({
         </RowActionButton>
         <RowActionButton
           label={`Eliminar a ${member.firstName} ${member.lastName}`}
-          tooltip="Eliminar"
           disabled={!canRemove}
           onClick={onRemove}
         >
@@ -459,8 +460,8 @@ function PendingRow({
 
       <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-end gap-2 md:col-start-4">
         <RowActionButton
-          label={`Ver link de ${invitation.firstName} ${invitation.lastName}`}
-          tooltip="Ver link"
+          label={`Copiar link de ${invitation.firstName} ${invitation.lastName}`}
+          tooltip="Copiar link"
           disabled={!canManage || busy}
           onClick={onCopyLink}
         >
@@ -476,14 +477,12 @@ function PendingRow({
         </RowActionButton>
         <RowActionButton
           label={`Editar invitación de ${invitation.firstName} ${invitation.lastName}`}
-          tooltip="Editar"
           disabled
         >
           <SquarePen className="size-4" aria-hidden />
         </RowActionButton>
         <RowActionButton
           label={`Revocar invitación de ${invitation.firstName} ${invitation.lastName}`}
-          tooltip="Revocar"
           disabled={!canManage || busy}
           onClick={onRevoke}
         >
@@ -809,58 +808,74 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
           className="flex flex-col gap-3 rounded-[16px] border border-[#edeef0] bg-white px-4 py-4 sm:px-6"
           style={{ boxShadow: "0 0 10px rgba(243, 103, 31, 0.08)" }}
         >
-          <h2 className="text-[18px] font-normal leading-7 text-[#272a2d] sm:text-[20px]">Nuevo miembro</h2>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-[18px] font-normal leading-7 text-[#272a2d] sm:text-[20px]">
+              Nuevo miembro
+            </h2>
+            <RequiredFieldsLegend className="shrink-0" />
+          </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <Input
-              value={firstName}
-              onChange={(e) => {
-                setFirstName(e.target.value)
-                if (formError) setFormError("")
-              }}
-              placeholder="Nombre"
-              className={formInputClassName}
-              style={formInputStyle}
-            />
-            <Input
-              value={lastName}
-              onChange={(e) => {
-                setLastName(e.target.value)
-                if (formError) setFormError("")
-              }}
-              placeholder="Apellido"
-              className={formInputClassName}
-              style={formInputStyle}
-            />
-            <TeamRoleSelect
-              id="member-role"
-              value={roleSelection}
-              placeholder="Rol"
-              triggerClassName={formSelectTriggerClassName}
-              hasError={isSelectedTypeAtLimit}
-              onChange={(value) => {
-                setRoleSelection(value)
-                if (formError) setFormError("")
-              }}
-            />
+            <RequiredFieldCue show={!firstName.trim()}>
+              <Input
+                value={firstName}
+                onChange={(e) => {
+                  setFirstName(e.target.value)
+                  if (formError) setFormError("")
+                }}
+                placeholder="Nombre"
+                aria-required
+                className={formInputClassName}
+                style={formInputStyle}
+              />
+            </RequiredFieldCue>
+            <RequiredFieldCue show={!lastName.trim()}>
+              <Input
+                value={lastName}
+                onChange={(e) => {
+                  setLastName(e.target.value)
+                  if (formError) setFormError("")
+                }}
+                placeholder="Apellido"
+                aria-required
+                className={formInputClassName}
+                style={formInputStyle}
+              />
+            </RequiredFieldCue>
+            <RequiredFieldCue show={!roleSelection} markClassName="right-8">
+              <TeamRoleSelect
+                id="member-role"
+                value={roleSelection}
+                placeholder="Rol"
+                triggerClassName={formSelectTriggerClassName}
+                hasError={isSelectedTypeAtLimit}
+                onChange={(value) => {
+                  setRoleSelection(value)
+                  if (formError) setFormError("")
+                }}
+              />
+            </RequiredFieldCue>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value)
-                if (formError) setFormError("")
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault()
-                  void handleAddMember()
-                }
-              }}
-              placeholder="correo@ejemplo.com"
-              className={`${formInputClassName} min-w-0 flex-1`}
-              style={formInputStyle}
-            />
+            <RequiredFieldCue show={!email.trim()} className="min-w-0 flex-1">
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (formError) setFormError("")
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    void handleAddMember()
+                  }
+                }}
+                placeholder="correo@ejemplo.com"
+                aria-required
+                className={`${formInputClassName} min-w-0 flex-1`}
+                style={formInputStyle}
+              />
+            </RequiredFieldCue>
             <Button
               variant="brand"
               size="brand"

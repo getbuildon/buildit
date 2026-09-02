@@ -22,15 +22,12 @@ export function LandingHeader() {
   const headerRef = useRef<HTMLElement>(null)
   const lastScrollY = useRef(0)
   const headerHeightRef = useRef(80)
-  const [headerHeight, setHeaderHeight] = useState(80)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isHeaderVisible, setIsHeaderVisible] = useState(true)
 
   useEffect(() => {
     const measure = () => {
-      const nextHeight = headerRef.current?.offsetHeight ?? 80
-      headerHeightRef.current = nextHeight
-      setHeaderHeight(nextHeight)
+      headerHeightRef.current = headerRef.current?.offsetHeight ?? 80
     }
 
     measure()
@@ -81,7 +78,7 @@ export function LandingHeader() {
 
   return (
     <>
-      <div aria-hidden className="shrink-0" style={{ height: headerHeight }} />
+      <div aria-hidden className="h-20 shrink-0 lg:h-[72px]" />
       <header
         ref={headerRef}
         data-landing-header

@@ -64,26 +64,18 @@ export function getUnitTypeGroupId(
   return "unidad-funcional"
 }
 
-const UNIT_TYPE_SELECTION_SEPARATOR = "::"
-
-export function encodeUnitTypeSelection(
-  groupId: StructureUnitTypeGroupId,
-  type: StructureUnitType,
-) {
-  return `${groupId}${UNIT_TYPE_SELECTION_SEPARATOR}${type}`
+export function isUnitTypeGroupId(
+  value: string | null | undefined,
+): value is StructureUnitTypeGroupId {
+  return value === "unidad-funcional" || value === "area-comun"
 }
 
-export function decodeUnitTypeSelection(value: string): StructureUnitType | null {
-  const separator = value.indexOf(UNIT_TYPE_SELECTION_SEPARATOR)
-  const type =
-    separator === -1
-      ? value
-      : value.slice(separator + UNIT_TYPE_SELECTION_SEPARATOR.length)
-  return normalizeUnitType(type)
-}
-
-export function getUnitTypeSelectionValue(type: StructureUnitType) {
-  return encodeUnitTypeSelection(getUnitTypeGroupId(type), type)
+export function resolveUnitTypeCategory(
+  type: StructureUnitType | string | null | undefined,
+  stored?: string | null,
+): StructureUnitTypeGroupId {
+  if (isUnitTypeGroupId(stored)) return stored
+  return getUnitTypeGroupId(type)
 }
 
 export const UNIT_ROOM_COUNT_OPTIONS = [1, 2, 3, 4, 5] as const
@@ -100,6 +92,12 @@ const LEGACY_UNIT_TYPE_MAP: Record<string, StructureUnitType> = {
   Bodega: "Otro",
   Gimnasio: "Otro",
   Depto: "Departamento",
+}
+
+export function getCatalogUnitType(
+  type: string | null | undefined,
+): StructureUnitType {
+  return normalizeUnitType(type) ?? "Otro"
 }
 
 export function normalizeUnitType(
@@ -161,7 +159,7 @@ export function getUnitDashboardLabel(input: {
 }
 
 export function unitTypeToDbFields(unit: {
-  type: StructureUnitType
+  type: StructureUnitType | string
   roomCount: string
   officeSize: string
 }): { room_count: number | null; name: string | null } {

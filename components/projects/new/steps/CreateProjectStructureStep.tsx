@@ -21,11 +21,10 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import {
+  NestedSelect,
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -39,7 +38,10 @@ import { StructureUnitAttachUpload } from "@/components/projects/new/StructureUn
 import { RequestPlanUpgradeModal } from "@/components/team/RequestPlanUpgradeModal"
 import { CreateProjectFormField, createProjectFieldErrorInputClassName, createProjectFieldErrorInputStyle } from "@/components/projects/new/CreateProjectFormField"
 import { FieldErrorTooltip } from "@/components/ui/field-error-tooltip"
-import { normalizeTotalSurfaceInput } from "@/lib/projects/totalSurfaceInput"
+import {
+  finalizeTotalSurfaceInput,
+  normalizeTotalSurfaceInput,
+} from "@/lib/projects/totalSurfaceInput"
 import {
   cloneStructureFloor,
   cloneStructureUnit,
@@ -66,9 +68,7 @@ import {
 } from "@/lib/projects/structureStepTokens"
 import {
   STRUCTURE_UNIT_TYPE_GROUPS,
-  decodeUnitTypeSelection,
-  encodeUnitTypeSelection,
-  getUnitTypeSelectionValue,
+  isUnitTypeGroupId,
   getUnitVariantField,
   getUnitVariantFieldLabel,
   isUnitVariantFieldEnabled,
@@ -718,44 +718,34 @@ function StructureUnitRow({
             <span className={structureLabelClassName} style={structureMutedLabelStyle}>
               Tipo
             </span>
-            <Select
-              value={getUnitTypeSelectionValue(unit.type)}
-              onValueChange={(value) => {
-                const type = decodeUnitTypeSelection(value)
-                if (!type) return
+            <NestedSelect
+              size="sm"
+              value={unit.type}
+              groupId={unit.typeCategory}
+              aria-label="Tipo"
+              placeholder="Seleccionar tipo"
+              triggerClassName={structureUnitSelectTriggerClassName}
+              itemClassName={structureUnitSelectItemClassName}
+              groups={STRUCTURE_UNIT_TYPE_GROUPS.map((group) => ({
+                id: group.id,
+                label: group.label,
+                options: group.types.map((type) => ({
+                  value: type,
+                  label: type,
+                  allowCustomInput: type === "Otro",
+                })),
+              }))}
+              onValueChange={(type, groupId) =>
                 onUpdateUnit({
                   type,
+                  typeCategory: isUnitTypeGroupId(groupId)
+                    ? groupId
+                    : unit.typeCategory,
                   roomCount: type === "Departamento" ? unit.roomCount : "",
                   officeSize: type === "Oficina" ? unit.officeSize : "",
                 })
-              }}
-            >
-              <SelectTrigger
-                size="sm"
-                aria-label="Tipo"
-                className={structureUnitSelectTriggerClassName}
-              >
-                <SelectValue placeholder="Seleccionar tipo">{unit.type}</SelectValue>
-              </SelectTrigger>
-              <SelectContent position="popper">
-                {STRUCTURE_UNIT_TYPE_GROUPS.map((group) => (
-                  <SelectGroup key={group.id}>
-                    <SelectLabel className="px-2 py-1 text-[11px] font-medium tracking-[-0.36px] text-[#777b84]">
-                      {group.label}
-                    </SelectLabel>
-                    {group.types.map((type) => (
-                      <SelectItem
-                        key={encodeUnitTypeSelection(group.id, type)}
-                        value={encodeUnitTypeSelection(group.id, type)}
-                        className={structureUnitSelectItemClassName}
-                      >
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                ))}
-              </SelectContent>
-            </Select>
+              }
+            />
           </div>
 
           <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.compact)}>
@@ -800,11 +790,14 @@ function StructureUnitRow({
             </div>
             <Input
               id={`unit-m2-${unit.id}`}
-              inputMode="numeric"
-              placeholder="Ej. 45"
+              inputMode="decimal"
+              placeholder="Ej. 45,50"
               value={unit.squareMeters}
               onChange={(e) =>
                 onUpdateUnit({ squareMeters: normalizeTotalSurfaceInput(e.target.value) })
+              }
+              onBlur={() =>
+                onUpdateUnit({ squareMeters: finalizeTotalSurfaceInput(unit.squareMeters) })
               }
               className={cn(
                 structureUnitInputClassName,

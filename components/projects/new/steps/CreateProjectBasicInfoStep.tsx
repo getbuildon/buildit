@@ -27,7 +27,10 @@ import {
   parseTotalSurfaceM2,
   scrollToStructureSurfaceLimitBanner,
 } from "@/lib/projects/structureSurfaceLimits"
-import { normalizeTotalSurfaceInput } from "@/lib/projects/totalSurfaceInput"
+import {
+  finalizeTotalSurfaceInput,
+  normalizeTotalSurfaceInput,
+} from "@/lib/projects/totalSurfaceInput"
 import { getUserCompanies } from "@/lib/company/getCompanies"
 import { cn } from "@/lib/utils"
 
@@ -120,10 +123,13 @@ export function CreateProjectBasicInfoStep({
           <Input
             id="project-total-surface"
             name="project-total-surface"
-            inputMode="numeric"
-            placeholder="Ej: 2.000"
+            inputMode="decimal"
+            placeholder="Ej: 2.000,50"
             value={draft.totalSurface}
             onChange={(e) => onChange({ totalSurface: normalizeTotalSurfaceInput(e.target.value) })}
+            onBlur={() =>
+              onChange({ totalSurface: finalizeTotalSurfaceInput(draft.totalSurface) })
+            }
             className={cn(
               createProjectInputClassName,
               totalSurfaceOverPlan && createProjectFieldErrorInputClassName,

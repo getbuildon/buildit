@@ -1,6 +1,7 @@
 import {
   STRUCTURE_UNIT_TYPES,
   type StructureUnitType,
+  type StructureUnitTypeGroupId,
 } from "@/lib/projects/unitTypes"
 import type { InitialWorkTaskStatus } from "@/lib/projects/initialWorkStatus"
 
@@ -17,7 +18,8 @@ export type UnitRenderImageDraft = {
 export type StructureUnitDraft = {
   id: string
   code: string
-  type: StructureUnitType
+  type: StructureUnitType | string
+  typeCategory: StructureUnitTypeGroupId
   squareMeters: string
   roomCount: string
   officeSize: string
@@ -151,6 +153,7 @@ export function createDefaultUnit(): StructureUnitDraft {
     id: newId("unit"),
     code: "",
     type: "Departamento",
+    typeCategory: "unidad-funcional",
     squareMeters: "",
     roomCount: "",
     officeSize: "",

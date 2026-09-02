@@ -67,7 +67,10 @@ import {
   parseTotalSurfaceM2,
   scrollToStructureSurfaceLimitBanner,
 } from "@/lib/projects/structureSurfaceLimits"
-import { normalizeTotalSurfaceInput } from "@/lib/projects/totalSurfaceInput"
+import {
+  finalizeTotalSurfaceInput,
+  normalizeTotalSurfaceInput,
+} from "@/lib/projects/totalSurfaceInput"
 import { cn } from "@/lib/utils"
 import { AnimatedCollapsible, ANIMATED_COLLAPSE_DURATION_MS } from "@/components/ui/animated-collapsible"
 import {
@@ -693,6 +696,7 @@ export function ConfiguracionView({
           code: u.code.trim(),
           name,
           unit_type: u.type,
+          unit_category: u.typeCategory,
           room_count,
           area_m2: parseTotalSurfaceM2(u.squareMeters),
         }
@@ -1062,11 +1066,16 @@ export function ConfiguracionView({
             <div className="flex flex-col gap-1.5">
               <FieldLabel>Superficie total</FieldLabel>
               <Input
-                placeholder="Ej: 2.000"
-                inputMode="numeric"
+                placeholder="Ej: 2.000,50"
+                inputMode="decimal"
                 value={totalSurface}
                 onChange={(e) => {
                   const nextValue = normalizeTotalSurfaceInput(e.target.value)
+                  setTotalSurface(nextValue)
+                  updateDraft({ totalSurface: nextValue })
+                }}
+                onBlur={() => {
+                  const nextValue = finalizeTotalSurfaceInput(totalSurface)
                   setTotalSurface(nextValue)
                   updateDraft({ totalSurface: nextValue })
                 }}

@@ -10,6 +10,7 @@ import {
 import {
   dbFieldsToUnitDraft,
   normalizeUnitType,
+  resolveUnitTypeCategory,
 } from "@/lib/projects/unitTypes"
 import { formatTotalSurfaceFromNumber } from "@/lib/projects/totalSurfaceInput"
 
@@ -152,6 +153,7 @@ type UnitData = {
   floor_id: string
   code?: string | null
   unit_type: string | null
+  unit_category?: string | null
   name: string | null
   area_m2: number | null
   rooms: number | null
@@ -196,13 +198,19 @@ export function buildConfigDraftFromProjectData(input: {
             .map(
               (unit): StructureUnitDraft => {
                 const normalizedType =
-                  normalizeUnitType(unit.unit_type) ?? "Departamento"
+                  normalizeUnitType(unit.unit_type) ??
+                  unit.unit_type?.trim() ??
+                  "Departamento"
                 const variants = dbFieldsToUnitDraft(unit)
 
                 return {
                   id: unit.id,
                   code: unit.code || "",
                   type: normalizedType,
+                  typeCategory: resolveUnitTypeCategory(
+                    normalizedType,
+                    unit.unit_category,
+                  ),
                   squareMeters: formatTotalSurfaceFromNumber(unit.area_m2),
                   roomCount: variants.roomCount,
                   officeSize: variants.officeSize,

@@ -4,29 +4,20 @@ import { useEffect, useState } from "react"
 import { Plus, Trash2, UserPlus, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { TeamRoleSelect } from "@/components/team/TeamRoleSelect"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { getCompanyProjectMembers } from "@/app/projects/new/actions"
 import {
   createTeamMemberDraft,
   getTeamRoleDisplay,
   teamMemberFullName,
-  USER_TYPE_ROLES,
   type AvailableTeamMember,
   type CreateProjectDraft,
-  type ProjectTeamRole,
-  type ProjectUserType,
   type TeamMemberDraft,
 } from "@/lib/projects/createProjectDraft"
 import {
+  decodeTeamRoleSelection,
   getProjectUserTypeDisplayLabel,
-  PROJECT_TEAM_SELECTABLE_USER_TYPES,
 } from "@/lib/projects/projectUserTypeDisplay"
 
 type CreateProjectTeamStepProps = {
@@ -42,42 +33,7 @@ const teamInputClassName =
 const teamInputStyle = { borderColor: "#edeef0" } as const
 
 const teamSelectTriggerClassName =
-  "h-[44px] rounded-[10px] border-[#e2e8f0] bg-white text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none focus-visible:border-[#ff7433] focus-visible:ring-0 data-[placeholder]:text-[#777b84]"
-
-function TeamSelect({
-  id,
-  value,
-  placeholder,
-  options,
-  disabled,
-  onChange,
-}: {
-  id: string
-  value: string
-  placeholder: string
-  options: readonly string[]
-  disabled?: boolean
-  onChange: (value: string) => void
-}) {
-  return (
-    <Select
-      value={value || undefined}
-      onValueChange={onChange}
-      disabled={disabled}
-    >
-      <SelectTrigger id={id} aria-label={placeholder} className={teamSelectTriggerClassName}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent position="popper">
-        {options.map((option) => (
-          <SelectItem key={option} value={option}>
-            {option}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
+  "h-[44px] w-full rounded-[10px] border-[#e2e8f0] bg-white text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none focus-visible:border-[#ff7433] focus-visible:ring-0 data-[placeholder]:text-[#777b84]"
 
 export function CreateProjectTeamStep({
   draft,
@@ -85,8 +41,7 @@ export function CreateProjectTeamStep({
 }: CreateProjectTeamStepProps) {
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
-  const [userType, setUserType] = useState<ProjectUserType | "">("")
-  const [role, setRole] = useState<ProjectTeamRole | "">("")
+  const [roleSelection, setRoleSelection] = useState("")
   const [email, setEmail] = useState("")
   const [formError, setFormError] = useState("")
   const [companyMembers, setCompanyMembers] = useState<AvailableTeamMember[]>([])
@@ -117,11 +72,8 @@ export function CreateProjectTeamStep({
       setFormError("Ingresá el apellido.")
       return
     }
-    if (!userType) {
-      setFormError("Seleccioná el tipo de usuario.")
-      return
-    }
-    if (!role) {
+    const selectedRole = decodeTeamRoleSelection(roleSelection)
+    if (!selectedRole) {
       setFormError("Seleccioná el rol.")
       return
     }
@@ -136,13 +88,18 @@ export function CreateProjectTeamStep({
 
     setTeamMembers([
       ...draft.teamMembers,
-      createTeamMemberDraft(trimmedFirst, trimmedLast, trimmedEmail, userType, role),
+      createTeamMemberDraft(
+        trimmedFirst,
+        trimmedLast,
+        trimmedEmail,
+        selectedRole.userType,
+        selectedRole.role,
+      ),
     ])
     setFirstName("")
     setLastName("")
     setEmail("")
-    setUserType("")
-    setRole("")
+    setRoleSelection("")
     setFormError("")
   }
 
@@ -191,7 +148,7 @@ export function CreateProjectTeamStep({
           className="flex flex-col gap-3 rounded-[10px] border p-4"
           style={{ backgroundColor: "#fefcfb", borderColor: "#fff6f1" }}
         >
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <div className="flex flex-col gap-1">
               <label htmlFor="member-first-name" className="text-[12px] leading-4 text-[#43484e]">
                 Nombre *
@@ -225,33 +182,16 @@ export function CreateProjectTeamStep({
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="member-user-type" className="text-[12px] leading-4 text-[#43484e]">
-                Tipo de usuario *
-              </label>
-              <TeamSelect
-                id="member-user-type"
-                value={userType}
-                placeholder="Tipo de usuario"
-                options={PROJECT_TEAM_SELECTABLE_USER_TYPES}
-                onChange={(value) => {
-                  setUserType(value as ProjectUserType)
-                  setRole("")
-                  if (formError) setFormError("")
-                }}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
               <label htmlFor="member-role" className="text-[12px] leading-4 text-[#43484e]">
                 Rol *
               </label>
-              <TeamSelect
+              <TeamRoleSelect
                 id="member-role"
-                value={role}
+                value={roleSelection}
                 placeholder="Rol"
-                options={userType ? USER_TYPE_ROLES[userType] : []}
-                disabled={!userType}
+                triggerClassName={teamSelectTriggerClassName}
                 onChange={(value) => {
-                  setRole(value as ProjectTeamRole)
+                  setRoleSelection(value)
                   if (formError) setFormError("")
                 }}
               />
