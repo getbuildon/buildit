@@ -136,7 +136,7 @@ export function ProjectMobileHeader({
             aria-expanded={menuOpen}
             aria-controls="project-mobile-nav"
             aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
-            onClick={() => setMenuOpen((open) => !open)}
+            onClick={() => setMenuOpen(!menuOpen)}
           >
             {menuOpen ? (
               <X className="size-6 text-[#272a2d]" strokeWidth={2} />
