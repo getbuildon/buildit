@@ -113,19 +113,15 @@ export function normalizeUnitType(
 
 export function getUnitVariantField(
   type: StructureUnitType | string | null | undefined,
-): UnitVariantField | null {
-  const normalized = normalizeUnitType(type)
-  if (normalized === "Departamento") return "roomCount"
-  if (normalized === "Oficina") return "officeSize"
-  return null
+): UnitVariantField {
+  if (normalizeUnitType(type) === "Departamento") return "roomCount"
+  return "officeSize"
 }
 
 export function getUnitVariantFieldLabel(
   type: StructureUnitType | string | null | undefined,
 ): string {
-  const field = getUnitVariantField(type)
-  if (field === "officeSize") return "Tamaño"
-  return "Ambientes"
+  return getUnitVariantField(type) === "roomCount" ? "Ambientes" : "Tamaño"
 }
 
 export function isUnitVariantFieldEnabled(
@@ -171,15 +167,11 @@ export function unitTypeToDbFields(unit: {
     }
   }
 
-  if (unit.type === "Oficina") {
-    const size = unit.officeSize.trim()
-    return {
-      room_count: null,
-      name: size || null,
-    }
+  const size = unit.officeSize.trim()
+  return {
+    room_count: null,
+    name: size || null,
   }
-
-  return { room_count: null, name: null }
 }
 
 export function dbFieldsToUnitDraft(input: {
@@ -189,13 +181,9 @@ export function dbFieldsToUnitDraft(input: {
 }): { roomCount: string; officeSize: string } {
   const type = normalizeUnitType(input.unit_type)
 
-  if (type === "Oficina") {
-    return { roomCount: "", officeSize: input.name?.trim() ?? "" }
-  }
-
   if (type === "Departamento") {
     return { roomCount: input.rooms?.toString() ?? "", officeSize: "" }
   }
 
-  return { roomCount: "", officeSize: "" }
+  return { roomCount: "", officeSize: input.name?.trim() ?? "" }
 }

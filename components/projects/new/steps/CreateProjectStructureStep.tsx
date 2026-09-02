@@ -742,7 +742,7 @@ function StructureUnitRow({
                     ? groupId
                     : unit.typeCategory,
                   roomCount: type === "Departamento" ? unit.roomCount : "",
-                  officeSize: type === "Oficina" ? unit.officeSize : "",
+                  officeSize: type === "Departamento" ? "" : unit.officeSize,
                 })
               }
             />
