@@ -22,24 +22,36 @@ export function revokePortalNewsPreview(draft: PortalNewsImageDraft | null) {
   if (draft?.previewUrl) URL.revokeObjectURL(draft.previewUrl)
 }
 
+const LIGHT_COMPRESSION_SKIP_BYTES = 800 * 1024
+
 export async function compressPortalNewsImage(file: File): Promise<File> {
   if (file.size > MAX_PORTAL_NEWS_SOURCE_BYTES) {
     throw new Error("La imagen supera el límite de 10 MB.")
   }
 
-  if (file.size <= MAX_PORTAL_NEWS_IMAGE_BYTES / 2) {
+  if (file.size <= LIGHT_COMPRESSION_SKIP_BYTES) {
     return file
   }
 
-  const compressed = await imageCompression(file, PORTAL_NEWS_IMAGE_COMPRESSION)
+  try {
+    const compressed = await imageCompression(file, PORTAL_NEWS_IMAGE_COMPRESSION)
 
-  if (compressed.size > MAX_PORTAL_NEWS_IMAGE_BYTES) {
+    if (compressed.size > MAX_PORTAL_NEWS_IMAGE_BYTES) {
+      throw new Error(
+        `La imagen "${file.name}" sigue siendo muy pesada después de comprimirla. Probá con otra foto.`,
+      )
+    }
+
+    return compressed
+  } catch (caught) {
+    if (caught instanceof Error && caught.message.includes("sigue siendo muy pesada")) {
+      throw caught
+    }
+
     throw new Error(
-      `La imagen "${file.name}" sigue siendo muy pesada después de comprimirla. Probá con otra foto.`,
+      "No se pudo procesar esta imagen. Probá con un JPG o PNG de hasta 10 MB.",
     )
   }
-
-  return compressed
 }
 
 export async function uploadPortalNewsImage(
@@ -66,5 +78,5 @@ export async function uploadPortalNewsImage(
     .from(PROJECT_PORTAL_NEWS_BUCKET)
     .getPublicUrl(storagePath)
 
-  return { ok: true, publicUrl: publicUrlData.publicUrl }
+  return { ok: true, publicUrl: `${publicUrlData.publicUrl}?t=${Date.now()}` }
 }

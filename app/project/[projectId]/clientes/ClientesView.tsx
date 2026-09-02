@@ -5,9 +5,11 @@ import { useEffect, useMemo, useState, type ReactNode } from "react"
 import {
   ChevronDown,
   Clock,
+  Link2,
   Mail,
   Phone,
   Plus,
+  RefreshCw,
   SquarePen,
   Trash2,
   X,
@@ -22,6 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { HoverTooltip } from "@/components/ui/hover-tooltip"
 import { Spinner } from "@/components/ui/spinner"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { cn } from "@/lib/utils"
@@ -30,8 +33,10 @@ import { projectQueryKeys } from "@/lib/project/projectQueryKeys"
 import { CLIENTES_LAYOUT, FORM_MODAL_DIALOG } from "@/lib/project/designTokens"
 import {
   addProjectClientInvitation,
+  copyClientInvitationLink,
   getProjectClientSeatSummary,
   removeProjectClient,
+  resendClientInvitation,
   revokeClientInvitation,
   updateProjectClient,
   updateProjectClientInvitation,
@@ -570,25 +575,29 @@ function UnitsSummary({ units }: { units: ProjectClient["units"] }) {
 
 function RowActionButton({
   label,
+  tooltip,
   onClick,
   disabled,
   children,
 }: {
   label: string
+  tooltip?: string
   onClick: () => void
   disabled?: boolean
   children: ReactNode
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="inline-flex size-4 items-center justify-center text-[#777b84] disabled:cursor-not-allowed disabled:opacity-40 enabled:transition-opacity enabled:hover:opacity-80"
-      aria-label={label}
-    >
-      {children}
-    </button>
+    <HoverTooltip text={tooltip ?? label}>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className="inline-flex size-4 items-center justify-center text-[#777b84] disabled:cursor-not-allowed disabled:opacity-40 enabled:transition-opacity enabled:hover:opacity-80"
+        aria-label={label}
+      >
+        {children}
+      </button>
+    </HoverTooltip>
   )
 }
 
@@ -607,6 +616,7 @@ function ClientRow({
     <>
       <RowActionButton
         label={`Editar a ${client.firstName} ${client.lastName}`}
+        tooltip="Editar"
         disabled={!canManage}
         onClick={onEdit}
       >
@@ -614,6 +624,7 @@ function ClientRow({
       </RowActionButton>
       <RowActionButton
         label={`Eliminar a ${client.firstName} ${client.lastName}`}
+        tooltip="Eliminar"
         disabled={!canManage}
         onClick={onRemove}
       >
@@ -670,26 +681,50 @@ function ClientRow({
 function PendingClientRow({
   invitation,
   canManage,
+  busy,
+  onCopyLink,
+  onResend,
   onEdit,
   onRevoke,
 }: {
   invitation: ProjectClientInvitation
   canManage: boolean
+  busy: boolean
+  onCopyLink: () => void
+  onResend: () => void
   onEdit: () => void
   onRevoke: () => void
 }) {
   const actions = (
     <>
       <RowActionButton
+        label={`Ver link de ${invitation.firstName} ${invitation.lastName}`}
+        tooltip="Ver link"
+        disabled={!canManage || busy}
+        onClick={onCopyLink}
+      >
+        <Link2 className="size-4" aria-hidden />
+      </RowActionButton>
+      <RowActionButton
+        label={`Reenviar confirmación a ${invitation.firstName} ${invitation.lastName}`}
+        tooltip="Reenviar confirmación"
+        disabled={!canManage || busy}
+        onClick={onResend}
+      >
+        <RefreshCw className="size-4" aria-hidden />
+      </RowActionButton>
+      <RowActionButton
         label={`Editar invitación de ${invitation.firstName} ${invitation.lastName}`}
-        disabled={!canManage}
+        tooltip="Editar"
+        disabled={!canManage || busy}
         onClick={onEdit}
       >
         <SquarePen className="size-4" aria-hidden />
       </RowActionButton>
       <RowActionButton
         label={`Revocar invitación de ${invitation.firstName} ${invitation.lastName}`}
-        disabled={!canManage}
+        tooltip="Revocar"
+        disabled={!canManage || busy}
         onClick={onRevoke}
       >
         <Trash2 className="size-4" aria-hidden />
@@ -770,6 +805,7 @@ export function ClientesView({ projectId, initialData }: Props) {
   const [isRemoving, setIsRemoving] = useState(false)
   const [formError, setFormError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null)
   const canManageClients = useProjectPermission("manageClients")
 
   useEffect(() => {
@@ -930,13 +966,13 @@ export function ClientesView({ projectId, initialData }: Props) {
       return
     }
 
-    if (result.kind === "client_added") {
-      setClients((prev) => [...prev, result.client])
-      toast.success(`${result.client.firstName} ${result.client.lastName} fue agregado como cliente.`)
-    } else {
-      setPendingInvitations((prev) => [...prev, result.invitation])
-      toast.success(`Invitación enviada a ${result.invitation.email}.`)
-    }
+    setPendingInvitations((prev) => {
+      const withoutCurrent = prev.filter(
+        (item) => item.invitationId !== result.invitation.invitationId,
+      )
+      return [...withoutCurrent, result.invitation]
+    })
+    toast.success(`Invitación enviada a ${result.invitation.email}.`)
 
     resetAddForm()
     void refreshSeatSummary()
@@ -966,6 +1002,37 @@ export function ClientesView({ projectId, initialData }: Props) {
     }
 
     toast.error(result.error)
+  }
+
+  const copyInvitationUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success("Link copiado. El enlace anterior deja de funcionar.")
+    } catch {
+      toast.error("No se pudo copiar el link.")
+    }
+  }
+
+  const handleCopyInvitationLink = async (invitationId: string) => {
+    setPendingActionId(invitationId)
+    const result = await copyClientInvitationLink(invitationId, projectId)
+    setPendingActionId(null)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    await copyInvitationUrl(result.url)
+  }
+
+  const handleResendInvitation = async (invitationId: string) => {
+    setPendingActionId(invitationId)
+    const result = await resendClientInvitation(invitationId, projectId)
+    setPendingActionId(null)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    toast.success("Confirmación reenviada. El enlace anterior deja de funcionar.")
   }
 
   const handleRevokeInvitation = async (invitationId: string) => {
@@ -1218,6 +1285,9 @@ export function ClientesView({ projectId, initialData }: Props) {
                 key={invitation.invitationId}
                 invitation={invitation}
                 canManage={canManageClients}
+                busy={pendingActionId === invitation.invitationId}
+                onCopyLink={() => void handleCopyInvitationLink(invitation.invitationId)}
+                onResend={() => void handleResendInvitation(invitation.invitationId)}
                 onEdit={() =>
                   setEditingTarget({
                     type: "invitation",

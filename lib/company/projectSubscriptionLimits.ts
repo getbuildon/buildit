@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { USER_TYPE_SLUG, PROJECT_ROLE_SLUG } from "@/lib/projects/catalogSlugs"
-import { findProfileByEmail } from "@/lib/invitations/projectInvitationService"
+import { findProfileByEmail } from "@/lib/invitations/findProfileByEmail"
 import { createAdminClient } from "@/utils/supabase/admin"
 import type { ProjectUserType } from "@/lib/projects/createProjectDraft"
 import type { ProjectSeatBucket, ProjectSeatLimits, ProjectSeatUsage, TeamSeatSummary, ClientSeatSummary, ProjectPlanSurfaceLimit } from "@/lib/company/subscriptionTypes"

@@ -11,12 +11,11 @@ import { getUnitPillLabel } from "@/lib/projects/floorLabels"
 import { loadProjectCatalogIds } from "@/lib/projects/projectCatalogServer"
 import { PROJECT_ROLE_SLUG } from "@/lib/projects/catalogSlugs"
 import {
-  addExistingUserToProject,
+  assertPendingInvitationInProject,
   buildInvitationInsertExtras,
   dispatchProjectInvitation,
   findActiveClientUserIdInProject,
   findPendingProjectInvitationByEmail,
-  findProfileByEmail,
 } from "@/lib/invitations/projectInvitationService"
 
 export type ProjectClientUnit = {
@@ -461,7 +460,6 @@ export async function addProjectClientInvitation(
   },
 ): Promise<
   | { ok: true; kind: "invitation"; invitation: ProjectClientInvitation }
-  | { ok: true; kind: "client_added"; client: ProjectClient }
   | { ok: false; error: string }
 > {
   const permission = await checkProjectPermission(projectId, "manageClients")
@@ -473,10 +471,27 @@ export async function addProjectClientInvitation(
 
   const normalizedEmail = data.email.trim().toLowerCase()
 
+  const existingClientUserId = await findActiveClientUserIdInProject(
+    admin,
+    projectId,
+    normalizedEmail,
+  )
+  if (existingClientUserId) {
+    return { ok: false, error: "Ese correo ya está registrado como cliente." }
+  }
+
+  const pendingInvitation = await findPendingProjectInvitationByEmail(
+    admin,
+    projectId,
+    normalizedEmail,
+  )
+
   const unitValidation = await validateUnitAssignment(
     admin,
     projectId,
     data.unitIds,
+    undefined,
+    pendingInvitation?.id,
   )
   if (!unitValidation.ok) return unitValidation
 
@@ -494,55 +509,48 @@ export async function addProjectClientInvitation(
     return { ok: false, error: "No se pudo validar los límites del plan." }
   }
 
-  const existingClientUserId = await findActiveClientUserIdInProject(
-    admin,
-    projectId,
-    normalizedEmail,
-  )
-  if (existingClientUserId) {
-    return { ok: false, error: "Ese correo ya está registrado como cliente." }
-  }
-
-  const pendingInvitation = await findPendingProjectInvitationByEmail(
-    admin,
-    projectId,
-    normalizedEmail,
-  )
-  if (pendingInvitation && !pendingInvitation.isClient) {
-    return {
-      ok: false,
-      error:
-        "Ese correo tiene una invitación pendiente al equipo. Revocala o esperá a que la acepte antes de agregarlo como cliente.",
-    }
-  }
-
   const roleId = catalog.roleIds.Cliente
   const userTypeId = catalog.userTypeIds.Cliente
 
-  const existingProfile = await findProfileByEmail(admin, normalizedEmail)
-  if (existingProfile) {
-    const addResult = await addExistingUserToProject(admin, {
-      projectId,
-      userId: existingProfile.id,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      phone: data.phone,
-      userTypeId,
-      roleId,
-      isClient: true,
-      unitIds: data.unitIds,
+  if (pendingInvitation) {
+    const { error: updateError } = await admin
+      .from("project_invitations")
+      .update({
+        first_name: data.firstName.trim(),
+        last_name: data.lastName.trim(),
+        phone: data.phone?.trim() || null,
+        user_type_id: userTypeId,
+        role_id: roleId,
+        invited_by: user.id,
+      })
+      .eq("id", pendingInvitation.id)
+      .eq("project_id", projectId)
+      .eq("status", "pending")
+
+    if (updateError) return { ok: false, error: updateError.message }
+
+    const unitsResult = await replaceInvitationUnits(
+      admin,
+      pendingInvitation.id,
+      data.unitIds,
+    )
+    if (!unitsResult.ok) return unitsResult
+
+    const emailResult = await dispatchProjectInvitation(admin, {
+      invitationId: pendingInvitation.id,
     })
-    if (!addResult.ok) return addResult
+    if (!emailResult.ok) return emailResult
 
     const refreshed = await getProjectClientsData(projectId)
-    const created = refreshed.clients.find((client) => client.userId === existingProfile.id)
-
+    const created = refreshed.pendingInvitations.find(
+      (item) => item.invitationId === pendingInvitation.id,
+    )
     if (!created) {
-      return { ok: false, error: "No se pudo cargar el cliente agregado." }
+      return { ok: false, error: "No se pudo cargar la invitación." }
     }
 
     revalidateProjectPath(projectId, "clientes")
-    return { ok: true, kind: "client_added", client: created }
+    return { ok: true, kind: "invitation", invitation: created }
   }
 
   const { data: projectRow } = await admin
@@ -591,9 +599,6 @@ export async function addProjectClientInvitation(
 
   const emailResult = await dispatchProjectInvitation(admin, {
     invitationId: invitation.id,
-    email: invitation.email,
-    firstName: invitation.first_name,
-    lastName: invitation.last_name,
   })
 
   if (!emailResult.ok) {
@@ -743,6 +748,41 @@ export async function updateProjectClient(
 
   revalidateProjectPath(projectId, "clientes")
   return { ok: true, client: updated }
+}
+
+export async function copyClientInvitationLink(
+  invitationId: string,
+  projectId: string,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const permission = await checkProjectPermission(projectId, "manageClients")
+  if (!permission.ok) return permission
+
+  await requireAuthenticatedUser()
+  const admin = createAdminClient()
+  const pending = await assertPendingInvitationInProject(admin, invitationId, projectId)
+  if (!pending.ok) return pending
+
+  return dispatchProjectInvitation(admin, {
+    invitationId,
+    sendEmail: false,
+  })
+}
+
+export async function resendClientInvitation(
+  invitationId: string,
+  projectId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const permission = await checkProjectPermission(projectId, "manageClients")
+  if (!permission.ok) return permission
+
+  await requireAuthenticatedUser()
+  const admin = createAdminClient()
+  const pending = await assertPendingInvitationInProject(admin, invitationId, projectId)
+  if (!pending.ok) return pending
+
+  const result = await dispatchProjectInvitation(admin, { invitationId })
+  if (!result.ok) return result
+  return { ok: true }
 }
 
 export async function revokeClientInvitation(

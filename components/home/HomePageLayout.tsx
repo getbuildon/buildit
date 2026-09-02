@@ -3,7 +3,8 @@ import { HOME_GRADIENT, HOME_LAYOUT } from "@/lib/home/designTokens"
 import { cn } from "@/lib/utils"
 
 type HomePageLayoutProps = {
-  topBar?: ReactNode
+  header?: ReactNode
+  footer?: ReactNode
   children: ReactNode
   ariaBusy?: boolean
   ariaLabel?: string
@@ -11,7 +12,8 @@ type HomePageLayoutProps = {
 }
 
 export function HomePageLayout({
-  topBar,
+  header,
+  footer,
   children,
   ariaBusy,
   ariaLabel,
@@ -24,12 +26,13 @@ export function HomePageLayout({
       className={cn(HOME_LAYOUT.shell, className)}
       style={{ backgroundImage: HOME_GRADIENT }}
     >
-      {topBar ? (
-        <div className={HOME_LAYOUT.topBarWrap}>
-          <div className={HOME_LAYOUT.topBar}>{topBar}</div>
-        </div>
+      {header ? (
+        <header className={HOME_LAYOUT.pageHeader}>
+          <div className={HOME_LAYOUT.pageHeaderInner}>{header}</div>
+        </header>
       ) : null}
-      <div className={HOME_LAYOUT.content}>{children}</div>
+      <main className={HOME_LAYOUT.content}>{children}</main>
+      {footer}
     </div>
   )
 }

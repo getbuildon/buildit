@@ -60,6 +60,11 @@ function HomePage() {
 
   const shell = shellQuery.data
   const displayName = shell?.displayName || user?.email?.split("@")[0] || ""
+  const greetingName =
+    shell?.firstName?.trim() ||
+    displayName.split(/\s+/)[0] ||
+    user?.email?.split("@")[0] ||
+    ""
 
   if (shellQuery.isPending) {
     return <HomePageSkeleton />
@@ -67,7 +72,7 @@ function HomePage() {
 
   return (
     <HomePageLayout
-      topBar={
+      header={
         <>
           {shell?.hasClientAccess ? <HomePortalClientesButton /> : null}
           {shell?.primaryCompany ? (
@@ -85,9 +90,14 @@ function HomePage() {
           />
         </>
       }
+      footer={
+        shell?.canSeeBackoffice ? (
+          <BackofficeAccessCallout canAccess />
+        ) : null
+      }
     >
-      <header className={HOME_LAYOUT.header}>
-        <h1 className={HOME_LAYOUT.greeting}>¡Bienvenido, {displayName}! 👋</h1>
+      <div className={HOME_LAYOUT.greetingWrap}>
+        <h1 className={HOME_LAYOUT.greeting}>¡Bienvenido, {greetingName}! 👋</h1>
         {projectsQuery.isPending ? null : projects.length === 0 ? (
           <p className={HOME_LAYOUT.question} style={{ color: HOME_COLORS.subtitle }}>
             {shell?.canCreateProjects
@@ -95,7 +105,7 @@ function HomePage() {
               : "No tenés proyectos asignados."}
           </p>
         ) : null}
-      </header>
+      </div>
 
       <div className={HOME_LAYOUT.projectGrid}>
         {projectsQuery.isPending
@@ -115,8 +125,6 @@ function HomePage() {
           No pudimos cargar el progreso de las obras. Probá de nuevo en un momento.
         </p>
       ) : null}
-
-      {shell ? <BackofficeAccessCallout canAccess={shell.canSeeBackoffice} /> : null}
     </HomePageLayout>
   )
 }

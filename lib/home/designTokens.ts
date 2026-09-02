@@ -36,24 +36,28 @@ export const HOME_TYPE = {
 /** Layout responsive compartido entre home y skeleton. */
 export const HOME_LAYOUT = {
   shell:
-    "relative flex min-h-[100dvh] flex-col items-center px-4 pb-10 pt-4 text-white sm:px-6 sm:pt-6 lg:px-10 lg:pb-0 lg:pt-0",
-  topBarWrap:
-    "flex w-full max-w-[1080px] shrink-0 justify-center lg:absolute lg:right-10 lg:top-6 lg:z-10 lg:w-auto lg:max-w-none lg:justify-end xl:right-16",
-  topBar:
-    "flex w-full flex-wrap items-center justify-end gap-6",
+    "relative flex min-h-[100dvh] flex-col text-white",
+  pageHeader:
+    "sticky top-0 z-20 w-full shrink-0 bg-transparent backdrop-blur-md",
+  pageHeaderInner:
+    "mx-auto flex w-full max-w-[1280px] flex-nowrap items-center justify-end gap-2 px-3 py-3 sm:gap-6 sm:px-6 sm:py-4 lg:px-10",
   topPillButton:
-    "inline-flex items-center justify-center rounded-[10px] bg-[#321a10] px-4 py-2 text-center text-[14px] font-medium leading-[1.4] text-white transition-colors hover:bg-[#3d2114] disabled:cursor-not-allowed disabled:opacity-70",
+    "inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[10px] bg-[#321a10] px-2.5 py-1.5 text-center text-[12px] font-medium leading-[1.4] text-white transition-colors hover:bg-[#3d2114] disabled:cursor-not-allowed disabled:opacity-70 sm:px-4 sm:py-2 sm:text-[14px]",
   content:
-    "flex w-full max-w-[1080px] flex-1 flex-col items-center justify-center py-8 sm:py-10 lg:min-h-[100dvh] lg:flex-none lg:py-0",
-  header:
+    "mx-auto flex w-full max-w-[1280px] flex-1 flex-col items-center justify-center px-4 py-8 sm:px-6 sm:py-10 lg:px-10",
+  greetingWrap:
     "flex w-full max-w-[720px] flex-col items-center gap-2 px-1 text-center sm:gap-3",
   greeting:
     "font-recoleta text-[26px] font-normal leading-[1.15] text-balance sm:text-[32px] sm:leading-[1.2] md:text-[36px] md:leading-[43.2px]",
   question:
     "text-base font-normal leading-[1.4] text-balance sm:text-[18px] md:text-[20px] md:leading-7",
   projectGrid:
-    "mt-8 flex w-full flex-wrap justify-center gap-4 sm:mt-10 sm:gap-5 md:mt-12 md:gap-6",
+    "mt-8 flex w-full flex-wrap justify-center gap-4 pb-12 sm:mt-10 sm:gap-5 sm:pb-14 md:mt-12 md:gap-5 md:pb-16",
   projectCardSize: "w-full max-w-[240px] min-h-[245px] sm:w-[240px] sm:max-w-none",
+  pageFooter:
+    "sticky bottom-0 z-20 w-full shrink-0 bg-[#371f15]/90 backdrop-blur-md",
+  pageFooterInner:
+    "mx-auto flex w-full max-w-[1280px] items-center justify-center px-4 py-3 sm:px-6 sm:py-4 lg:px-10",
 } as const
 
 export const PROJECT_CARD = {

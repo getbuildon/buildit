@@ -5,8 +5,10 @@ import { useEffect, useState, type ReactNode } from "react"
 import {
   ChevronDown,
   Clock,
+  Link2,
   Mail,
   Plus,
+  RefreshCw,
   Search,
   ShieldCheck,
   SquarePen,
@@ -22,14 +24,17 @@ import {
 } from "@/components/ui/dialog"
 import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import { Input } from "@/components/ui/input"
+import { HoverTooltip } from "@/components/ui/hover-tooltip"
 import { Spinner } from "@/components/ui/spinner"
 import { useToast } from "@/components/ui/toast"
 import { invalidateProjectSection } from "@/lib/project/invalidateProjectQueries"
 import { projectQueryKeys } from "@/lib/project/projectQueryKeys"
 import {
   addTeamMember,
+  copyTeamInvitationLink,
   getProjectTeamSeatSummary,
   removeTeamMember,
+  resendTeamInvitation,
   revokeTeamInvitation,
   updateTeamMember,
   type ProjectTeamData,
@@ -304,25 +309,29 @@ function MemberEmail({ email }: { email: string }) {
 
 function RowActionButton({
   label,
+  tooltip,
   disabled,
   onClick,
   children,
 }: {
   label: string
+  tooltip?: string
   disabled?: boolean
   onClick?: () => void
   children: ReactNode
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="inline-flex size-4 items-center justify-center text-[#777b84] disabled:cursor-not-allowed disabled:opacity-40 enabled:transition-opacity enabled:hover:opacity-80"
-      aria-label={label}
-    >
-      {children}
-    </button>
+    <HoverTooltip text={tooltip ?? label}>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className="inline-flex size-4 items-center justify-center text-[#777b84] disabled:cursor-not-allowed disabled:opacity-40 enabled:transition-opacity enabled:hover:opacity-80"
+        aria-label={label}
+      >
+        {children}
+      </button>
+    </HoverTooltip>
   )
 }
 
@@ -378,6 +387,7 @@ function MemberRow({
       <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-end gap-2 md:col-start-4">
         <RowActionButton
           label={`Editar a ${member.firstName} ${member.lastName}`}
+          tooltip="Editar"
           disabled={!canEdit}
           onClick={onEdit}
         >
@@ -385,6 +395,7 @@ function MemberRow({
         </RowActionButton>
         <RowActionButton
           label={`Eliminar a ${member.firstName} ${member.lastName}`}
+          tooltip="Eliminar"
           disabled={!canRemove}
           onClick={onRemove}
         >
@@ -397,11 +408,17 @@ function MemberRow({
 
 function PendingRow({
   invitation,
-  canRevoke,
+  canManage,
+  busy,
+  onCopyLink,
+  onResend,
   onRevoke,
 }: {
   invitation: ProjectTeamInvitation
-  canRevoke: boolean
+  canManage: boolean
+  busy: boolean
+  onCopyLink: () => void
+  onResend: () => void
   onRevoke: () => void
 }) {
   return (
@@ -442,14 +459,32 @@ function PendingRow({
 
       <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-end gap-2 md:col-start-4">
         <RowActionButton
+          label={`Ver link de ${invitation.firstName} ${invitation.lastName}`}
+          tooltip="Ver link"
+          disabled={!canManage || busy}
+          onClick={onCopyLink}
+        >
+          <Link2 className="size-4" aria-hidden />
+        </RowActionButton>
+        <RowActionButton
+          label={`Reenviar confirmación a ${invitation.firstName} ${invitation.lastName}`}
+          tooltip="Reenviar confirmación"
+          disabled={!canManage || busy}
+          onClick={onResend}
+        >
+          <RefreshCw className="size-4" aria-hidden />
+        </RowActionButton>
+        <RowActionButton
           label={`Editar invitación de ${invitation.firstName} ${invitation.lastName}`}
+          tooltip="Editar"
           disabled
         >
           <SquarePen className="size-4" aria-hidden />
         </RowActionButton>
         <RowActionButton
           label={`Revocar invitación de ${invitation.firstName} ${invitation.lastName}`}
-          disabled={!canRevoke}
+          tooltip="Revocar"
+          disabled={!canManage || busy}
           onClick={onRevoke}
         >
           <Trash2 className="size-4" aria-hidden />
@@ -522,6 +557,7 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
   const [upgradeModalUserType, setUpgradeModalUserType] = useState<ProjectUserType | null>(
     null,
   )
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null)
   const canAddUsers = useProjectPermission("addUsers")
   const canEditPermissions = useProjectPermission("editPermissions")
 
@@ -580,13 +616,13 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
       return
     }
 
-    if (result.kind === "member_added") {
-      setMembers((prev) => [...prev, result.member])
-      toast.success(`${result.member.firstName} ${result.member.lastName} fue agregado al equipo.`)
-    } else {
-      setPendingInvitations((prev) => [...prev, result.invitation])
-      toast.success(`Invitación enviada a ${result.invitation.email}.`)
-    }
+    setPendingInvitations((prev) => {
+      const withoutCurrent = prev.filter(
+        (item) => item.invitationId !== result.invitation.invitationId,
+      )
+      return [...withoutCurrent, result.invitation]
+    })
+    toast.success(`Invitación enviada a ${result.invitation.email}.`)
 
     void refreshSeatSummary()
     setFirstName("")
@@ -650,6 +686,37 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
     return { ok: false as const, error: result.error }
   }
 
+  const copyInvitationUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success("Link copiado. El enlace anterior deja de funcionar.")
+    } catch {
+      toast.error("No se pudo copiar el link.")
+    }
+  }
+
+  const handleCopyInvitationLink = async (invitationId: string) => {
+    setPendingActionId(invitationId)
+    const result = await copyTeamInvitationLink(invitationId, projectId)
+    setPendingActionId(null)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    await copyInvitationUrl(result.url)
+  }
+
+  const handleResendInvitation = async (invitationId: string) => {
+    setPendingActionId(invitationId)
+    const result = await resendTeamInvitation(invitationId, projectId)
+    setPendingActionId(null)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    toast.success("Confirmación reenviada. El enlace anterior deja de funcionar.")
+  }
+
   const handleRevokeInvitation = async (invitationId: string) => {
     const result = await revokeTeamInvitation(invitationId, projectId)
     if (result.ok) {
@@ -657,7 +724,9 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
         prev.filter((i) => i.invitationId !== invitationId),
       )
       void refreshSeatSummary()
+      return
     }
+    toast.error(result.error)
   }
 
   const lowerSearch = searchQuery.toLowerCase()
@@ -890,7 +959,10 @@ export function EquipoTeamView({ projectId, initialData }: Props) {
                 <PendingRow
                   key={invitation.invitationId}
                   invitation={invitation}
-                  canRevoke={canAddUsers}
+                  canManage={canAddUsers}
+                  busy={pendingActionId === invitation.invitationId}
+                  onCopyLink={() => void handleCopyInvitationLink(invitation.invitationId)}
+                  onResend={() => void handleResendInvitation(invitation.invitationId)}
                   onRevoke={() => void handleRevokeInvitation(invitation.invitationId)}
                 />
               ))

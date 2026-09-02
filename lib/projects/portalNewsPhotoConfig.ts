@@ -7,13 +7,13 @@ export const MAX_PORTAL_NEWS_IMAGE_BYTES = 10 * 1024 * 1024
 export const MAX_PORTAL_NEWS_SOURCE_BYTES = 10 * 1024 * 1024
 
 export const PORTAL_NEWS_IMAGE_COMPRESSION = {
-  maxSizeMB: 2,
-  maxWidthOrHeight: 1600,
+  maxSizeMB: 4,
+  maxWidthOrHeight: 2560,
   useWebWorker: true,
   fileType: "image/webp" as const,
-  initialQuality: 0.85,
+  initialQuality: 0.93,
 }
 
 export function buildPortalNewsStoragePath(projectId: string, newsId: string): string {
-  return `${projectId}/news/${newsId}.webp`
+  return `${projectId}/news/${newsId}-${Date.now()}.webp`
 }

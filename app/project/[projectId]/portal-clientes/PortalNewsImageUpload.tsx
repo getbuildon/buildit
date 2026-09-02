@@ -2,7 +2,6 @@
 
 import { useId, useRef, useState } from "react"
 import { ImageIcon, Loader2, X } from "lucide-react"
-import { FieldErrorTooltip } from "@/components/ui/field-error-tooltip"
 import {
   compressPortalNewsImage,
   revokePortalNewsPreview,
@@ -43,8 +42,12 @@ export function PortalNewsImageUpload({
 
     setError(null)
 
-    if (!file.type.startsWith("image/")) {
-      setError(`"${file.name}" no es una imagen válida.`)
+    const looksLikeImage =
+      file.type.startsWith("image/") ||
+      /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name)
+
+    if (!looksLikeImage) {
+      setError(`"${file.name}" no es una imagen válida. Usá JPG, PNG o WebP.`)
       return
     }
 
@@ -124,7 +127,7 @@ export function PortalNewsImageUpload({
   return (
     <div
       className={cn(
-        "relative flex w-full shrink-0 self-stretch min-h-[122px] min-[640px]:h-full min-[640px]:w-[220px]",
+        "relative flex w-full shrink-0 flex-col self-stretch min-h-[122px] min-[640px]:h-full min-[640px]:w-[220px]",
         className,
       )}
     >
@@ -138,12 +141,6 @@ export function PortalNewsImageUpload({
         onChange={handleSelectFiles}
       />
 
-      {hasError && displayError ? (
-        <span className="pointer-events-auto absolute top-2 right-2 z-20">
-          <FieldErrorTooltip message={displayError} />
-        </span>
-      ) : null}
-
       {previewUrl ? (
         <div
           className={zoneClassName}
@@ -153,6 +150,7 @@ export function PortalNewsImageUpload({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
+            key={previewUrl}
             src={previewUrl}
             alt={previewAlt}
             className="absolute inset-0 size-full object-cover"
@@ -218,6 +216,12 @@ export function PortalNewsImageUpload({
           </p>
         </div>
       )}
+
+      {displayError ? (
+        <p className="mt-1.5 text-[12px] leading-[1.4] text-[#ce2c31]" role="alert">
+          {displayError}
+        </p>
+      ) : null}
     </div>
   )
 }

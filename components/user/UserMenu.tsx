@@ -55,13 +55,13 @@ export function UserMenu({
   const perfilHref = "/perfil"
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} className="shrink-0" style={{ position: "relative" }}>
       {/* Trigger */}
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         className={cn(
-          "flex cursor-pointer items-center gap-2 rounded-lg py-1.5 pl-1.5 pr-2.5 text-white/85 transition-colors hover:bg-white/10 hover:text-white",
+          "flex cursor-pointer items-center gap-1.5 rounded-lg py-1 pl-1 pr-1.5 text-white/85 transition-colors hover:bg-white/10 hover:text-white sm:gap-2 sm:py-1.5 sm:pl-1.5 sm:pr-2.5",
           isOpen && "bg-white/10 text-white",
         )}
       >
@@ -73,7 +73,7 @@ export function UserMenu({
           size={26}
           textClassName="text-[11px] font-semibold text-white"
         />
-        <span className="max-w-[120px] truncate text-[13px] font-medium">
+        <span className="hidden max-w-[120px] truncate text-[13px] font-medium sm:inline">
           {displayName}
         </span>
         <ChevronDown

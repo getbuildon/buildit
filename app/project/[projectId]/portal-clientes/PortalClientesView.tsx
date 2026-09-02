@@ -657,7 +657,11 @@ export function PortalClientesView({
         )
         if (!uploadResult.ok) {
           setSaving(false)
+          setNewsFieldErrors({
+            [item.id]: { image: uploadResult.error },
+          })
           setSaveError(uploadResult.error)
+          toast.error(uploadResult.error)
           return
         }
         imageUrl = uploadResult.publicUrl

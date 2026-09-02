@@ -14,6 +14,10 @@ import {
 import { validateProjectSeatAllocation } from "@/lib/company/projectSubscriptionLimits"
 import { createAdminClient } from "@/utils/supabase/admin"
 import {
+  dispatchProjectInvitation,
+  getInvitationExpiresAt,
+} from "@/lib/invitations/projectInvitationService"
+import {
   fichaFromProfileRow,
   loadFichaSnapshotsFromProfiles,
 } from "@/lib/projects/projectMemberFicha"
@@ -357,6 +361,7 @@ export async function persistProjectFromDraft(
   if (draft.teamMembers.length > 0) {
     const invitationRows = draft.teamMembers.map((member) => ({
       project_id: projectId,
+      company_id: companyId,
       email: member.email.trim().toLowerCase(),
       first_name: member.firstName.trim(),
       last_name: member.lastName.trim(),
@@ -364,14 +369,29 @@ export async function persistProjectFromDraft(
       role_id: catalog.roleIds[member.role],
       status: "pending" as const,
       invited_by: userId,
+      expires_at: getInvitationExpiresAt(),
     }))
 
-    const { error: invitationsError } = await supabase
+    const { data: createdInvitations, error: invitationsError } = await supabase
       .from("project_invitations")
       .insert(invitationRows)
+      .select("id")
 
     if (invitationsError) {
       return { ok: false, error: invitationsError.message }
+    }
+
+    for (const invitation of createdInvitations ?? []) {
+      const dispatchResult = await dispatchProjectInvitation(adminClient, {
+        invitationId: invitation.id,
+      })
+      if (!dispatchResult.ok) {
+        console.error(
+          "No se pudo enviar la invitación de la obra",
+          invitation.id,
+          dispatchResult.error,
+        )
+      }
     }
   }
 

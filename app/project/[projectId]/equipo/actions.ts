@@ -15,11 +15,11 @@ import { PROJECT_ROLE_SLUG, USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
 import type { ProjectTeamRole, ProjectUserType } from "@/lib/projects/createProjectDraft"
 import { mapTeamMemberUserType, getProjectUserTypeDisplayLabel } from "@/lib/projects/projectUserTypeDisplay"
 import {
-  addExistingUserToProject,
+  assertPendingInvitationInProject,
   buildInvitationInsertExtras,
   dispatchProjectInvitation,
-  findActiveProjectMemberUserId,
-  findProfileByEmail,
+  findActiveTeamMemberUserId,
+  findPendingProjectInvitationByEmail,
 } from "@/lib/invitations/projectInvitationService"
 
 export type ProjectTeamMember = {
@@ -172,7 +172,6 @@ export async function addTeamMember(
   },
 ): Promise<
   | { ok: true; kind: "invitation"; invitation: ProjectTeamInvitation }
-  | { ok: true; kind: "member_added"; member: ProjectTeamMember }
   | { ok: false; error: string }
 > {
   const permission = await checkProjectPermission(projectId, "addUsers")
@@ -198,13 +197,13 @@ export async function addTeamMember(
     return { ok: false, error: "No se pudo validar los límites del plan." }
   }
 
-  const activeMemberUserId = await findActiveProjectMemberUserId(
+  const activeMemberUserId = await findActiveTeamMemberUserId(
     admin,
     projectId,
     normalizedEmail,
   )
   if (activeMemberUserId) {
-    return { ok: false, error: "Ese usuario ya es miembro del proyecto." }
+    return { ok: false, error: "Ese usuario ya es miembro del equipo." }
   }
 
   const roleId = catalog.roleIds[data.role]
@@ -215,47 +214,51 @@ export async function addTeamMember(
     admin.from("user_types").select("label").eq("id", userTypeId).single(),
   ])
 
-  const existingProfile = await findProfileByEmail(admin, normalizedEmail)
-  if (existingProfile) {
-    const addResult = await addExistingUserToProject(admin, {
-      projectId,
-      userId: existingProfile.id,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      userTypeId,
-      roleId,
-      isClient: false,
-    })
-    if (!addResult.ok) return addResult
+  const invitationPayload = {
+    firstName: data.firstName.trim(),
+    lastName: data.lastName.trim(),
+    email: normalizedEmail,
+    roleLabel: roleRes.data?.label ?? "",
+    userType: data.userType,
+    userTypeLabel: getProjectUserTypeDisplayLabel(data.userType),
+  }
 
-    const { data: memberRow } = await admin
-      .from("project_members")
-      .select("id, user_id, first_name, last_name")
+  const pendingInvitation = await findPendingProjectInvitationByEmail(
+    admin,
+    projectId,
+    normalizedEmail,
+  )
+  if (pendingInvitation) {
+    const { error: updateError } = await admin
+      .from("project_invitations")
+      .update({
+        first_name: invitationPayload.firstName,
+        last_name: invitationPayload.lastName,
+        user_type_id: userTypeId,
+        role_id: roleId,
+        invited_by: user.id,
+      })
+      .eq("id", pendingInvitation.id)
       .eq("project_id", projectId)
-      .eq("user_id", existingProfile.id)
-      .eq("is_active", true)
-      .single()
+      .eq("status", "pending")
 
-    const { data: profileRow } = await admin
-      .from("profiles")
-      .select("email, avatar_url")
-      .eq("id", existingProfile.id)
-      .single()
+    if (updateError) return { ok: false, error: updateError.message }
+
+    if (pendingInvitation.isClient) {
+      await admin.from("client_invitation_units").delete().eq("invitation_id", pendingInvitation.id)
+    }
+
+    const emailResult = await dispatchProjectInvitation(admin, {
+      invitationId: pendingInvitation.id,
+    })
+    if (!emailResult.ok) return emailResult
 
     return {
       ok: true,
-      kind: "member_added",
-      member: {
-        memberId: memberRow?.id ?? existingProfile.id,
-        userId: existingProfile.id,
-        firstName: memberRow?.first_name || data.firstName.trim(),
-        lastName: memberRow?.last_name || data.lastName.trim(),
-        email: profileRow?.email ?? normalizedEmail,
-        roleLabel: roleRes.data?.label ?? data.role,
-        userType: data.userType,
-        userTypeLabel: getProjectUserTypeDisplayLabel(data.userType),
-        avatarUrl: profileRow?.avatar_url ?? null,
-        isYou: existingProfile.id === user.id,
+      kind: "invitation",
+      invitation: {
+        invitationId: pendingInvitation.id,
+        ...invitationPayload,
       },
     }
   }
@@ -274,8 +277,8 @@ export async function addTeamMember(
       project_id: projectId,
       company_id: projectRow?.company_id ?? null,
       email: normalizedEmail,
-      first_name: data.firstName.trim(),
-      last_name: data.lastName.trim(),
+      first_name: invitationPayload.firstName,
+      last_name: invitationPayload.lastName,
       user_type_id: userTypeId,
       role_id: roleId,
       status: "pending",
@@ -295,9 +298,6 @@ export async function addTeamMember(
 
   const emailResult = await dispatchProjectInvitation(admin, {
     invitationId: invitation.id,
-    email: invitation.email,
-    firstName: invitation.first_name,
-    lastName: invitation.last_name,
   })
 
   if (!emailResult.ok) {
@@ -310,14 +310,44 @@ export async function addTeamMember(
     kind: "invitation",
     invitation: {
       invitationId: invitation.id,
-      firstName: invitation.first_name,
-      lastName: invitation.last_name,
-      email: invitation.email,
-      roleLabel: roleRes.data?.label ?? "",
-      userType: data.userType,
-      userTypeLabel: getProjectUserTypeDisplayLabel(data.userType),
+      ...invitationPayload,
     },
   }
+}
+
+export async function copyTeamInvitationLink(
+  invitationId: string,
+  projectId: string,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const permission = await checkProjectPermission(projectId, "addUsers")
+  if (!permission.ok) return permission
+
+  await requireAuthenticatedUser()
+  const admin = createAdminClient()
+  const pending = await assertPendingInvitationInProject(admin, invitationId, projectId)
+  if (!pending.ok) return pending
+
+  return dispatchProjectInvitation(admin, {
+    invitationId,
+    sendEmail: false,
+  })
+}
+
+export async function resendTeamInvitation(
+  invitationId: string,
+  projectId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const permission = await checkProjectPermission(projectId, "addUsers")
+  if (!permission.ok) return permission
+
+  await requireAuthenticatedUser()
+  const admin = createAdminClient()
+  const pending = await assertPendingInvitationInProject(admin, invitationId, projectId)
+  if (!pending.ok) return pending
+
+  const result = await dispatchProjectInvitation(admin, { invitationId })
+  if (!result.ok) return result
+  return { ok: true }
 }
 
 export async function removeTeamMember(

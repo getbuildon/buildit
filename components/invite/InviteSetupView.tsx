@@ -64,7 +64,7 @@ export function InviteSetupView({ data }: InviteSetupViewProps) {
 
     setLoading(true)
     try {
-      const result = await completeInvitationSetup(data.invitationId, password)
+      const result = await completeInvitationSetup(data.invitationId, data.token, password)
       if (!result.ok) {
         setError(result.error)
         return

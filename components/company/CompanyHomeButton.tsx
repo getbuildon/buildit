@@ -22,7 +22,7 @@ export function CompanyHomeButton({ companyId, companyName }: CompanyHomeButtonP
         event.preventDefault()
         navigate(href)
       }}
-      className={cn(HOME_LAYOUT.topPillButton, "max-w-[min(100%,220px)]")}
+      className={cn(HOME_LAYOUT.topPillButton, "min-w-0 max-w-[7.5rem] sm:max-w-[220px]")}
     >
       <span className="truncate">{companyName}</span>
     </Link>
