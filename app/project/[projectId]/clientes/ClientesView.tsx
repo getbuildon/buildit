@@ -664,6 +664,7 @@ function ClientRow({
             email={client.email}
             avatarUrl={client.avatarUrl}
             className="shrink-0"
+            previewOnHover
           />
 
           <div className="min-w-0 flex-1 md:w-[428px] md:shrink-0">
@@ -760,6 +761,7 @@ function PendingClientRow({
             lastName={invitation.lastName}
             email={invitation.email}
             className="shrink-0"
+            previewOnHover
           />
 
           <div className="min-w-0 flex-1 md:w-[428px] md:shrink-0">

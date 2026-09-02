@@ -1,12 +1,18 @@
 "use client"
 
-import { useEffect, useState, useTransition } from "react"
+import { useEffect, useState, useTransition, type FormEvent, type ReactNode } from "react"
 import { Plus, X } from "lucide-react"
 
 import {
+  addBackofficeCompanyMember,
   createBackofficeCompany,
+  getBackofficeCompanyMembers,
+  removeBackofficeCompanyMember,
+  searchBackofficeMemberCandidates,
   searchBackofficeOwnerCandidates,
   updateBackofficeCompany,
+  type BackofficeCompanyMember,
+  type BackofficeCompanyRole,
   type BackofficeCompanyRow,
   type BackofficeOwnerCandidate,
 } from "@/app/backoffice/empresas/actions"
@@ -22,11 +28,30 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
 import { useInvalidateBackoffice } from "@/lib/backoffice/invalidateBackofficeQueries"
+import { COMPANY_ROLES, formatCompanyRole } from "@/lib/company/formatCompanyRole"
+import { cn } from "@/lib/utils"
 
 const FIELD_CLASSNAME =
   "h-[42px] rounded-xl border-[#edeef0] bg-white text-sm leading-[1.4] text-[#18191b] placeholder:text-[#696e77] shadow-none focus-visible:border-[#ff7433] focus-visible:ring-0"
 
 const LABEL_CLASSNAME = "text-xs font-medium leading-[1.4] text-[#5a6169]"
+
+function FieldLabel({
+  htmlFor,
+  required,
+  children,
+}: {
+  htmlFor?: string
+  required?: boolean
+  children: ReactNode
+}) {
+  return (
+    <Label htmlFor={htmlFor} className={LABEL_CLASSNAME}>
+      {children}
+      {required ? <span className="text-[#ff7433]"> *</span> : null}
+    </Label>
+  )
+}
 
 type OwnerSelection = {
   userId: string
@@ -89,6 +114,15 @@ export function EmpresaFormDialog({
   )
   const [isSearchingOwner, setIsSearchingOwner] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [members, setMembers] = useState<BackofficeCompanyMember[]>([])
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false)
+  const [addingRole, setAddingRole] = useState<BackofficeCompanyRole | null>(null)
+  const [memberSearch, setMemberSearch] = useState("")
+  const [memberCandidates, setMemberCandidates] = useState<BackofficeOwnerCandidate[]>(
+    [],
+  )
+  const [isSearchingMembers, setIsSearchingMembers] = useState(false)
+  const [memberActionId, setMemberActionId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) {
@@ -96,6 +130,10 @@ export function EmpresaFormDialog({
       setFormError(null)
       setOwnerSearch("")
       setOwnerCandidates([])
+      setMembers([])
+      setAddingRole(null)
+      setMemberSearch("")
+      setMemberCandidates([])
       return
     }
 
@@ -103,6 +141,32 @@ export function EmpresaFormDialog({
     setFormError(null)
     setOwnerSearch("")
     setOwnerCandidates([])
+    setMembers([])
+    setAddingRole(null)
+    setMemberSearch("")
+    setMemberCandidates([])
+  }, [open, company])
+
+  useEffect(() => {
+    if (!open || !company) return
+
+    let cancelled = false
+    setIsLoadingMembers(true)
+
+    void getBackofficeCompanyMembers(company.id)
+      .then((nextMembers) => {
+        if (!cancelled) setMembers(nextMembers)
+      })
+      .catch(() => {
+        if (!cancelled) setFormError("No pudimos cargar los miembros.")
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingMembers(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [open, company])
 
   useEffect(() => {
@@ -135,6 +199,37 @@ export function EmpresaFormDialog({
     return () => window.clearTimeout(timeout)
   }, [open, ownerSearch, form.owner, company?.id])
 
+  useEffect(() => {
+    if (!open || !isEditing || !company || !addingRole) {
+      setMemberCandidates([])
+      return
+    }
+
+    const term = memberSearch.trim()
+    if (term.length < 2) {
+      setMemberCandidates([])
+      return
+    }
+
+    const timeout = window.setTimeout(async () => {
+      setIsSearchingMembers(true)
+
+      try {
+        const candidates = await searchBackofficeMemberCandidates(term, {
+          companyId: company.id,
+          role: addingRole,
+        })
+        setMemberCandidates(candidates)
+      } catch {
+        setMemberCandidates([])
+      } finally {
+        setIsSearchingMembers(false)
+      }
+    }, 300)
+
+    return () => window.clearTimeout(timeout)
+  }, [open, isEditing, company, addingRole, memberSearch])
+
   const updateField = <K extends keyof EmpresaFormState>(
     key: K,
     value: EmpresaFormState[K],
@@ -143,7 +238,54 @@ export function EmpresaFormDialog({
     if (formError) setFormError(null)
   }
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const refreshMembers = async () => {
+    if (!company) return
+    const nextMembers = await getBackofficeCompanyMembers(company.id)
+    setMembers(nextMembers)
+    void invalidateBackoffice()
+  }
+
+  const handleAddMember = async (
+    role: BackofficeCompanyRole,
+    candidate: BackofficeOwnerCandidate,
+  ) => {
+    if (!company) return
+
+    setMemberActionId(candidate.id)
+    setFormError(null)
+
+    const result = await addBackofficeCompanyMember(company.id, candidate.id, role)
+    setMemberActionId(null)
+
+    if (!result.ok) {
+      setFormError(result.error)
+      return
+    }
+
+    setAddingRole(null)
+    setMemberSearch("")
+    setMemberCandidates([])
+    await refreshMembers()
+  }
+
+  const handleRemoveMember = async (member: BackofficeCompanyMember) => {
+    if (!company) return
+
+    setMemberActionId(member.id)
+    setFormError(null)
+
+    const result = await removeBackofficeCompanyMember(company.id, member.id)
+    setMemberActionId(null)
+
+    if (!result.ok) {
+      setFormError(result.error)
+      return
+    }
+
+    await refreshMembers()
+  }
+
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     setFormError(null)
 
@@ -158,7 +300,7 @@ export function EmpresaFormDialog({
         legalName: form.legalName,
         country: form.country,
         taxId: form.taxId,
-        ownerUserId: form.owner?.userId ?? null,
+        ownerUserId: isEditing ? undefined : form.owner?.userId ?? null,
       }
 
       const result = isEditing
@@ -177,9 +319,9 @@ export function EmpresaFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[520px] gap-0 overflow-visible p-0">
-        <form onSubmit={handleSubmit} className="flex flex-col">
-          <div className="border-b border-[#f4f5f6] px-6 py-5">
+      <DialogContent className="flex max-h-[90vh] max-w-[560px] flex-col gap-0 overflow-hidden p-0">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="shrink-0 border-b border-[#f4f5f6] px-6 py-5">
             <DialogHeader className="gap-1.5">
               <DialogTitle className="font-recoleta text-[22px] font-normal leading-[1.2] text-[#272a2d]">
                 {isEditing ? "Editar empresa" : "Nueva empresa"}
@@ -192,11 +334,11 @@ export function EmpresaFormDialog({
             </DialogHeader>
           </div>
 
-          <div className="flex flex-col gap-4 px-6 py-5">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-5">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="company-name" className={LABEL_CLASSNAME}>
+              <FieldLabel htmlFor="company-name" required>
                 Nombre
-              </Label>
+              </FieldLabel>
               <Input
                 id="company-name"
                 value={form.name}
@@ -207,9 +349,7 @@ export function EmpresaFormDialog({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="company-legal-name" className={LABEL_CLASSNAME}>
-                Razón social
-              </Label>
+              <FieldLabel htmlFor="company-legal-name">Razón social</FieldLabel>
               <Input
                 id="company-legal-name"
                 value={form.legalName}
@@ -221,9 +361,7 @@ export function EmpresaFormDialog({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="company-country" className={LABEL_CLASSNAME}>
-                  País
-                </Label>
+                <FieldLabel htmlFor="company-country">País</FieldLabel>
                 <Input
                   id="company-country"
                   value={form.country}
@@ -234,9 +372,7 @@ export function EmpresaFormDialog({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="company-tax-id" className={LABEL_CLASSNAME}>
-                  CUIT / Tax ID
-                </Label>
+                <FieldLabel htmlFor="company-tax-id">CUIT / Tax ID</FieldLabel>
                 <Input
                   id="company-tax-id"
                   value={form.taxId}
@@ -247,10 +383,9 @@ export function EmpresaFormDialog({
               </div>
             </div>
 
+            {!isEditing ? (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="company-owner" className={LABEL_CLASSNAME}>
-                Owner
-              </Label>
+              <FieldLabel htmlFor="company-owner">Owner</FieldLabel>
 
               {form.owner ? (
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-[#edeef0] bg-[#fafafa] px-3 py-2.5">
@@ -331,13 +466,147 @@ export function EmpresaFormDialog({
                 </div>
               )}
             </div>
+            ) : (
+            <div className="flex flex-col gap-3">
+              <p className={LABEL_CLASSNAME}>Miembros por rol</p>
+              {isLoadingMembers ? (
+                <p className="text-xs leading-4 text-[#777b84]">Cargando miembros...</p>
+              ) : (
+                COMPANY_ROLES.map((role) => {
+                  const roleMembers = members.filter((member) => member.role === role)
+                  const isAdding = addingRole === role
+
+                  return (
+                    <div
+                      key={role}
+                      className="flex flex-col gap-2 rounded-xl border border-[#edeef0] bg-[#fafafa] p-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium leading-5 text-[#18191b]">
+                          {formatCompanyRole(role)}
+                          <span className="ml-1.5 text-xs font-normal text-[#777b84]">
+                            {roleMembers.length}
+                          </span>
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddingRole(isAdding ? null : role)
+                            setMemberSearch("")
+                            setMemberCandidates([])
+                            if (formError) setFormError(null)
+                          }}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors",
+                            isAdding
+                              ? "bg-white text-[#43484e]"
+                              : "text-[#ff7433] hover:bg-white",
+                          )}
+                        >
+                          {isAdding ? (
+                            <>
+                              <X className="size-3.5" aria-hidden />
+                              Cancelar
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="size-3.5" aria-hidden />
+                              Agregar
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {roleMembers.length === 0 ? (
+                        <p className="text-xs leading-4 text-[#777b84]">
+                          Sin miembros en este rol.
+                        </p>
+                      ) : (
+                        <ul className="flex flex-col gap-1.5">
+                          {roleMembers.map((member) => (
+                            <li
+                              key={member.id}
+                              className="flex items-center justify-between gap-2 rounded-lg border border-[#edeef0] bg-white px-2.5 py-2"
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium leading-5 text-[#18191b]">
+                                  {member.name}
+                                </p>
+                                <p className="truncate text-xs leading-4 text-[#696e77]">
+                                  {member.email}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={memberActionId === member.id}
+                                onClick={() => void handleRemoveMember(member)}
+                                className="grid size-7 shrink-0 place-items-center rounded-lg text-[#777b84] transition-colors hover:bg-[#f4f5f6] hover:text-[#dc3e42] disabled:opacity-50"
+                                aria-label={`Quitar a ${member.name} de ${formatCompanyRole(role)}`}
+                              >
+                                {memberActionId === member.id ? (
+                                  <Spinner className="size-3.5" />
+                                ) : (
+                                  <X className="size-3.5" strokeWidth={1.75} />
+                                )}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {isAdding ? (
+                        <div className="flex flex-col gap-1">
+                          <Input
+                            value={memberSearch}
+                            onChange={(event) => setMemberSearch(event.target.value)}
+                            placeholder="Buscar por nombre o email..."
+                            className={FIELD_CLASSNAME}
+                          />
+                          {isSearchingMembers ? (
+                            <p className="text-xs leading-4 text-[#777b84]">Buscando...</p>
+                          ) : null}
+                          {!isSearchingMembers && memberSearch.trim().length >= 2 ? (
+                            memberCandidates.length > 0 ? (
+                              <ul className="max-h-40 overflow-y-auto rounded-xl border border-[#edeef0] bg-white py-1">
+                                {memberCandidates.map((candidate) => (
+                                  <li key={candidate.id}>
+                                    <button
+                                      type="button"
+                                      disabled={memberActionId === candidate.id}
+                                      onClick={() => void handleAddMember(role, candidate)}
+                                      className="flex w-full flex-col px-3 py-2 text-left transition-colors hover:bg-[#edeef0] disabled:opacity-50"
+                                    >
+                                      <span className="truncate text-sm leading-5 text-[#18191b]">
+                                        {candidate.name}
+                                      </span>
+                                      <span className="truncate text-xs leading-4 text-[#696e77]">
+                                        {candidate.email}
+                                      </span>
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-xs leading-4 text-[#777b84]">
+                                No encontramos usuarios con esa búsqueda.
+                              </p>
+                            )
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+            )}
 
             {formError ? (
               <p className="text-sm leading-[1.4] text-[#dc3e42]">{formError}</p>
             ) : null}
           </div>
 
-          <div className="flex items-center justify-end gap-2 border-t border-[#f4f5f6] px-6 py-4">
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[#f4f5f6] px-6 py-4">
             <Button
               type="button"
               variant="outline"

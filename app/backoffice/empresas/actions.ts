@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { requireBackofficeUser } from "@/lib/auth/backofficeAccess"
 import { BACKOFFICE_EMPRESAS_PAGE_SIZE } from "@/lib/backoffice/empresasQuery"
+import { COMPANY_ROLES, type CompanyRole } from "@/lib/company/formatCompanyRole"
 import { createAdminClient } from "@/utils/supabase/admin"
 
 export type BackofficeCompanyOwner = {
@@ -30,6 +31,16 @@ export type BackofficeOwnerCandidate = {
 }
 
 export type BackofficeCompanyActionResult = { ok: true } | { ok: false; error: string }
+
+export type BackofficeCompanyRole = CompanyRole
+
+export type BackofficeCompanyMember = {
+  id: string
+  userId: string
+  name: string
+  email: string
+  role: BackofficeCompanyRole
+}
 
 export type BackofficeCompanyInput = {
   name: string
@@ -494,6 +505,261 @@ export async function updateBackofficeCompany(
       }
     }
   }
+
+  revalidatePath("/backoffice/empresas")
+  return { ok: true }
+}
+
+function isCompanyRole(value: string): value is BackofficeCompanyRole {
+  return (COMPANY_ROLES as readonly string[]).includes(value)
+}
+
+export async function getBackofficeCompanyMembers(
+  companyId: string,
+): Promise<BackofficeCompanyMember[]> {
+  await requireBackofficeUser()
+  const admin = createAdminClient()
+
+  const { data: members, error } = await admin
+    .from("company_members")
+    .select("id, user_id, role")
+    .eq("company_id", companyId)
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const userIds = [...new Set((members ?? []).map((row) => row.user_id as string))]
+  if (userIds.length === 0) return []
+
+  const { data: profiles, error: profilesError } = await admin
+    .from("profiles")
+    .select("id, first_name, last_name, email")
+    .in("id", userIds)
+
+  if (profilesError) {
+    throw new Error(profilesError.message)
+  }
+
+  const profileById = new Map(
+    (profiles ?? []).map((profile) => [profile.id as string, profile]),
+  )
+
+  return (members ?? [])
+    .map((row) => {
+      const profile = profileById.get(row.user_id as string)
+      if (!profile || !isCompanyRole(row.role)) return null
+
+      return {
+        id: row.id as string,
+        userId: profile.id as string,
+        name: formatProfileName(
+          profile.first_name ?? "",
+          profile.last_name ?? "",
+          profile.email,
+        ),
+        email: profile.email,
+        role: row.role,
+      }
+    })
+    .filter((member): member is BackofficeCompanyMember => member !== null)
+}
+
+export async function searchBackofficeMemberCandidates(
+  search: string,
+  options?: { companyId?: string; role?: BackofficeCompanyRole },
+): Promise<BackofficeOwnerCandidate[]> {
+  await requireBackofficeUser()
+  const admin = createAdminClient()
+
+  const term = sanitizeSearchTerm(search)
+  if (!term) return []
+
+  const pattern = `%${term}%`
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id, first_name, last_name, email")
+    .or(
+      `email.ilike.${pattern},first_name.ilike.${pattern},last_name.ilike.${pattern}`,
+    )
+    .order("created_at", { ascending: false })
+    .limit(8)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const blockedIds = new Set<string>()
+
+  if (options?.companyId) {
+    const { data: companyMembers, error: membersError } = await admin
+      .from("company_members")
+      .select("user_id, role")
+      .eq("company_id", options.companyId)
+      .eq("status", "active")
+
+    if (membersError) {
+      throw new Error(membersError.message)
+    }
+
+    for (const row of companyMembers ?? []) {
+      if (!options.role || row.role === options.role) {
+        blockedIds.add(row.user_id as string)
+      }
+    }
+  }
+
+  if (options?.role === "owner") {
+    let blockedOwnerQuery = admin
+      .from("company_members")
+      .select("user_id")
+      .eq("role", "owner")
+      .eq("status", "active")
+
+    if (options.companyId) {
+      blockedOwnerQuery = blockedOwnerQuery.neq("company_id", options.companyId)
+    }
+
+    const { data: existingOwners, error: ownersError } = await blockedOwnerQuery
+    if (ownersError) {
+      throw new Error(ownersError.message)
+    }
+
+    for (const row of existingOwners ?? []) {
+      blockedIds.add(row.user_id as string)
+    }
+  }
+
+  return (data ?? [])
+    .filter((profile) => !blockedIds.has(profile.id as string))
+    .map((profile) => ({
+      id: profile.id as string,
+      name: formatProfileName(
+        profile.first_name ?? "",
+        profile.last_name ?? "",
+        profile.email,
+      ),
+      email: profile.email,
+    }))
+}
+
+export async function addBackofficeCompanyMember(
+  companyId: string,
+  userId: string,
+  role: BackofficeCompanyRole,
+): Promise<BackofficeCompanyActionResult> {
+  await requireBackofficeUser()
+  const admin = createAdminClient()
+
+  const { data: company, error: companyError } = await admin
+    .from("companies")
+    .select("id")
+    .eq("id", companyId)
+    .maybeSingle()
+
+  if (companyError) return { ok: false, error: companyError.message }
+  if (!company) return { ok: false, error: "No encontramos esa empresa." }
+
+  if (role === "owner") {
+    const result = await assignCompanyOwner(admin, companyId, userId)
+    if (result.ok) revalidatePath("/backoffice/empresas")
+    return result
+  }
+
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .maybeSingle()
+
+  if (profileError) return { ok: false, error: profileError.message }
+  if (!profile) return { ok: false, error: "No encontramos ese usuario." }
+
+  const { data: existingMember, error: existingError } = await admin
+    .from("company_members")
+    .select("id, role, status")
+    .eq("company_id", companyId)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (existingError) return { ok: false, error: existingError.message }
+
+  if (existingMember?.status === "active" && existingMember.role === "owner") {
+    const { data: owners, error: ownersError } = await admin
+      .from("company_members")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("role", "owner")
+      .eq("status", "active")
+
+    if (ownersError) return { ok: false, error: ownersError.message }
+    if ((owners ?? []).length === 1) {
+      return { ok: false, error: "La empresa debe tener al menos un owner." }
+    }
+  }
+
+  if (existingMember) {
+    const { error } = await admin
+      .from("company_members")
+      .update({ role, status: "active", disabled_at: null })
+      .eq("id", existingMember.id)
+
+    if (error) return { ok: false, error: error.message }
+  } else {
+    const { error } = await admin.from("company_members").insert({
+      company_id: companyId,
+      user_id: userId,
+      role,
+      status: "active",
+    })
+
+    if (error) return { ok: false, error: error.message }
+  }
+
+  revalidatePath("/backoffice/empresas")
+  return { ok: true }
+}
+
+export async function removeBackofficeCompanyMember(
+  companyId: string,
+  memberId: string,
+): Promise<BackofficeCompanyActionResult> {
+  await requireBackofficeUser()
+  const admin = createAdminClient()
+
+  const { data: targetMember, error: targetError } = await admin
+    .from("company_members")
+    .select("id, role")
+    .eq("id", memberId)
+    .eq("company_id", companyId)
+    .eq("status", "active")
+    .maybeSingle()
+
+  if (targetError) return { ok: false, error: targetError.message }
+  if (!targetMember) return { ok: false, error: "No encontramos ese miembro." }
+
+  if (targetMember.role === "owner") {
+    const { data: owners, error: ownersError } = await admin
+      .from("company_members")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("role", "owner")
+      .eq("status", "active")
+
+    if (ownersError) return { ok: false, error: ownersError.message }
+    if ((owners ?? []).length === 1) {
+      return { ok: false, error: "La empresa debe tener al menos un owner." }
+    }
+  }
+
+  const { error } = await admin
+    .from("company_members")
+    .update({ status: "disabled", disabled_at: new Date().toISOString() })
+    .eq("id", memberId)
+
+  if (error) return { ok: false, error: error.message }
 
   revalidatePath("/backoffice/empresas")
   return { ok: true }

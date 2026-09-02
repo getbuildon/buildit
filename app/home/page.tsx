@@ -65,6 +65,7 @@ function HomePage() {
     displayName.split(/\s+/)[0] ||
     user?.email?.split("@")[0] ||
     ""
+  const homeCompany = shell?.manageableCompanies[0] ?? shell?.primaryCompany ?? null
 
   if (shellQuery.isPending) {
     return <HomePageSkeleton />
@@ -75,10 +76,11 @@ function HomePage() {
       header={
         <>
           {shell?.hasClientAccess ? <HomePortalClientesButton /> : null}
-          {shell?.primaryCompany ? (
+          {homeCompany ? (
             <CompanyHomeButton
-              companyId={shell.primaryCompany.id}
-              companyName={shell.primaryCompany.name}
+              companyId={homeCompany.id}
+              companyName={homeCompany.name}
+              companies={shell?.manageableCompanies ?? []}
             />
           ) : null}
           <UserMenu

@@ -5,12 +5,19 @@ import { getAuthenticatedUserOrNull } from "@/lib/authHelpers"
 import { PROJECT_ROLE_SLUG, USER_TYPE_SLUG } from "@/lib/projects/catalogSlugs"
 import { createClient } from "@/utils/supabase/server"
 
+export type HomeCompanyOption = {
+  id: string
+  name: string
+  role: string
+}
+
 export type HomeShellData = {
   firstName: string
   lastName: string
   displayName: string
   avatarUrl: string | null
   primaryCompany: { id: string; name: string } | null
+  manageableCompanies: HomeCompanyOption[]
   canCreateProjects: boolean
   hasClientAccess: boolean
   canSeeBackoffice: boolean
@@ -100,6 +107,10 @@ export async function getHomeShell(): Promise<HomeShellData | null> {
   const canCreateProjects = companies.some(
     (company) => company.role === "owner" || company.role === "admin",
   )
+  const manageableCompanies = companies.filter((company) => {
+    const role = company.role.trim().toLowerCase()
+    return role === "owner" || role === "admin"
+  })
   const primary = companies[0] ?? null
 
   return {
@@ -108,6 +119,7 @@ export async function getHomeShell(): Promise<HomeShellData | null> {
     displayName: displayNameFromProfile(firstName, lastName, user.email),
     avatarUrl: profileResult.data?.avatar_url ?? null,
     primaryCompany: primary ? { id: primary.id, name: primary.name } : null,
+    manageableCompanies,
     canCreateProjects,
     hasClientAccess,
     canSeeBackoffice: isBackofficeEmail(user.email),

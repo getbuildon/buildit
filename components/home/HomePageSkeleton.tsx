@@ -21,7 +21,6 @@ export function HomePageSkeleton() {
     >
       <div className={HOME_LAYOUT.greetingWrap}>
         <Skeleton tone="dark" className="h-9 w-[min(100%,280px)] rounded-[12px] sm:h-10 sm:w-[300px]" />
-        <Skeleton tone="dark" className="h-5 w-[min(100%,200px)] rounded-[8px] sm:h-6" />
       </div>
 
       <div className={HOME_LAYOUT.projectGrid}>

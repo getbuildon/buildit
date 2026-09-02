@@ -91,23 +91,20 @@ type Props = {
   initialData: ProjectTeamData
 }
 
-function getInitials(firstName: string, lastName: string): string {
-  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
-  return initials || "??"
-}
-
 function MemberAvatar({
   member,
   size = "md",
   bgClassName,
   textClassName,
   className,
+  previewOnHover = false,
 }: {
   member: Pick<ProjectTeamMember, "firstName" | "lastName" | "email" | "avatarUrl">
   size?: "md"
   bgClassName?: string
   textClassName?: string
   className?: string
+  previewOnHover?: boolean
 }) {
   return (
     <UserAvatar
@@ -119,6 +116,7 @@ function MemberAvatar({
       bgClassName={bgClassName}
       textClassName={textClassName}
       className={className}
+      previewOnHover={previewOnHover}
     />
   )
 }
@@ -355,6 +353,7 @@ function MemberRow({
     <div className={TEAM_ROW_CLASSNAME}>
       <MemberAvatar
         member={member}
+        previewOnHover
         className="row-span-2 self-start md:row-span-1 md:self-center"
       />
 
@@ -424,11 +423,16 @@ function PendingRow({
 }) {
   return (
     <div className={TEAM_ROW_CLASSNAME}>
-      <div className="row-span-2 self-start md:row-span-1 md:self-center">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f0f1f3] text-[12px] font-semibold text-[#777b84]">
-          {getInitials(invitation.firstName, invitation.lastName)}
-        </div>
-      </div>
+      <UserAvatar
+        firstName={invitation.firstName}
+        lastName={invitation.lastName}
+        email={invitation.email}
+        size="md"
+        previewOnHover
+        bgClassName="bg-[#f0f1f3]"
+        textClassName="text-[12px] font-semibold text-[#777b84]"
+        className="row-span-2 self-start md:row-span-1 md:self-center"
+      />
 
       <div className="col-start-2 row-start-1 flex min-w-0 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
