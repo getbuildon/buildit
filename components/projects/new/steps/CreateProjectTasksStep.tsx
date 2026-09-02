@@ -221,7 +221,7 @@ function RowEditDeleteActions({
       <button
         type="button"
         onClick={onDelete}
-        className={cn(rowActionButtonClassName, "text-[#ce2c31]")}
+        className={cn(rowActionButtonClassName, "text-[#5a6169]")}
         aria-label={deleteLabel}
       >
         <Trash2 className="size-4" aria-hidden />

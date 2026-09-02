@@ -412,5 +412,5 @@ export const rubroRowStyles = {
   iconButton:
     "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center text-[#777b84] transition-opacity hover:opacity-80",
   deleteButton:
-    "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center text-[#ce2c31] transition-opacity hover:opacity-80",
+    "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center text-[#5a6169] transition-opacity hover:opacity-80",
 } as const

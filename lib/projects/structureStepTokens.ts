@@ -12,7 +12,9 @@ export const STRUCTURE_STEP_LAYOUT = {
   unitRowMinHeight: "74px",
   unitTypeWidth: "169px",
   unitCompactWidth: "80px",
-  unitAttachWidth: "120px",
+  unitAttachWidth: "110px",
+  /** handle + campos fijos + acciones, para scroll horizontal del row */
+  unitRowMinWidth: "762px",
 } as const
 
 /** Tokens compartidos — Figma 1833:3243 (pisos y unidades). */
@@ -41,7 +43,7 @@ export const STRUCTURE_STEP_COLORS = {
 } as const
 
 export const structureLabelClassName =
-  "text-[12px] font-normal leading-[1.4] tracking-[-0.36px]"
+  "min-w-0 truncate whitespace-nowrap text-[12px] font-normal leading-[1.4] tracking-[-0.36px]"
 
 export const structureFloorLabelStyle = { color: STRUCTURE_STEP_COLORS.labelDefault } as const
 export const structureMutedLabelStyle = { color: STRUCTURE_STEP_COLORS.labelMuted } as const
@@ -80,9 +82,9 @@ export const structureUnitSelectItemClassName = "text-[12px] leading-[1.4] track
 
 /** Figma 1833:3277 — anchos por columna de unidad (responsive en mobile). */
 export const structureUnitFieldColumnClassName = {
-  type: "w-full min-w-[140px] shrink-0 basis-[calc(50%-4px)] sm:basis-auto sm:w-[169px] sm:min-w-[169px]",
-  compact: "w-[calc(50%-4px)] min-w-[72px] shrink-0 sm:w-20 sm:min-w-20",
-  attach: "w-full min-w-[100px] shrink-0 basis-full sm:basis-auto sm:w-[120px] sm:min-w-[120px]",
+  type: "w-[169px] min-w-[169px] shrink-0",
+  compact: "w-20 min-w-20 shrink-0",
+  attach: "w-[110px] min-w-[110px] shrink-0",
 } as const
 
 export const structureAttachButtonClassName = cn(

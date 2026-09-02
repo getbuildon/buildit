@@ -64,10 +64,11 @@ export function CreateProjectFormField({
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <div className="flex items-center justify-between gap-1">
+      <div className="flex min-w-0 items-center justify-between gap-1">
         <label
           htmlFor={htmlFor}
-          className={labelClassName ?? CREATE_PROJECT_TYPE.fieldLabel}
+          title={typeof label === "string" ? label : undefined}
+          className={cn("min-w-0 truncate", labelClassName ?? CREATE_PROJECT_TYPE.fieldLabel)}
           style={labelStyle ?? { color: CREATE_PROJECT_COLORS.label }}
         >
           {label}

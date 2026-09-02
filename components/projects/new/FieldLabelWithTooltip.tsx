@@ -22,14 +22,17 @@ export function FieldLabelWithTooltip({
   labelClassName,
   labelStyle,
 }: FieldLabelWithTooltipProps) {
+  const displayLabel = required ? `${label} *` : label
+
   return (
-    <div className={cn("flex items-center gap-1", className)}>
+    <div className={cn("flex min-w-0 items-center gap-1", className)}>
       <label
         htmlFor={htmlFor}
-        className={labelClassName}
+        title={displayLabel}
+        className={cn("min-w-0 truncate", labelClassName)}
         style={labelStyle}
       >
-        {required ? `${label} *` : label}
+        {displayLabel}
       </label>
       <div className="group relative flex shrink-0 items-center">
         <Info

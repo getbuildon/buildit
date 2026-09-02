@@ -583,38 +583,45 @@ function StructureFloorCard({
           <button
             type="button"
             onClick={onRemoveFloor}
-            className="inline-flex size-[17px] shrink-0 cursor-pointer items-center justify-center text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
+            className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
             aria-label={`Eliminar ${floor.name}`}
           >
-            <Trash2 className="size-[17px]" strokeWidth={1.75} aria-hidden />
+            <Trash2 className="size-4" aria-hidden />
           </button>
         </div>
       </div>
 
       <div className="flex w-full flex-col gap-2">
         {floor.units.length > 0 ? (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={floor.units.map((unit) => unit.id)}
-              strategy={verticalListSortingStrategy}
+          <div className="w-full overflow-x-auto">
+            <div
+              className="flex flex-col gap-2"
+              style={{ minWidth: STRUCTURE_STEP_LAYOUT.unitRowMinWidth }}
             >
-              {floor.units.map((unit) => (
-                <StructureUnitRow
-                  key={unit.id}
-                  unit={unit}
-                  isHighlighted={isUnitHighlighted(unit.id)}
-                  fieldErrors={fieldErrors?.unitErrors?.[unit.id]}
-                  onUpdateUnit={(patch) => onUpdateUnit(unit.id, patch)}
-                  onDuplicateUnit={() => onDuplicateUnit(unit.id)}
-                  onRemoveUnit={() => onRemoveUnit(unit.id)}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={floor.units.map((unit) => unit.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {floor.units.map((unit) => (
+                    <StructureUnitRow
+                      key={unit.id}
+                      unit={unit}
+                      isHighlighted={isUnitHighlighted(unit.id)}
+                      fieldErrors={fieldErrors?.unitErrors?.[unit.id]}
+                      onUpdateUnit={(patch) => onUpdateUnit(unit.id, patch)}
+                      onDuplicateUnit={() => onDuplicateUnit(unit.id)}
+                      onRemoveUnit={() => onRemoveUnit(unit.id)}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </div>
+          </div>
         ) : null}
 
         <button
@@ -663,7 +670,7 @@ function StructureUnitRow({
       data-new-item-id={unit.id}
       data-structure-unit-id={unit.id}
       className={cn(
-        "w-full overflow-hidden rounded-[4px] pr-3",
+        "w-full rounded-[4px] pr-3",
         newItemHighlightClass(isHighlighted),
       )}
       style={{
@@ -686,7 +693,7 @@ function StructureUnitRow({
           <StructureDragHandleIcon />
         </button>
 
-        <div className="flex min-w-0 flex-1 flex-wrap items-end gap-2 py-2 sm:flex-nowrap">
+        <div className="flex flex-1 items-end gap-2 py-2">
           <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.type)}>
             <span className={structureLabelClassName} style={structureMutedLabelStyle}>
               Tipo
@@ -880,22 +887,22 @@ function StructureUnitRow({
           </div>
         </div>
 
-        <div className="flex w-12 shrink-0 items-center justify-end gap-2 self-center">
+        <div className="flex shrink-0 items-center justify-end gap-0.5 self-center pl-2">
           <button
             type="button"
             onClick={onDuplicateUnit}
-            className="inline-flex size-3.5 items-center justify-center text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
+            className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
             aria-label="Duplicar local"
           >
-            <Copy className="size-3.5" strokeWidth={1.75} aria-hidden />
+            <Copy className="size-4" aria-hidden />
           </button>
           <button
             type="button"
             onClick={onRemoveUnit}
-            className="inline-flex size-3.5 cursor-pointer items-center justify-center text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
+            className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
             aria-label="Eliminar local"
           >
-            <Trash2 className="size-3.5" strokeWidth={1.75} aria-hidden />
+            <Trash2 className="size-4" aria-hidden />
           </button>
         </div>
       </div>
