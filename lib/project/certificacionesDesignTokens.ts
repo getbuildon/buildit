@@ -112,7 +112,7 @@ export const CERTIFICACION_CONFIRM = {
   summaryMetaValue: "font-medium text-[#272a2d]",
   notesLabel: "text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#45556c]",
   notesInput:
-    "min-h-[72px] w-full resize-none rounded-[10px] border border-[#cad5e2] px-3 py-2 text-[14px] font-normal leading-[1.4] text-[#272a2d] outline-none placeholder:text-[#777b84] focus:border-[#ff7433]",
+    "min-h-[72px] w-full resize-none rounded-[10px] border border-[#cad5e2] px-3 py-2 text-[14px] font-normal leading-[1.4] text-[#272a2d] outline-none placeholder:text-[#777b84] focus-visible:border-[#ff7433]",
   cancelBtn:
     "flex flex-1 items-center justify-center rounded-[10px] border border-[#696e77] bg-white px-4 py-3 text-[14px] font-normal leading-[1.4] text-[#363a3f] transition-colors hover:border-[#696e77] hover:bg-[#f4f5f6] hover:text-[#272a2d] focus-visible:border-[#696e77] focus-visible:text-[#272a2d] focus-visible:ring-0",
   confirmBtn:

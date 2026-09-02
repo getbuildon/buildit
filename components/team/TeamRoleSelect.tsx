@@ -43,7 +43,7 @@ export function TeamRoleSelect({
         aria-label={placeholder}
         className={cn(
           triggerClassName,
-          hasError && "border-[#eb8e90] focus:border-[#eb8e90]",
+          hasError && "border-[#eb8e90] focus-visible:border-[#eb8e90]",
         )}
       >
         <SelectValue placeholder={placeholder} />

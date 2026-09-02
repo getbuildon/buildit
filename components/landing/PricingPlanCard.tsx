@@ -140,8 +140,8 @@ export function PricingPlanCard({
             className={cn(
               "h-10 rounded border px-[13px] py-[7px] text-sm leading-[1.4] shadow-none",
               isDark
-                ? "border-[#272a2d] bg-[#212225] text-[#afb3ba] focus:border-[#272a2d]"
-                : "border-[rgba(175,179,186,0.6)] bg-white text-[#363a3f] focus:border-[rgba(175,179,186,0.6)]",
+                ? "border-[#272a2d] bg-[#212225] text-[#afb3ba] focus-visible:border-[#272a2d]"
+                : "border-[rgba(175,179,186,0.6)] bg-white text-[#363a3f] focus-visible:border-[rgba(175,179,186,0.6)]",
               "[&_svg]:size-6 [&_svg]:opacity-100",
               isDark ? "[&_svg]:text-[#afb3ba]" : "[&_svg]:text-[#363a3f]",
             )}

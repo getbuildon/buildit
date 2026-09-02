@@ -17,7 +17,7 @@ import { getCompanyInfo, updateCompanyInfo, type CompanyInfo } from "../settings
 type Feedback = { type: "success" | "error"; message: string } | null
 
 const INPUT_CLASS =
-  "h-[42px] w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-[14px] font-normal leading-5 text-[#0a0a0a] outline-none focus:border-[#ff7433] disabled:opacity-70"
+  "h-[42px] w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-[14px] font-normal leading-5 text-[#0a0a0a] outline-none focus-visible:border-[#ff7433] disabled:opacity-70"
 
 type InformacionViewProps = {
   companyId: string

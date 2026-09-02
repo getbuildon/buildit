@@ -65,7 +65,7 @@ const STRUCTURE_DELETE_CONFIRM = {
   title: "Confirmar cambios",
   confirmLabel: "Confirmar",
   floorDescription:
-    "Al eliminar el piso se eliminan todas las unidades y, con ellas, todas las asignaciones de tareas que tienen. ¿Deseás continuar?",
+    "Al eliminar el nivel se eliminan todas las unidades y, con ellas, todas las asignaciones de tareas que tienen. ¿Deseás continuar?",
   unitDescription:
     "Al eliminar esta unidad se eliminan todas las asignaciones de tareas que tiene. ¿Deseás continuar?",
 } as const
@@ -229,14 +229,14 @@ export function CreateProjectStructureStep({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex flex-col gap-2">
           <p className="text-[14px] font-normal leading-5 text-[#272a2d]">
-            Cantidad de pisos
+            Cantidad de niveles
           </p>
           <div className="flex flex-col gap-2">
             <p className="text-[24px] font-medium leading-[25px] text-[#18191b]">
-              {floorCount} {floorCount === 1 ? "piso" : "pisos"}
+              {floorCount} {floorCount === 1 ? "nivel" : "niveles"}
             </p>
             <p className="text-[14px] font-normal leading-5 text-[#18191b]">
-              Agregá o eliminá pisos según sea necesario.
+              Agregá o eliminá niveles según sea necesario.
             </p>
           </div>
         </div>
@@ -248,7 +248,7 @@ export function CreateProjectStructureStep({
           className="w-full text-[14px] font-normal leading-5 sm:w-auto"
         >
           <Plus className="size-4" aria-hidden />
-          Agregar piso
+          Agregar nivel
         </Button>
       </div>
 
@@ -258,16 +258,16 @@ export function CreateProjectStructureStep({
       >
         <div className="flex flex-col gap-1">
           <h3 className="text-[14px] font-normal leading-5 text-[#18191b]">
-            Unidades por Piso
+            Locales por Nivel
           </h3>
           <p className="text-[12px] font-normal leading-4 text-[#43484e]">
-            Configurá las unidades de cada piso:
+            Configurá los locales de cada nivel:
           </p>
         </div>
 
         {draft.floors.length === 0 ? (
           <p className="rounded-[10px] bg-white py-6 text-center text-[12px] font-normal leading-4 text-[#afb3ba]">
-            Todavía no hay pisos. Usá &quot;Agregar piso&quot; para empezar.
+            Todavía no hay niveles. Usá &quot;Agregar nivel&quot; para empezar.
           </p>
         ) : (
           <div
@@ -357,7 +357,7 @@ function StructureProjectSummary({
             className="text-[14px] font-normal leading-[1.4]"
             style={{ color: STRUCTURE_STEP_COLORS.summaryText }}
           >
-            Total: {floorCount} {floorCount === 1 ? "piso" : "pisos"} • {unitCount}{" "}
+            Total: {floorCount} {floorCount === 1 ? "nivel" : "niveles"} • {unitCount}{" "}
             {unitCount === 1 ? "unidad" : "unidades"}
           </p>
         </div>
@@ -411,7 +411,7 @@ function StructureFloorCard({
       >
         <div className="grid grid-cols-1 gap-2.5 sm:flex sm:min-w-0 sm:flex-1 sm:items-start sm:gap-2.5">
         <CreateProjectFormField
-          label="Nombre del Piso"
+          label="Nombre del Nivel *"
           htmlFor={`floor-name-${floor.id}`}
           className="min-w-0 flex-1 gap-1"
           labelClassName={structureLabelClassName}
@@ -421,7 +421,7 @@ function StructureFloorCard({
         >
           <Input
             id={`floor-name-${floor.id}`}
-            placeholder="Ej. Piso 1"
+            placeholder="Ej. Nivel 1"
             value={floor.name}
             onChange={(e) => onUpdateFloor({ name: e.target.value })}
             className={structureFloorInputClassName}
@@ -435,6 +435,7 @@ function StructureFloorCard({
               label="Identificador"
               tooltip={FLOOR_IDENTIFIER_TOOLTIP}
               htmlFor={`floor-identifier-${floor.id}`}
+              required
               labelClassName={structureLabelClassName}
               labelStyle={structureMutedLabelStyle}
             />
@@ -603,6 +604,7 @@ function StructureUnitRow({
                 label="ID"
                 tooltip={UNIT_CODE_TOOLTIP}
                 htmlFor={`unit-code-${unit.id}`}
+                required
                 labelClassName={structureLabelClassName}
                 labelStyle={structureMutedLabelStyle}
               />
@@ -632,7 +634,7 @@ function StructureUnitRow({
           <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.compact)}>
             <div className="flex items-center justify-between gap-1">
               <span className={structureLabelClassName} style={structureMutedLabelStyle}>
-                m²
+                m² *
               </span>
               {squareMetersError ? <FieldErrorTooltip message={squareMetersError} /> : null}
             </div>

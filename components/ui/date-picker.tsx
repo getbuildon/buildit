@@ -58,7 +58,7 @@ export function DatePicker({
           disabled={disabled}
           className={cn(
             "inline-flex h-[42px] w-full min-w-0 items-center gap-2 overflow-hidden rounded-[10px] border border-[#afb3ba] bg-white px-3 text-left text-[14px] font-normal leading-[1.4] transition-[color,box-shadow,border-color] outline-none disabled:cursor-not-allowed disabled:opacity-50",
-            "focus:border-[#ff7433] focus:ring-0",
+            "focus-visible:border-[#ff7433] focus-visible:ring-0",
             value ? "text-[#272a2d]" : "text-[#777b84]",
             className,
           )}

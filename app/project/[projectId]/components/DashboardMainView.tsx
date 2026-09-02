@@ -242,7 +242,7 @@ export function DashboardMainView({
             {project.name}
           </h1>
           <p className={cn(DASHBOARD_TYPE.pageSubtitle, "text-[13px] sm:text-[14px]")}>
-            {stats.totalFloors} Pisos · {stats.totalUnits} Unidades · Progreso General:{" "}
+            {stats.totalFloors} Niveles · {stats.totalUnits} Unidades · Progreso General:{" "}
             {formatProgressPercentLabel(stats.generalProgress)}
           </p>
         </div>

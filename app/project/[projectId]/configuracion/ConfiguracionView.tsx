@@ -1130,7 +1130,7 @@ export function ConfiguracionView({
       {draft ? (
         <>
           <SettingsCard
-            title="Estructura del edificio"
+            title="Configuración de Niveles y Locales"
             collapsible
             open={structureSectionOpen}
             onOpenChange={setStructureSectionOpen}

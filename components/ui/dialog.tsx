@@ -72,7 +72,7 @@ function DialogContent({
           {children}
           {showCloseButton ? (
             <DialogPrimitive.Close
-              className="absolute top-5 right-5 flex size-5 items-center justify-center rounded text-[#43484e] transition-colors hover:bg-[#edeef0] focus:outline-none disabled:pointer-events-none"
+              className="absolute top-5 right-5 flex size-5 items-center justify-center rounded text-[#43484e] outline-none transition-colors hover:bg-[#edeef0] focus-visible:outline-none disabled:pointer-events-none"
               aria-label="Cerrar"
             >
               <X className="size-4" />
@@ -89,7 +89,7 @@ function DialogContent({
             {children}
             {showCloseButton ? (
               <DialogPrimitive.Close
-                className="absolute top-5 right-5 flex size-5 items-center justify-center rounded text-[#43484e] transition-colors hover:bg-[#edeef0] focus:outline-none disabled:pointer-events-none"
+                className="absolute top-5 right-5 flex size-5 items-center justify-center rounded text-[#43484e] outline-none transition-colors hover:bg-[#edeef0] focus-visible:outline-none disabled:pointer-events-none"
                 aria-label="Cerrar"
               >
                 <X className="size-4" />

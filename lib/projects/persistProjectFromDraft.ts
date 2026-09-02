@@ -112,7 +112,7 @@ export async function persistProjectFromDraft(
   if (draft.floors.length > 0) {
     const floorRows = draft.floors.map((floor, index) => ({
       project_id: projectId,
-      name: floor.name.trim() || `Piso ${index + 1}`,
+      name: floor.name.trim() || `Nivel ${index + 1}`,
       identifier: floor.identifier.trim().slice(0, 4) || null,
       level: floor.level.trim() || null,
       sort_order: index,
@@ -124,7 +124,7 @@ export async function persistProjectFromDraft(
       .select("id")
 
     if (floorsError || !floors) {
-      return { ok: false, error: floorsError?.message ?? "No se pudieron guardar los pisos." }
+      return { ok: false, error: floorsError?.message ?? "No se pudieron guardar los niveles." }
     }
 
     const unitDraftIds: string[] = []

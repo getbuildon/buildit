@@ -114,8 +114,7 @@ export const createProjectCompactInputClassName = cn(
   "h-10 w-full min-w-0 rounded-[10px] border px-3 text-[14px] shadow-none",
   "bg-transparent text-[#18191b]",
   "placeholder:text-[#777b84]",
-  "outline-none focus:outline-none focus:border-[#ff7433]",
-  "focus-visible:border-[#ff7433] focus-visible:ring-0 focus-visible:outline-none",
+  "outline-none focus-visible:border-[#ff7433] focus-visible:ring-0 focus-visible:outline-none",
 )
 
 export const createProjectCompactInputStyle = {

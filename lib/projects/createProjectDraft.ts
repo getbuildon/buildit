@@ -166,7 +166,7 @@ export function createDefaultUnit(): StructureUnitDraft {
 export function createDefaultFloor(floorIndex: number): StructureFloorDraft {
   return {
     id: newId("floor"),
-    name: `Piso ${floorIndex}`,
+    name: `Nivel ${floorIndex}`,
     identifier: "",
     level: "",
     units: [],

@@ -39,7 +39,7 @@ import { invalidateProjectProgress } from "@/lib/project/invalidateProjectQuerie
 import type { TrabajoDiarioFloor, TrabajoDiarioRubroGroup } from "./actions"
 
 const INSTRUCTIONS = [
-  "Selecciona el piso donde se realizó el trabajo",
+  "Selecciona el nivel donde se realizó el trabajo",
   "Selecciona las unidades/locales trabajados",
   "Elige el rubro correspondiente",
   "Para cada tarea, haz click para expandirla y agregar estado, comentarios y fotos",
@@ -499,11 +499,11 @@ export function CargarAvanceView({
       <div className="flex flex-col gap-6">
         <SelectionCard
           icon={<MapPin className="size-4 text-[#314158]" aria-hidden />}
-          title="Seleccionar Piso"
+          title="Seleccionar Nivel"
         >
           {floors.length === 0 ? (
             <p className="text-[14px] text-[#777b84]">
-              No hay pisos configurados en este proyecto.
+              No hay niveles configurados en este proyecto.
             </p>
           ) : (
             <SelectionPillRow>
@@ -528,7 +528,7 @@ export function CargarAvanceView({
           >
             {floorUnits.length === 0 ? (
               <p className="text-[14px] text-[#777b84]">
-                No hay unidades configuradas en este piso.
+                No hay unidades configuradas en este nivel.
               </p>
             ) : (
               <SelectionPillRow>

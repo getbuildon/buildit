@@ -110,7 +110,7 @@ function buildUnitOptions(
     const floorUnits = unitsByFloor.get(unit.floor_id) ?? []
     const unitIndex = floorUnits.findIndex((item) => item.id === unit.id) + 1
     const pillLabel = getUnitPillLabel(
-      { name: floor?.name ?? "Piso", identifier: floor?.identifier ?? null },
+      { name: floor?.name ?? "Nivel", identifier: floor?.identifier ?? null },
       { id: unit.id, code: unit.code },
       unitIndex,
     )

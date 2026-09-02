@@ -113,7 +113,7 @@ const fieldInputClassName =
   "h-[45px] rounded-[10px] border-[#edeef0] bg-white px-4 text-base leading-[1.4] text-[#18191b] shadow-none placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:ring-0"
 
 const fieldSelectTriggerClassName =
-  "h-[45px] rounded-[10px] border-[#edeef0] bg-white px-4 text-base leading-[1.4] text-[#18191b] shadow-none focus:border-[#ff7433] focus:ring-0 data-[placeholder]:text-[#777b84] [&_svg]:size-3.5 [&_svg]:text-[#777b84]"
+  "h-[45px] rounded-[10px] border-[#edeef0] bg-white px-4 text-base leading-[1.4] text-[#18191b] shadow-none focus-visible:border-[#ff7433] focus-visible:ring-0 data-[placeholder]:text-[#777b84] [&_svg]:size-3.5 [&_svg]:text-[#777b84]"
 
 export type ContractFormState = {
   firstName: string

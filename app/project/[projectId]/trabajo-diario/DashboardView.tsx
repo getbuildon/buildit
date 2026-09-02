@@ -28,9 +28,9 @@ import type { TrabajoDiarioData, TrabajoDiarioTaskStatus } from "./actions"
 
 const ALL_FLOORS_VALUE = "__all_floors__"
 const ALL_UNITS_VALUE = "__all_units__"
-const ALL_FLOORS_LABEL = "Todos los pisos"
+const ALL_FLOORS_LABEL = "Todos los niveles"
 const ALL_UNITS_LABEL = "Todas las unidades"
-const UNIT_FILTER_DISABLED_LABEL = "Seleccioná un piso primero"
+const UNIT_FILTER_DISABLED_LABEL = "Seleccioná un nivel primero"
 
 const filterLabelClassName =
   "text-[12px] font-normal leading-4 text-[#777b84] tracking-[-0.36px]"
@@ -211,7 +211,7 @@ export function DashboardView({ projectId, data }: Props) {
             </div>
 
             <div className={filterFieldClassName}>
-              <Label className={filterLabelClassName}>Piso</Label>
+              <Label className={filterLabelClassName}>Nivel</Label>
               <Select
                 value={selectedFloorId}
                 onValueChange={(value) => {
@@ -219,7 +219,7 @@ export function DashboardView({ projectId, data }: Props) {
                   setSelectedUnitId(ALL_UNITS_VALUE)
                 }}
               >
-                <SelectTrigger aria-label="Filtrar por piso">
+                <SelectTrigger aria-label="Filtrar por nivel">
                   <SelectValue placeholder={ALL_FLOORS_LABEL} />
                 </SelectTrigger>
                 <SelectContent>

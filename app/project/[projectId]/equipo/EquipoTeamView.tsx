@@ -79,7 +79,7 @@ const formInputClassName =
   "h-[44px] w-full rounded-[10px] border bg-white px-3 text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:ring-0"
 const formInputStyle = { borderColor: "#edeef0" } as const
 const formSelectTriggerClassName =
-  "h-[44px] w-full rounded-[10px] border-[#e2e8f0] bg-white text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none focus:border-[#ff7433] focus:ring-0 data-[placeholder]:text-[#777b84]"
+  "h-[44px] w-full rounded-[10px] border-[#e2e8f0] bg-white text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none focus-visible:border-[#ff7433] focus-visible:ring-0 data-[placeholder]:text-[#777b84]"
 
 // Figma 1244:1189 — avatar | identidad | email (300px) | acciones (desktop)
 const TEAM_ROW_CLASSNAME =

@@ -7,6 +7,7 @@ type FieldLabelWithTooltipProps = {
   label: string
   tooltip: string
   htmlFor?: string
+  required?: boolean
   className?: string
   labelClassName?: string
   labelStyle?: React.CSSProperties
@@ -16,6 +17,7 @@ export function FieldLabelWithTooltip({
   label,
   tooltip,
   htmlFor,
+  required = false,
   className,
   labelClassName,
   labelStyle,
@@ -27,7 +29,7 @@ export function FieldLabelWithTooltip({
         className={labelClassName}
         style={labelStyle}
       >
-        {label}
+        {required ? `${label} *` : label}
       </label>
       <div className="group relative flex shrink-0 items-center">
         <Info
@@ -47,7 +49,7 @@ export function FieldLabelWithTooltip({
 }
 
 export const FLOOR_IDENTIFIER_TOOLTIP =
-  "Nombre abreviado del piso. Se utilizará para facilitar su identificación. Ej: P01 , P02, PB, SS. (max. 4 caracteres)"
+  "Nombre abreviado del nivel. Se utilizará para facilitar su identificación. Ej: P01 , P02, PB, SS. (max. 4 caracteres)"
 
 export const UNIT_CODE_TOOLTIP =
   "Nombre abreviado de la unidad. Se utilizará para facilitar su identificación. Ej: 101, 1B. (max. 4 caracteres)"

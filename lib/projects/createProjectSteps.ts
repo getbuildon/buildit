@@ -36,9 +36,9 @@ export const CREATE_PROJECT_STEPS: CreateProjectStepConfig[] = [
   },
   {
     id: "structure",
-    label: "Estructura del Edificio",
+    label: "Configuración de Niveles y Locales",
     icon: Layers,
-    sectionTitle: "Configuración de Pisos y Unidades Funcionales",
+    sectionTitle: "Configuración de Niveles y Locales",
   },
   {
     id: "tasks",

@@ -42,7 +42,7 @@ const teamInputClassName =
 const teamInputStyle = { borderColor: "#edeef0" } as const
 
 const teamSelectTriggerClassName =
-  "h-[44px] rounded-[10px] border-[#e2e8f0] bg-white text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none focus:border-[#ff7433] focus:ring-0 data-[placeholder]:text-[#777b84]"
+  "h-[44px] rounded-[10px] border-[#e2e8f0] bg-white text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none focus-visible:border-[#ff7433] focus-visible:ring-0 data-[placeholder]:text-[#777b84]"
 
 function TeamSelect({
   id,
@@ -192,72 +192,97 @@ export function CreateProjectTeamStep({
           style={{ backgroundColor: "#fefcfb", borderColor: "#fff6f1" }}
         >
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <Input
-              id="member-first-name"
-              value={firstName}
-              onChange={(e) => {
-                setFirstName(e.target.value)
-                if (formError) setFormError("")
-              }}
-              placeholder="Nombre"
-              className={teamInputClassName}
-              style={teamInputStyle}
-            />
-            <Input
-              id="member-last-name"
-              value={lastName}
-              onChange={(e) => {
-                setLastName(e.target.value)
-                if (formError) setFormError("")
-              }}
-              placeholder="Apellido"
-              className={teamInputClassName}
-              style={teamInputStyle}
-            />
-            <TeamSelect
-              id="member-user-type"
-              value={userType}
-              placeholder="Tipo de usuario"
-              options={PROJECT_TEAM_SELECTABLE_USER_TYPES}
-              onChange={(value) => {
-                setUserType(value as ProjectUserType)
-                setRole("")
-                if (formError) setFormError("")
-              }}
-            />
-            <TeamSelect
-              id="member-role"
-              value={role}
-              placeholder="Rol"
-              options={userType ? USER_TYPE_ROLES[userType] : []}
-              disabled={!userType}
-              onChange={(value) => {
-                setRole(value as ProjectTeamRole)
-                if (formError) setFormError("")
-              }}
-            />
+            <div className="flex flex-col gap-1">
+              <label htmlFor="member-first-name" className="text-[12px] leading-4 text-[#43484e]">
+                Nombre *
+              </label>
+              <Input
+                id="member-first-name"
+                value={firstName}
+                onChange={(e) => {
+                  setFirstName(e.target.value)
+                  if (formError) setFormError("")
+                }}
+                placeholder="Nombre"
+                className={teamInputClassName}
+                style={teamInputStyle}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="member-last-name" className="text-[12px] leading-4 text-[#43484e]">
+                Apellido *
+              </label>
+              <Input
+                id="member-last-name"
+                value={lastName}
+                onChange={(e) => {
+                  setLastName(e.target.value)
+                  if (formError) setFormError("")
+                }}
+                placeholder="Apellido"
+                className={teamInputClassName}
+                style={teamInputStyle}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="member-user-type" className="text-[12px] leading-4 text-[#43484e]">
+                Tipo de usuario *
+              </label>
+              <TeamSelect
+                id="member-user-type"
+                value={userType}
+                placeholder="Tipo de usuario"
+                options={PROJECT_TEAM_SELECTABLE_USER_TYPES}
+                onChange={(value) => {
+                  setUserType(value as ProjectUserType)
+                  setRole("")
+                  if (formError) setFormError("")
+                }}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="member-role" className="text-[12px] leading-4 text-[#43484e]">
+                Rol *
+              </label>
+              <TeamSelect
+                id="member-role"
+                value={role}
+                placeholder="Rol"
+                options={userType ? USER_TYPE_ROLES[userType] : []}
+                disabled={!userType}
+                onChange={(value) => {
+                  setRole(value as ProjectTeamRole)
+                  if (formError) setFormError("")
+                }}
+              />
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Input
-              id="member-email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value)
-                if (formError) setFormError("")
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault()
-                  addMember()
-                }
-              }}
-              placeholder="correo@ejemplo.com"
-              className={`${teamInputClassName} min-w-0 flex-1`}
-              style={teamInputStyle}
-            />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="member-email" className="text-[12px] leading-4 text-[#43484e]">
+                Correo electrónico *
+              </label>
+              <Input
+                id="member-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (formError) setFormError("")
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    addMember()
+                  }
+                }}
+                placeholder="correo@ejemplo.com"
+                className={`${teamInputClassName} min-w-0 w-full`}
+                style={teamInputStyle}
+              />
+            </div>
             <Button
               type="button"
               variant="brand"

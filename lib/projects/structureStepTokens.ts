@@ -25,7 +25,7 @@ export const STRUCTURE_STEP_COLORS = {
   floorInputBorder: "#edeef0",
   unitInputBorder: "#e2e8f0",
   /** Contenedor “Unidades por Piso” — crema base del paso */
-  unitsSectionBg: "#fefcfb",
+  unitsSectionBg: "#fff7f0",
   /** Fondo de cada fila de unidad — contraste cálido vs card blanca del piso */
   unitRowBg: "#fff6f1",
   /** Borde de la card de piso — misma gama que summaryBorder */
@@ -69,7 +69,7 @@ export const structureUnitInputStyle = {
 export const structureUnitSelectTriggerClassName = cn(
   "h-auto min-h-[30px] w-full min-w-0 rounded-[4px] border border-[#e2e8f0] bg-white px-2 py-1.5",
   "text-[12px] font-normal leading-[1.4] tracking-[-0.36px] text-[#43484e] shadow-none",
-  "focus:border-[#ff7433] focus:ring-0 data-[placeholder]:text-[#777b84]",
+  "focus-visible:border-[#ff7433] focus-visible:ring-0 data-[placeholder]:text-[#777b84]",
   "[&_svg]:size-3",
 )
 

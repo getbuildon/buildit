@@ -96,7 +96,7 @@ export function CreateProjectBasicInfoStep({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <CreateProjectFormField
-          label="Nombre del proyecto"
+          label="Nombre del proyecto *"
           htmlFor="project-name"
           error={fieldErrors.projectName}
         >
@@ -113,7 +113,7 @@ export function CreateProjectBasicInfoStep({
         </CreateProjectFormField>
 
         <CreateProjectFormField
-          label="Superficie total (m²)"
+          label="Superficie total (m²) *"
           htmlFor="project-total-surface"
           error={fieldErrors.totalSurface}
         >

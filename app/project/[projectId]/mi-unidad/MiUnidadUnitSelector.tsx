@@ -44,7 +44,7 @@ function buildUnitMeta(unit: MiUnidadAssignedUnit): string {
   }
 
   if (unit.floorLabel) {
-    parts.push(`Piso ${unit.floorLabel}`)
+    parts.push(`Nivel ${unit.floorLabel}`)
   }
 
   return parts.join(" · ")

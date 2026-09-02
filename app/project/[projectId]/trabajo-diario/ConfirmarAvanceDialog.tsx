@@ -63,7 +63,7 @@ export function ConfirmarAvanceDialog({
           <div className="rounded-[10px] bg-[#f5f6f7] px-4 py-3">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[14px] leading-[1.4]">
               <p>
-                <span className="text-[#777b84]">Piso: </span>
+                <span className="text-[#777b84]">Nivel: </span>
                 <span className="font-medium text-[#272a2d]">{floorLabel}</span>
               </p>
               <p>

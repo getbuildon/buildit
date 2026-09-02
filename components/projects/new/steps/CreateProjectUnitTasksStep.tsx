@@ -229,7 +229,7 @@ export function CreateProjectUnitTasksStep({
   if (draft.floors.length === 0) {
     return (
       <p className="text-[14px] text-[#777b84]">
-        No hay pisos definidos. Agregá pisos en el paso de estructura.
+        No hay niveles definidos. Agregá niveles en el paso de estructura.
       </p>
     )
   }
@@ -240,7 +240,7 @@ export function CreateProjectUnitTasksStep({
     <div className="flex flex-col gap-3">
       <p className="text-[14px] leading-[1.4] text-[#18191b]">
         {hasAssignableRubros
-          ? "Todos los rubros y tareas fueron asignadas automáticamente a todos los pisos y unidades funcionales. Revisá todas las unidades y quitá aquellos rubros o tareas que no le correspondan."
+          ? "Todos los rubros y tareas fueron asignadas automáticamente a todos los niveles y unidades funcionales. Revisá todas las unidades y quitá aquellos rubros o tareas que no le correspondan."
           : "Completá la estructura del edificio y definí rubros con tareas para poder asignarlos por unidad."}
       </p>
 

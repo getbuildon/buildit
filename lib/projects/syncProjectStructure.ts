@@ -220,10 +220,10 @@ async function assertRemovableFloors(
   ]
 
   if (blockedNames.length === 1) {
-    return `No se puede eliminar el piso "${blockedNames[0]}" porque ya tiene avances registrados.`
+    return `No se puede eliminar el nivel "${blockedNames[0]}" porque ya tiene avances registrados.`
   }
 
-  return `No se pueden eliminar estos pisos porque ya tienen avances registrados: ${blockedNames.join(", ")}.`
+  return `No se pueden eliminar estos niveles porque ya tienen avances registrados: ${blockedNames.join(", ")}.`
 }
 
 async function assignAllTasksToNewUnits(
@@ -308,11 +308,11 @@ async function upsertFloors(
     .select("id")
 
   if (insertError || !insertedFloors) {
-    throw insertError ?? new Error("Error al crear pisos")
+    throw insertError ?? new Error("Error al crear niveles")
   }
 
   if (insertedFloors.length !== inserts.length) {
-    throw new Error("Error al crear pisos")
+    throw new Error("Error al crear niveles")
   }
 
   for (let index = 0; index < inserts.length; index++) {
@@ -362,7 +362,7 @@ async function upsertUnits(
 
   for (const floor of plannedFloors) {
     if (!floor.floorId) {
-      throw new Error("Piso sin ID persistido")
+      throw new Error("Nivel sin ID persistido")
     }
 
     for (const unit of floor.units) {

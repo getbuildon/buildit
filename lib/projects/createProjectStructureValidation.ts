@@ -92,7 +92,7 @@ export function getStructureStepFieldErrors(
     const unitErrors: Record<string, StructureUnitFieldErrors> = {}
 
     if (!floor.name.trim()) {
-      floorErrors.name = "El nombre del piso es obligatorio."
+      floorErrors.name = "El nombre del nivel es obligatorio."
     }
 
     if (!floor.identifier.trim()) {

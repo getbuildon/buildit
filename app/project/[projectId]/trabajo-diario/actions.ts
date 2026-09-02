@@ -437,7 +437,7 @@ export async function saveCargarAvance(
 ): Promise<SaveCargarAvanceResult> {
   const projectId = input.projectId.trim()
   if (!projectId) return { ok: false, error: "Proyecto inválido." }
-  if (!input.floorId) return { ok: false, error: "Seleccioná un piso." }
+  if (!input.floorId) return { ok: false, error: "Seleccioná un nivel." }
   if (!input.rubroId) return { ok: false, error: "Seleccioná un rubro." }
   if (input.unitIds.length === 0) {
     return { ok: false, error: "Seleccioná al menos una unidad." }
@@ -508,7 +508,7 @@ export async function saveCargarAvance(
 
   for (const unit of units) {
     if (unit.floor_id !== input.floorId) {
-      return { ok: false, error: "Las unidades deben pertenecer al piso seleccionado." }
+      return { ok: false, error: "Las unidades deben pertenecer al nivel seleccionado." }
     }
   }
 

@@ -139,7 +139,7 @@ export function ProjectCard({ project, progress }: ProjectCardProps) {
         >
           <div className="flex flex-col">
             <p className={HOME_TYPE.statLabel} style={{ color: HOME_COLORS.cardMuted }}>
-              Pisos
+              Niveles
             </p>
             <p className={HOME_TYPE.statValue} style={{ color: HOME_COLORS.cardStat }}>
               {project.floors}

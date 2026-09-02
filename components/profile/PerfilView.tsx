@@ -29,10 +29,10 @@ const CARD_CLASS =
   "flex flex-col gap-4 rounded-[16px] border border-[#edeef0] bg-white p-[21px] shadow-[0_0_5px_rgba(243,103,31,0.08)]"
 
 const PERSONAL_INPUT_CLASS =
-  "h-[42px] w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-[14px] font-normal leading-5 text-[#314158] outline-none focus:border-[#ff7433] disabled:opacity-70"
+  "h-[42px] w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-[14px] font-normal leading-5 text-[#314158] outline-none focus-visible:border-[#ff7433] disabled:opacity-70"
 
 const DEFAULT_INPUT_CLASS =
-  "h-[42px] w-full rounded-[10px] border border-[#e2e8f0] bg-white px-3 text-[14px] font-normal leading-5 text-[#272a2d] outline-none focus:border-[#ff7433] disabled:opacity-70"
+  "h-[42px] w-full rounded-[10px] border border-[#e2e8f0] bg-white px-3 text-[14px] font-normal leading-5 text-[#272a2d] outline-none focus-visible:border-[#ff7433] disabled:opacity-70"
 
 function getInitials(firstName: string, lastName: string, email?: string | null): string {
   const first = firstName.trim().charAt(0)

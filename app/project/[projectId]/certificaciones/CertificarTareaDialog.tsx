@@ -75,7 +75,7 @@ export function CertificarTareaDialog({
               <div className={CERTIFICACION_CONFIRM.summaryCard}>
                 <p className={CERTIFICACION_CONFIRM.summaryTitle}>{summary.taskName}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-3">
-                  <SummaryMetaItem label="Piso" value={summary.floorLabel} />
+                  <SummaryMetaItem label="Nivel" value={summary.floorLabel} />
                   <SummaryMetaItem label="Unidades" value={summary.unitLabel} />
                   <SummaryMetaItem label="Rubro" value={summary.rubroName} />
                 </div>

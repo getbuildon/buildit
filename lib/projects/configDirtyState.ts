@@ -248,7 +248,7 @@ export function getConfigSaveConfirmMessage(
   }
 
   if (floorsChanged) {
-    return "Se actualizará la estructura del edificio, pisos y unidades. ¿Deseás continuar?"
+    return "Se actualizará la estructura del edificio, niveles y unidades. ¿Deseás continuar?"
   }
 
   if (groupsChanged) {
