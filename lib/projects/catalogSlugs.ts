@@ -9,6 +9,10 @@ export const UNIT_TYPE_SLUG: Record<StructureUnitType, string> = {
   Piscina: "piscina",
   Terraza: "terraza",
   Estacionamiento: "estacionamiento",
+  Lobby: "otro",
+  Ascensor: "otro",
+  Palier: "otro",
+  Porche: "otro",
   Otro: "otro",
 }
 

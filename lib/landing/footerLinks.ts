@@ -1,4 +1,4 @@
-export const LANDING_CONTACT_EMAIL = "info@getbuildon.com"
+export const LANDING_CONTACT_EMAIL = "hablemos@getbuildon.com"
 
 export const LANDING_FOOTER_LINKS = [
   {

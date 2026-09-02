@@ -39,7 +39,7 @@ test("Las PALMAS: 1 certificada de 3 en un rubro de 6 muestra ~6%", () => {
   ], ctx)
 
   assert.ok(value > 5 && value < 6)
-  assert.equal(formatProgressPercentLabel(value), "5.5%")
+  assert.equal(formatProgressPercentLabel(value), "5.55%")
 })
 
 test("obra con avance real menor a 1% no se muestra como 0%", () => {
@@ -85,19 +85,21 @@ test("obra con avance real menor a 1% no se muestra como 0%", () => {
 
   assert.ok(project > 0)
   assert.ok(project < 1)
-  assert.match(formatProgressPercentLabel(project), /^\d+\.\d%$/)
+  assert.match(formatProgressPercentLabel(project), /^\d+\.\d{1,2}%$/)
   assert.notEqual(formatProgressPercentLabel(project), "0%")
   assert.equal(progressBarWidthPercent(project), 1)
 })
 
-test("el porcentaje de UI recorta a 1 decimal hacia abajo", () => {
+test("el porcentaje de UI recorta a 2 decimales hacia abajo", () => {
   assert.equal(formatProgressPercentLabel(0), "0%")
   assert.equal(formatProgressPercentLabel(12), "12%")
-  assert.equal(formatProgressPercentLabel(0.69), "0.6%")
+  assert.equal(formatProgressPercentLabel(0.69), "0.69%")
   assert.equal(formatProgressPercentLabel(0.7), "0.7%")
-  assert.equal(formatProgressPercentLabel(0.5555555555555556), "0.5%")
-  assert.equal(formatProgressPercentLabel(5.555555555555555), "5.5%")
-  assert.equal(formatProgressPercentLabel(-0.5555555555555556), "-0.5%")
+  assert.equal(formatProgressPercentLabel(0.699), "0.69%")
+  assert.equal(formatProgressPercentLabel(0.5555555555555556), "0.55%")
+  assert.equal(formatProgressPercentLabel(5.555555555555555), "5.55%")
+  assert.equal(formatProgressPercentLabel(-0.5555555555555556), "-0.55%")
+  assert.equal(formatProgressPercentLabel(0.004), "0.01%")
   assert.equal(progressBarWidthPercent(0), 0)
 })
 

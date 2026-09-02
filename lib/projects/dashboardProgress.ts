@@ -153,20 +153,19 @@ function calculateAverageProgress(values: number[]): number {
   return values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
-/** Recorta a 1 decimal hacia abajo, sin inflar el valor (0.69 → 0.6). */
+/** Recorta a 2 decimales hacia abajo, sin inflar el valor (0.699 → 0.69). */
 export function floorProgressPercent(value: number): number {
-  const abs = Math.floor(Math.abs(value) * 10 + 1e-8) / 10
+  const abs = Math.floor(Math.abs(value) * 100 + 1e-8) / 100
   return value < 0 ? -abs : abs
 }
 
-/** Etiqueta de UI: hasta 1 decimal hacia abajo. 0% solo cuando el valor es exactamente 0. */
+/** Etiqueta de UI: hasta 2 decimales hacia abajo. 0% solo cuando el valor es exactamente 0. */
 export function formatProgressPercentLabel(value: number): string {
   if (!Number.isFinite(value) || value === 0) return "0%"
 
   const floored = floorProgressPercent(value)
-  if (floored === 0) return value > 0 ? "0.1%" : "-0.1%"
-  if (Number.isInteger(floored)) return `${floored}%`
-  return `${floored.toFixed(1)}%`
+  if (floored === 0) return value > 0 ? "0.01%" : "-0.01%"
+  return `${Number(floored.toFixed(2))}%`
 }
 
 /** Ancho de barra: si hay avance real menor a 1%, dejar un sliver visible. */

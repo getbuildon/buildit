@@ -1,10 +1,14 @@
 import {
+  ArrowUpDown,
   Briefcase,
   Car,
+  DoorOpen,
   Home,
+  Layers,
   LayoutGrid,
   MoreHorizontal,
   Sun,
+  Tent,
   Trees,
   Waves,
   type LucideIcon,
@@ -19,6 +23,10 @@ export const UNIT_TYPE_ICONS: Record<StructureUnitType, LucideIcon> = {
   Piscina: Waves,
   Terraza: Sun,
   Estacionamiento: Car,
+  Lobby: DoorOpen,
+  Ascensor: ArrowUpDown,
+  Palier: Layers,
+  Porche: Tent,
   Otro: MoreHorizontal,
 }
 

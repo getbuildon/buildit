@@ -372,11 +372,12 @@ function ConfigSaveFooter({
       >
         <section
           ref={footerRef}
+          aria-label="Cambios sin guardar"
           data-viewport-bottom-inset={showFooter ? "" : undefined}
-          className="pointer-events-auto w-full overflow-hidden rounded-t-[12px] border border-b-0 border-[#ffeae0] bg-[#fff6f1] px-[25px] py-[17px]"
+          className="pointer-events-auto flex w-full items-center overflow-hidden rounded-t-[12px] border border-b-0 border-[#ffeae0] bg-[#fff6f1] px-[25px] py-[17px]"
         >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-            <div className="min-w-0 flex flex-col gap-0 leading-[1.4] text-[#111113]">
+          <div className="flex w-full items-center justify-end gap-2 sm:justify-between sm:gap-6">
+            <div className="hidden min-w-0 flex-col gap-0 leading-[1.4] text-[#111113] sm:flex">
               <p className="text-[16px] font-medium">Cambios sin guardar</p>
               {errorMessage ? (
                 <p className="mt-1 flex items-start gap-1.5 text-[14px] font-normal text-[#b91c1c]">
@@ -390,13 +391,13 @@ function ConfigSaveFooter({
               )}
             </div>
 
-            <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-2">
+            <div className="flex w-full min-w-0 shrink-0 items-center gap-2 sm:w-auto sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onRequestDiscard}
                 disabled={saving}
-                className="h-auto min-h-[44px] w-full rounded-[10px] border-[#696e77] bg-transparent px-4 py-3 text-[14px] font-normal leading-[1.4] text-[#363a3f] shadow-none hover:border-[#696e77] hover:bg-[#fff6f1] hover:text-[#272a2d] sm:w-auto"
+                className="h-auto min-h-[44px] min-w-0 flex-1 whitespace-nowrap rounded-[10px] border-[#696e77] bg-transparent px-3 py-3 text-[14px] font-normal leading-[1.4] text-[#363a3f] shadow-none hover:border-[#696e77] hover:bg-[#fff6f1] hover:text-[#272a2d] sm:w-auto sm:flex-none sm:px-4"
               >
                 Descartar cambios
               </Button>
@@ -406,7 +407,7 @@ function ConfigSaveFooter({
                 size="brand"
                 onClick={onSave}
                 disabled={saving || disableSave}
-                className="h-auto min-h-[44px] w-full gap-2 rounded-[10px] px-6 py-3 text-[14px] font-normal leading-[1.4] shadow-[0_0_10px_rgba(243,103,31,0.3)] sm:w-auto"
+                className="h-auto min-h-[44px] min-w-0 flex-1 gap-2 whitespace-nowrap rounded-[10px] px-3 py-3 text-[14px] font-normal leading-[1.4] shadow-[0_0_10px_rgba(243,103,31,0.3)] sm:w-auto sm:flex-none sm:px-6"
               >
                 <Check className="size-4 shrink-0" aria-hidden />
                 {saving ? "Guardando..." : "Guardar cambios"}

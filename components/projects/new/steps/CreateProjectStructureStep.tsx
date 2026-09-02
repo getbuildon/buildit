@@ -23,7 +23,9 @@ import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -39,7 +41,6 @@ import { CreateProjectFormField, createProjectFieldErrorInputClassName, createPr
 import { FieldErrorTooltip } from "@/components/ui/field-error-tooltip"
 import { normalizeTotalSurfaceInput } from "@/lib/projects/totalSurfaceInput"
 import {
-  STRUCTURE_UNIT_TYPES,
   cloneStructureFloor,
   cloneStructureUnit,
   countStructureUnits,
@@ -64,6 +65,10 @@ import {
   STRUCTURE_STEP_LAYOUT,
 } from "@/lib/projects/structureStepTokens"
 import {
+  STRUCTURE_UNIT_TYPE_GROUPS,
+  decodeUnitTypeSelection,
+  encodeUnitTypeSelection,
+  getUnitTypeSelectionValue,
   getUnitVariantField,
   getUnitVariantFieldLabel,
   isUnitVariantFieldEnabled,
@@ -468,11 +473,21 @@ function StructureFloorCard({
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   )
+  const [isDraggingUnits, setIsDraggingUnits] = useState(false)
+
+  function handleDragStart() {
+    setIsDraggingUnits(true)
+  }
 
   function handleDragEnd(event: DragEndEvent) {
+    setIsDraggingUnits(false)
     const overId = event.over?.id
     if (!overId) return
     onReorderUnits(String(event.active.id), String(overId))
+  }
+
+  function handleDragCancel() {
+    setIsDraggingUnits(false)
   }
 
   return (
@@ -593,7 +608,9 @@ function StructureFloorCard({
 
       <div className="flex w-full flex-col gap-2">
         {floor.units.length > 0 ? (
-          <div className="w-full overflow-x-auto">
+          <div
+            className={cn("w-full", isDraggingUnits ? "overflow-hidden" : "overflow-x-auto")}
+          >
             <div
               className="flex flex-col gap-2"
               style={{ minWidth: STRUCTURE_STEP_LAYOUT.unitRowMinWidth }}
@@ -601,7 +618,10 @@ function StructureFloorCard({
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
+                autoScroll={false}
+                onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
+                onDragCancel={handleDragCancel}
               >
                 <SortableContext
                   items={floor.units.map((unit) => unit.id)}
@@ -699,31 +719,40 @@ function StructureUnitRow({
               Tipo
             </span>
             <Select
-              value={unit.type}
-              onValueChange={(type) =>
+              value={getUnitTypeSelectionValue(unit.type)}
+              onValueChange={(value) => {
+                const type = decodeUnitTypeSelection(value)
+                if (!type) return
                 onUpdateUnit({
-                  type: type as StructureUnitDraft["type"],
+                  type,
                   roomCount: type === "Departamento" ? unit.roomCount : "",
                   officeSize: type === "Oficina" ? unit.officeSize : "",
                 })
-              }
+              }}
             >
               <SelectTrigger
                 size="sm"
-                aria-label="Tipo de unidad"
+                aria-label="Tipo"
                 className={structureUnitSelectTriggerClassName}
               >
-                <SelectValue placeholder="Seleccionar tipo" />
+                <SelectValue placeholder="Seleccionar tipo">{unit.type}</SelectValue>
               </SelectTrigger>
               <SelectContent position="popper">
-                {STRUCTURE_UNIT_TYPES.map((type) => (
-                  <SelectItem
-                    key={type}
-                    value={type}
-                    className={structureUnitSelectItemClassName}
-                  >
-                    {type}
-                  </SelectItem>
+                {STRUCTURE_UNIT_TYPE_GROUPS.map((group) => (
+                  <SelectGroup key={group.id}>
+                    <SelectLabel className="px-2 py-1 text-[11px] font-medium tracking-[-0.36px] text-[#777b84]">
+                      {group.label}
+                    </SelectLabel>
+                    {group.types.map((type) => (
+                      <SelectItem
+                        key={encodeUnitTypeSelection(group.id, type)}
+                        value={encodeUnitTypeSelection(group.id, type)}
+                        className={structureUnitSelectItemClassName}
+                      >
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 ))}
               </SelectContent>
             </Select>

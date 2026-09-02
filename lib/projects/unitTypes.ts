@@ -1,15 +1,90 @@
 export const STRUCTURE_UNIT_TYPES = [
   "Departamento",
   "Oficina",
-  "SUM",
-  "Patio",
-  "Piscina",
-  "Terraza",
   "Estacionamiento",
+  "SUM",
+  "Lobby",
+  "Piscina",
+  "Patio",
+  "Terraza",
+  "Ascensor",
+  "Palier",
+  "Porche",
   "Otro",
 ] as const
 
 export type StructureUnitType = (typeof STRUCTURE_UNIT_TYPES)[number]
+
+export const STRUCTURE_UNIT_TYPE_GROUPS = [
+  {
+    id: "unidad-funcional",
+    label: "Unidad funcional",
+    types: [
+      "Departamento",
+      "Oficina",
+      "Estacionamiento",
+      "SUM",
+      "Otro",
+    ] as const satisfies readonly StructureUnitType[],
+  },
+  {
+    id: "area-comun",
+    label: "Área común",
+    types: [
+      "Lobby",
+      "Piscina",
+      "Patio",
+      "Terraza",
+      "Ascensor",
+      "Palier",
+      "Porche",
+      "Otro",
+    ] as const satisfies readonly StructureUnitType[],
+  },
+] as const
+
+export type StructureUnitTypeGroupId =
+  (typeof STRUCTURE_UNIT_TYPE_GROUPS)[number]["id"]
+
+const COMMON_AREA_TYPES = new Set<StructureUnitType>([
+  "Lobby",
+  "Piscina",
+  "Patio",
+  "Terraza",
+  "Ascensor",
+  "Palier",
+  "Porche",
+])
+
+export function getUnitTypeGroupId(
+  type: StructureUnitType | string | null | undefined,
+): StructureUnitTypeGroupId {
+  const normalized = normalizeUnitType(type)
+  if (normalized && COMMON_AREA_TYPES.has(normalized)) return "area-comun"
+  return "unidad-funcional"
+}
+
+const UNIT_TYPE_SELECTION_SEPARATOR = "::"
+
+export function encodeUnitTypeSelection(
+  groupId: StructureUnitTypeGroupId,
+  type: StructureUnitType,
+) {
+  return `${groupId}${UNIT_TYPE_SELECTION_SEPARATOR}${type}`
+}
+
+export function decodeUnitTypeSelection(value: string): StructureUnitType | null {
+  const separator = value.indexOf(UNIT_TYPE_SELECTION_SEPARATOR)
+  const type =
+    separator === -1
+      ? value
+      : value.slice(separator + UNIT_TYPE_SELECTION_SEPARATOR.length)
+  return normalizeUnitType(type)
+}
+
+export function getUnitTypeSelectionValue(type: StructureUnitType) {
+  return encodeUnitTypeSelection(getUnitTypeGroupId(type), type)
+}
 
 export const UNIT_ROOM_COUNT_OPTIONS = [1, 2, 3, 4, 5] as const
 export type UnitRoomCount = (typeof UNIT_ROOM_COUNT_OPTIONS)[number]
