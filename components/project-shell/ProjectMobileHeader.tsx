@@ -12,6 +12,7 @@ import {
   ProfileMenuProfileIcon,
 } from "@/components/project-shell/ProjectProfileMenuIcons"
 import { ProjectNavLinks } from "@/components/project-shell/ProjectNavLinks"
+import { useProjectMobileMenu } from "@/components/project-shell/ProjectMobileMenuContext"
 import { SidebarSwitchProjectButton } from "@/components/project-shell/SidebarSwitchProjectButton"
 import { useAppRouteNavigation } from "@/components/navigation/AppRouteLoadingProvider"
 import { UserAvatar } from "@/components/user/UserAvatar"
@@ -39,7 +40,7 @@ export function ProjectMobileHeader({
   const router = useRouter()
   const { navigate } = useAppRouteNavigation()
   const { logOut } = useAuth()
-  const [menuOpen, setMenuOpen] = useState(false)
+  const { isOpen: menuOpen, setOpen: setMenuOpen } = useProjectMobileMenu()
   const [isScrolled, setIsScrolled] = useState(false)
   const perfilHref = projectHref(project.projectId, "perfil")
 
@@ -47,7 +48,17 @@ export function ProjectMobileHeader({
 
   useEffect(() => {
     setMenuOpen(false)
-  }, [pathname])
+  }, [pathname, setMenuOpen])
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)")
+    const closeOnDesktop = () => {
+      if (mq.matches) setMenuOpen(false)
+    }
+
+    mq.addEventListener("change", closeOnDesktop)
+    return () => mq.removeEventListener("change", closeOnDesktop)
+  }, [setMenuOpen])
 
   useEffect(() => {
     const main = document.querySelector("[data-project-shell] main")
@@ -66,22 +77,11 @@ export function ProjectMobileHeader({
   useEffect(() => {
     if (!menuOpen) return
 
-    const closeOnScroll = () => setMenuOpen(false)
-    const main = document.querySelector("[data-project-shell] main")
-
-    window.addEventListener("scroll", closeOnScroll, {
-      passive: true,
-      capture: true,
-    })
-    window.addEventListener("wheel", closeOnScroll, { passive: true })
-    window.addEventListener("touchmove", closeOnScroll, { passive: true })
-    main?.addEventListener("scroll", closeOnScroll, { passive: true })
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
 
     return () => {
-      window.removeEventListener("scroll", closeOnScroll, { capture: true })
-      window.removeEventListener("wheel", closeOnScroll)
-      window.removeEventListener("touchmove", closeOnScroll)
-      main?.removeEventListener("scroll", closeOnScroll)
+      document.body.style.overflow = previousOverflow
     }
   }, [menuOpen])
 
@@ -94,13 +94,23 @@ export function ProjectMobileHeader({
   }
 
   return (
-    <div
-      className={cn(
-        "relative z-40 shrink-0 bg-white transition-shadow duration-200 lg:hidden",
-        isScrolled && "shadow-[0_4px_16px_rgba(24,25,27,0.08)]",
-      )}
-    >
-      <div className="flex h-[80px] items-center justify-between gap-3 px-6">
+    <>
+      {menuOpen ? (
+        <button
+          type="button"
+          aria-label="Cerrar menú"
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={closeMenu}
+        />
+      ) : null}
+
+      <div
+        className={cn(
+          "relative z-40 shrink-0 bg-white transition-shadow duration-200 lg:hidden",
+          isScrolled && "shadow-[0_4px_16px_rgba(24,25,27,0.08)]",
+        )}
+      >
+        <div className="flex h-[80px] items-center justify-between gap-3 px-6">
         <div className="flex min-w-0 items-center gap-2.5">
           <CompanyLogoMark
             logoUrl={project.companyLogoUrl}
@@ -208,7 +218,8 @@ export function ProjectMobileHeader({
             </button>
           </div>
         </div>
-      </AnimatedCollapsible>
-    </div>
+        </AnimatedCollapsible>
+      </div>
+    </>
   )
 }

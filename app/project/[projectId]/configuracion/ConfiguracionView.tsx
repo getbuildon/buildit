@@ -42,6 +42,7 @@ import {
   emptyRubrosIdMaps,
   refreshConfigDraftAfterSave,
 } from "@/lib/projects/refreshConfigDraftAfterSave"
+import { useProjectMobileMenuOpen } from "@/components/project-shell/ProjectMobileMenuContext"
 import { CREATE_PROJECT_LAYOUT } from "@/lib/projects/createProjectTokens"
 import {
   buildConfigSnapshot,
@@ -318,13 +319,15 @@ function ConfigSaveFooter({
   const footerRef = useRef<HTMLDivElement>(null)
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const [entered, setEntered] = useState(false)
+  const mobileMenuOpen = useProjectMobileMenuOpen()
+  const showFooter = visible && !mobileMenuOpen
 
   useEffect(() => {
     setPortalTarget(document.body)
   }, [])
 
   useLayoutEffect(() => {
-    if (!visible) {
+    if (!showFooter) {
       setEntered(false)
       return
     }
@@ -343,13 +346,13 @@ function ConfigSaveFooter({
       cancelAnimationFrame(outerFrame)
       cancelAnimationFrame(innerFrame)
     }
-  }, [align, entered, visible])
+  }, [align, entered, showFooter])
 
   if (!portalTarget || !align) return null
 
   return createPortal(
     <div
-      aria-hidden={!visible}
+      aria-hidden={!showFooter}
       className="pointer-events-none fixed bottom-0 z-50"
       style={{
         left: align.left,
@@ -359,7 +362,7 @@ function ConfigSaveFooter({
       <div
         className={cn(
           "transition-[transform,opacity] ease-out will-change-transform",
-          visible && entered
+          showFooter && entered
             ? "translate-y-0 opacity-100"
             : "pointer-events-none translate-y-full opacity-0",
         )}
@@ -369,7 +372,7 @@ function ConfigSaveFooter({
       >
         <section
           ref={footerRef}
-          data-viewport-bottom-inset={visible ? "" : undefined}
+          data-viewport-bottom-inset={showFooter ? "" : undefined}
           className="pointer-events-auto w-full overflow-hidden rounded-t-[12px] border border-b-0 border-[#ffeae0] bg-[#fff6f1] px-[25px] py-[17px]"
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">

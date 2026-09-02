@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import { UserAvatar } from "@/components/user/UserAvatar"
 import { UserMenuDropdown } from "./UserMenuDropdown"
 import { ProjectMobileHeader } from "./ProjectMobileHeader"
+import { ProjectMobileMenuProvider } from "./ProjectMobileMenuContext"
 import { ProjectMetaProvider } from "./ProjectMetaProvider"
 
 // Figma node 1157:2701 — exact specs
@@ -189,33 +190,35 @@ type ProjectWorkspaceProps = {
 
 export function ProjectWorkspace({ project, userProfile, children }: ProjectWorkspaceProps) {
   return (
-    <div
-      className="flex h-full min-h-0 w-full flex-col overflow-hidden lg:flex-row"
-      style={{ backgroundColor: SHELL_COLORS.mainBg }}
-    >
-      <ProjectMobileHeader project={project} userProfile={userProfile} />
-
+    <ProjectMobileMenuProvider>
       <div
-        className="box-border hidden h-full min-h-0 shrink-0 flex-col py-3 pl-3 lg:flex"
-        style={{ width: `calc(${SHELL_LAYOUT.sidebarWidth} + ${SHELL_LAYOUT.sidebarMargin})` }}
+        className="flex h-full min-h-0 w-full flex-col overflow-hidden lg:flex-row"
+        style={{ backgroundColor: SHELL_COLORS.mainBg }}
       >
-        <ProjectSidebar project={project} userProfile={userProfile} />
-      </div>
+        <ProjectMobileHeader project={project} userProfile={userProfile} />
 
-      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <main className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain">
-          <div
-            className="mx-auto flex w-full flex-col px-4 pb-4 pt-4 lg:px-6 lg:pb-6 lg:pt-6"
-            style={{
-              maxWidth: SHELL_LAYOUT.contentMaxWidth,
-            }}
-          >
-            <ProjectMetaProvider value={{ id: project.projectId, name: project.name }}>
-              {children}
-            </ProjectMetaProvider>
-          </div>
-        </main>
+        <div
+          className="box-border hidden h-full min-h-0 shrink-0 flex-col py-3 pl-3 lg:flex"
+          style={{ width: `calc(${SHELL_LAYOUT.sidebarWidth} + ${SHELL_LAYOUT.sidebarMargin})` }}
+        >
+          <ProjectSidebar project={project} userProfile={userProfile} />
+        </div>
+
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <main className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain">
+            <div
+              className="mx-auto flex w-full flex-col px-4 pb-4 pt-4 lg:px-6 lg:pb-6 lg:pt-6"
+              style={{
+                maxWidth: SHELL_LAYOUT.contentMaxWidth,
+              }}
+            >
+              <ProjectMetaProvider value={{ id: project.projectId, name: project.name }}>
+                {children}
+              </ProjectMetaProvider>
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </ProjectMobileMenuProvider>
   )
 }
