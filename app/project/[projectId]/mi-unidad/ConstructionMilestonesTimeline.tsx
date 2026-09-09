@@ -2,9 +2,6 @@
 
 import { Check, Circle } from "lucide-react"
 import { parseDraftDateString } from "@/lib/projects/createProjectDraft"
-import {
-  MI_UNIDAD_MILESTONE_LOREM,
-} from "@/lib/projects/miUnidadTypes"
 import type { PortalMilestoneItem, PortalMilestoneStatus } from "@/lib/projects/portalClientesTypes"
 import { cn } from "@/lib/utils"
 
@@ -103,9 +100,11 @@ export function ConstructionMilestonesTimeline({
                 <p className="text-[16px] font-medium leading-[1.4] text-[#1d293d]">
                   {milestone.name}
                 </p>
-                <p className="pt-0.5 text-[14px] leading-[1.4] text-[#43484e]">
-                  {MI_UNIDAD_MILESTONE_LOREM}
-                </p>
+                {milestone.description.trim() ? (
+                  <p className="pt-0.5 text-[14px] leading-[1.4] text-[#43484e]">
+                    {milestone.description}
+                  </p>
+                ) : null}
                 {milestone.status === "in_progress" ? (
                   <span className="mt-2 inline-flex rounded-[6px] border border-[#5eb1ef] bg-[#e6f4fe] px-2 py-1 text-[11px] font-medium leading-[1.5] text-[#0d74ce]">
                     En Progreso

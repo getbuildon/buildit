@@ -1064,7 +1064,9 @@ export function ConfiguracionView({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <FieldLabel>Superficie total</FieldLabel>
+              <FieldLabel error={basicFieldErrors.totalSurface}>
+                Superficie total *
+              </FieldLabel>
               <Input
                 placeholder="Ej: 2.000,50"
                 inputMode="decimal"
@@ -1073,14 +1075,28 @@ export function ConfiguracionView({
                   const nextValue = normalizeTotalSurfaceInput(e.target.value)
                   setTotalSurface(nextValue)
                   updateDraft({ totalSurface: nextValue })
+                  if (basicFieldErrors.totalSurface) {
+                    setBasicFieldErrors((current) => ({
+                      ...current,
+                      totalSurface: undefined,
+                    }))
+                  }
                 }}
                 onBlur={() => {
                   const nextValue = finalizeTotalSurfaceInput(totalSurface)
                   setTotalSurface(nextValue)
                   updateDraft({ totalSurface: nextValue })
                 }}
-                className={basicInputClassName}
-                style={basicInputStyle}
+                className={cn(
+                  basicInputClassName,
+                  basicFieldErrors.totalSurface && createProjectFieldErrorInputClassName,
+                )}
+                style={
+                  basicFieldErrors.totalSurface
+                    ? { ...basicInputStyle, ...createProjectFieldErrorInputStyle }
+                    : basicInputStyle
+                }
+                aria-invalid={Boolean(basicFieldErrors.totalSurface)}
               />
             </div>
             <div className="flex flex-col gap-1.5">

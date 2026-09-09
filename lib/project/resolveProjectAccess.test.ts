@@ -90,7 +90,8 @@ test("admin de empresa que se suma como Admin de obra une capas", () => {
   assert.ok(access)
   assert.deepEqual(access.sources, ["company", "project"])
   assert.equal(access.permissions.loadProgress, true)
-  assert.equal(access.permissions.certifyTasks, false)
+  assert.equal(access.permissions.certifyTasks, true)
+  assert.equal(access.permissions.editTasks, true)
   assert.equal(access.permissions.configureProject, true)
 })
 

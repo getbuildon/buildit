@@ -11,6 +11,7 @@ export type PortalNewsItem = {
 export type PortalMilestoneItem = {
   id: string
   name: string
+  description: string
   estimatedDate: string | null
   status: PortalMilestoneStatus
   sortOrder: number
@@ -45,6 +46,7 @@ export type PortalNewsSaveInput = {
 export type PortalMilestoneSaveInput = {
   id: string
   name: string
+  description: string
   estimatedDate: string | null
   status: PortalMilestoneStatus
   sortOrder: number

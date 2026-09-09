@@ -59,6 +59,8 @@ const PORTAL_NEWS_DESCRIPTION_CLASSNAME =
   "min-h-[72px] w-full flex-1 resize-none rounded-[10px] border border-[#e2e8f0] bg-white px-3 py-[10px] text-[14px] font-normal leading-5 tracking-[-0.15px] text-[#272a2d] shadow-none placeholder:text-[#43484e] focus-visible:border-[#ff7433] focus-visible:outline-none focus-visible:ring-0 min-[640px]:h-full"
 const PORTAL_MILESTONE_NAME_CLASSNAME =
   "min-w-0 flex-1 border-0 bg-transparent p-0 text-[18px] font-medium leading-[1.05] text-[#111113] shadow-none outline-none placeholder:text-[#777b84] focus-visible:ring-0"
+const PORTAL_MILESTONE_DESCRIPTION_CLASSNAME =
+  "min-h-[64px] w-full resize-none rounded-[10px] border border-[#e2e8f0] bg-white px-3 py-2 text-[14px] font-normal leading-5 tracking-[-0.15px] text-[#272a2d] shadow-none placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:outline-none focus-visible:ring-0"
 const PORTAL_DATE_PICKER_CLASSNAME =
   "h-[40px] w-[200px] max-w-full border-[#afb3ba] text-[14px]"
 const PORTAL_ADD_BUTTON_CLASSNAME =
@@ -514,6 +516,7 @@ export function PortalClientesView({
       {
         id: crypto.randomUUID(),
         name: "",
+        description: "",
         estimatedDate: null,
         status: "not_started",
         sortOrder: current.length,
@@ -946,9 +949,9 @@ export function PortalClientesView({
                   return (
                   <div
                     key={item.id}
-                    className="flex flex-col gap-4 rounded-[10px] bg-[rgba(237,238,240,0.3)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:pl-6 sm:pr-4"
+                    className="flex flex-col gap-4 rounded-[10px] bg-[rgba(237,238,240,0.3)] px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:pl-6 sm:pr-4"
                   >
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex min-w-0 flex-1 flex-col gap-2">
                       <div className="flex min-w-0 flex-1 items-center gap-2">
                         <PortalFieldErrorWrap
                           error={itemErrors?.name}
@@ -986,6 +989,21 @@ export function PortalClientesView({
                           <Trash2 className="size-4" aria-hidden />
                         </button>
                       </div>
+                      <textarea
+                        value={item.description}
+                        onChange={(event) => {
+                          setMilestones((current) =>
+                            current.map((entry) =>
+                              entry.id === item.id
+                                ? { ...entry, description: event.target.value }
+                                : entry,
+                            ),
+                          )
+                        }}
+                        placeholder="Descripción del hito"
+                        aria-label={`Descripción del hito ${item.name || index + 1}`}
+                        className={PORTAL_MILESTONE_DESCRIPTION_CLASSNAME}
+                      />
                     </div>
 
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-2">

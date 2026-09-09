@@ -26,6 +26,7 @@ import {
   loadFichaSnapshotsFromProfiles,
 } from "@/lib/projects/projectMemberFicha"
 import { parseTotalSurfaceM2 } from "@/lib/projects/structureSurfaceLimits"
+import { seedDefaultPortalMilestonesIfEmpty } from "@/lib/projects/defaultPortalMilestones"
 
 function parseOptionalNumber(value: string): number | null {
   const trimmed = value.trim()
@@ -117,7 +118,7 @@ export async function persistProjectFromDraft(
     const floorRows = draft.floors.map((floor, index) => ({
       project_id: projectId,
       name: floor.name.trim() || `Nivel ${index + 1}`,
-      identifier: floor.identifier.trim().slice(0, 4) || null,
+      identifier: floor.identifier.trim() || null,
       level: floor.level.trim() || null,
       sort_order: index,
     }))
@@ -164,7 +165,7 @@ export async function persistProjectFromDraft(
           unit_type_id: catalog.unitTypeIds[getCatalogUnitType(unit.type)],
           unit_type: unit.type,
           unit_category: resolveUnitTypeCategory(unit.type, unit.typeCategory),
-          code: unit.code.trim().slice(0, 4) || null,
+          code: unit.code.trim() || null,
           name,
           square_meters: parseTotalSurfaceM2(unit.squareMeters),
           room_count,
@@ -399,6 +400,11 @@ export async function persistProjectFromDraft(
         )
       }
     }
+  }
+
+  const milestonesSeed = await seedDefaultPortalMilestonesIfEmpty(supabase, projectId)
+  if (!milestonesSeed.ok) {
+    return { ok: false, error: milestonesSeed.error }
   }
 
   return {

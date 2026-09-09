@@ -20,6 +20,7 @@ export function isEndDateAfterStartDate(startDate: string, endDate: string): boo
 export type ConfigBasicsFieldErrors = {
   projectName?: string
   location?: string
+  totalSurface?: string
   startDate?: string
   endDate?: string
 }
@@ -27,6 +28,7 @@ export type ConfigBasicsFieldErrors = {
 export function getConfigBasicsFieldErrors(input: {
   name: string
   location: string
+  totalSurface: string
   startDate: string
   endDate: string
 }): ConfigBasicsFieldErrors {
@@ -38,6 +40,10 @@ export function getConfigBasicsFieldErrors(input: {
 
   if (!input.location.trim()) {
     errors.location = "La ubicación es obligatoria."
+  }
+
+  if (!hasTotalSurfaceValue(input.totalSurface)) {
+    errors.totalSurface = "La superficie total es obligatoria."
   }
 
   if (!input.startDate.trim()) {

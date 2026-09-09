@@ -596,12 +596,14 @@ export async function updateProjectBasics(
   const basicsErrors = getConfigBasicsFieldErrors({
     name,
     location: input.location,
+    totalSurface: input.totalSurface,
     startDate: input.startDate,
     endDate: input.endDate,
   })
   const firstBasicsError =
     basicsErrors.projectName ??
     basicsErrors.location ??
+    basicsErrors.totalSurface ??
     basicsErrors.startDate ??
     basicsErrors.endDate
   if (firstBasicsError) {

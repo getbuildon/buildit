@@ -9,11 +9,26 @@ type InfoTooltipProps = {
   text: string
   className?: string
   iconClassName?: string
+  side?: "top" | "bottom"
 }
 
-export function InfoTooltip({ text, className, iconClassName }: InfoTooltipProps) {
+const TOOLTIP_WIDTH = 280
+const TOOLTIP_GAP = 8
+const VIEWPORT_PADDING = 8
+const FLIP_THRESHOLD = 96
+
+export function InfoTooltip({
+  text,
+  className,
+  iconClassName,
+  side = "bottom",
+}: InfoTooltipProps) {
   const [visible, setVisible] = useState(false)
-  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const [position, setPosition] = useState({
+    top: 0,
+    left: 0,
+    side: side,
+  })
   const triggerRef = useRef<HTMLSpanElement>(null)
 
   const updatePosition = useCallback(() => {
@@ -21,11 +36,21 @@ export function InfoTooltip({ text, className, iconClassName }: InfoTooltipProps
     if (!trigger) return
 
     const rect = trigger.getBoundingClientRect()
+    let nextSide = side
+    if (side === "top" && rect.top < FLIP_THRESHOLD) nextSide = "bottom"
+    if (side === "bottom" && window.innerHeight - rect.bottom < FLIP_THRESHOLD) {
+      nextSide = "top"
+    }
+
+    const minLeft = VIEWPORT_PADDING + TOOLTIP_WIDTH / 2
+    const maxLeft = window.innerWidth - VIEWPORT_PADDING - TOOLTIP_WIDTH / 2
+
     setPosition({
-      top: rect.bottom + 8,
-      left: rect.left + rect.width / 2,
+      top: nextSide === "top" ? rect.top - TOOLTIP_GAP : rect.bottom + TOOLTIP_GAP,
+      left: Math.min(Math.max(rect.left + rect.width / 2, minLeft), maxLeft),
+      side: nextSide,
     })
-  }, [])
+  }, [side])
 
   const show = () => {
     updatePosition()
@@ -57,7 +82,10 @@ export function InfoTooltip({ text, className, iconClassName }: InfoTooltipProps
               style={{
                 top: position.top,
                 left: position.left,
-                transform: "translateX(-50%)",
+                transform:
+                  position.side === "top"
+                    ? "translate(-50%, -100%)"
+                    : "translateX(-50%)",
               }}
               className="pointer-events-none fixed z-[9999] w-[280px] rounded-[8px] bg-[#111113] px-3 py-2 text-left text-[12px] font-normal leading-[1.4] tracking-[-0.36px] whitespace-pre-line text-white shadow-md"
             >

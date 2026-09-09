@@ -20,6 +20,7 @@ function mapNewsRow(row: {
 function mapMilestoneRow(row: {
   id: string
   name: string
+  description: string
   estimated_date: string | null
   status: string
   sort_order: number
@@ -27,6 +28,7 @@ function mapMilestoneRow(row: {
   return {
     id: row.id,
     name: row.name,
+    description: row.description ?? "",
     estimatedDate: row.estimated_date,
     status: row.status as PortalClientesData["milestones"][number]["status"],
     sortOrder: row.sort_order,
@@ -45,7 +47,7 @@ export async function loadPortalClientesData(
       .order("sort_order", { ascending: true }),
     supabase
       .from("project_portal_milestones")
-      .select("id, name, estimated_date, status, sort_order")
+      .select("id, name, description, estimated_date, status, sort_order")
       .eq("project_id", projectId)
       .order("sort_order", { ascending: true }),
     supabase

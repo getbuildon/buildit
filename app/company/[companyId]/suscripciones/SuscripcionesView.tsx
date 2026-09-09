@@ -10,27 +10,18 @@ type SuscripcionesViewProps = {
 function SubscriptionCard({ subscription }: { subscription: ProjectSubscriptionSummary }) {
   return (
     <article className="rounded-[16px] border border-[#edeef0] bg-white p-5 shadow-[0_0_5px_rgba(243,103,31,0.08)]">
-      <div className="mb-5 flex flex-col gap-4 border-b border-[#edeef0] pb-5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-6">
-          <div>
-            <h2 className="font-recoleta text-[20px] font-normal leading-[1.05] text-[#272a2d]">
-              {subscription.planName}
-            </h2>
-            <p className="mt-1 text-[14px] leading-[1.4] text-[#43484e]">
-              {subscription.surfaceLabel}
-            </p>
-          </div>
-          <p className="text-[18px] font-medium leading-[1.4] text-[#1d293d] sm:text-[20px]">
-            {subscription.projectName}
+      <div className="mb-5 flex flex-col gap-4 border-b border-[#edeef0] pb-5 sm:flex-row sm:items-baseline sm:gap-6">
+        <div>
+          <h2 className="font-recoleta text-[20px] font-normal leading-[1.05] text-[#272a2d]">
+            {subscription.planName}
+          </h2>
+          <p className="mt-1 text-[14px] leading-[1.4] text-[#43484e]">
+            {subscription.surfaceLabel}
           </p>
         </div>
-
-        <button
-          type="button"
-          className="inline-flex h-9 shrink-0 items-center justify-center rounded-[8px] border border-[#696e77] px-4 text-[14px] font-normal text-[#272a2d] transition-colors hover:bg-[#fefcfb]"
-        >
-          Mejorar Plan
-        </button>
+        <p className="text-[18px] font-medium leading-[1.4] text-[#1d293d] sm:text-[20px]">
+          {subscription.projectName}
+        </p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
@@ -60,12 +51,6 @@ function SubscriptionCard({ subscription }: { subscription: ProjectSubscriptionS
           <p className="mt-1 text-[14px] leading-[1.4] text-[#272a2d]">
             **** **** **** {subscription.cardLast4}
           </p>
-          <button
-            type="button"
-            className="mt-2 text-[14px] leading-[1.4] text-[#272a2d] underline underline-offset-2"
-          >
-            Cambiar método
-          </button>
         </div>
       </div>
     </article>

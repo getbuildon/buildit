@@ -48,6 +48,7 @@ import {
   countStructureUnits,
   createDefaultFloor,
   createDefaultUnit,
+  nextDuplicateCopyLabel,
   type CreateProjectDraft,
   type StructureFloorDraft,
   type StructureUnitDraft,
@@ -197,10 +198,33 @@ export function CreateProjectStructureStep({
     markAsNew(unit.id)
   }
 
+  const collectStructureIds = () => [
+    ...draft.floors.map((item) => item.identifier),
+    ...draft.floors.flatMap((item) => item.units.map((unit) => unit.code)),
+  ]
+
   const duplicateFloor = (floorId: string) => {
     const floor = draft.floors.find((item) => item.id === floorId)
     if (!floor) return
     const clone = cloneStructureFloor(floor)
+    const takenIds = collectStructureIds()
+    clone.name = nextDuplicateCopyLabel(
+      floor.name,
+      draft.floors.map((item) => item.name),
+    )
+    clone.identifier = nextDuplicateCopyLabel(floor.identifier, takenIds, {
+      caseInsensitive: true,
+    })
+    if (clone.identifier) takenIds.push(clone.identifier)
+    clone.units = clone.units.map((unit, unitIndex) => {
+      const code = nextDuplicateCopyLabel(
+        floor.units[unitIndex]?.code ?? unit.code,
+        takenIds,
+        { caseInsensitive: true },
+      )
+      if (code) takenIds.push(code)
+      return { ...unit, code }
+    })
     const index = draft.floors.findIndex((item) => item.id === floorId)
     const next = [...draft.floors]
     next.splice(index + 1, 0, clone)
@@ -213,7 +237,12 @@ export function CreateProjectStructureStep({
     const floor = draft.floors.find((item) => item.id === floorId)
     const unit = floor?.units.find((item) => item.id === unitId)
     if (!floor || !unit) return
-    const clone = cloneStructureUnit(unit)
+    const clone = {
+      ...cloneStructureUnit(unit),
+      code: nextDuplicateCopyLabel(unit.code, collectStructureIds(), {
+        caseInsensitive: true,
+      }),
+    }
     const index = floor.units.findIndex((item) => item.id === unitId)
     const units = [...floor.units]
     units.splice(index + 1, 0, clone)
@@ -365,6 +394,19 @@ export function CreateProjectStructureStep({
             ))}
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={addFloor}
+          className="inline-flex h-10 w-full items-center justify-center gap-3 rounded-[10px] border border-dashed bg-white text-[14px] font-medium leading-5 tracking-[-0.15px] text-[#696e77] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
+          style={{
+            borderColor: STRUCTURE_STEP_COLORS.addLocalBorder,
+            maxWidth: STRUCTURE_STEP_LAYOUT.floorCardMaxWidth,
+          }}
+        >
+          <Plus className="size-4" strokeWidth={1.75} aria-hidden />
+          Agregar nivel
+        </button>
       </div>
 
       <StructureProjectSummary floorCount={floorCount} unitCount={unitCount} />
@@ -540,7 +582,7 @@ function StructureFloorCard({
             id={`floor-identifier-${floor.id}`}
             placeholder="Ej. PB, P01, SS."
             value={floor.identifier}
-            maxLength={4}
+            maxLength={32}
             onChange={(e) => onUpdateFloor({ identifier: e.target.value })}
             className={cn(
               structureFloorInputClassName,
@@ -764,7 +806,7 @@ function StructureUnitRow({
               id={`unit-code-${unit.id}`}
               placeholder="Ej. 101"
               value={unit.code}
-              maxLength={4}
+              maxLength={32}
               onChange={(e) => onUpdateUnit({ code: e.target.value })}
               className={cn(
                 structureUnitInputClassName,

@@ -58,6 +58,7 @@ import {
   parseOptionalUsdAmount,
   summarizeBillingEntries,
 } from "@/lib/backoffice/subscriptionBilling"
+import { seedDefaultPortalMilestonesIfEmpty } from "@/lib/projects/defaultPortalMilestones"
 import { createAdminClient } from "@/utils/supabase/admin"
 
 export type { BackofficeProjectSubscriptionInput } from "@/lib/backoffice/projectSubscriptionForm"
@@ -1657,6 +1658,12 @@ export async function createBackofficeProject(
   if (!subscriptionResult.ok) {
     await admin.from("projects").delete().eq("id", created.id)
     return subscriptionResult
+  }
+
+  const milestonesSeed = await seedDefaultPortalMilestonesIfEmpty(admin, created.id)
+  if (!milestonesSeed.ok) {
+    await admin.from("projects").delete().eq("id", created.id)
+    return { ok: false, error: milestonesSeed.error }
   }
 
   revalidatePath("/backoffice/proyectos")

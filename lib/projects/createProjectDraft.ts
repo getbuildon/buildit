@@ -176,6 +176,39 @@ export function createDefaultFloor(floorIndex: number): StructureFloorDraft {
   }
 }
 
+const COPY_LABEL_RE = /^(.*?)(?:\s+\(copia(?: (\d+))?\))?$/i
+
+function formatDuplicateCopyLabel(base: string, copyNumber: number): string {
+  return copyNumber <= 1 ? `${base} (copia)` : `${base} (copia ${copyNumber})`
+}
+
+/** Primera copia: "(copia)". Siguientes: "(copia 2)", "(copia 3)", … */
+export function nextDuplicateCopyLabel(
+  source: string,
+  existingValues: Iterable<string>,
+  options?: { caseInsensitive?: boolean },
+): string {
+  const trimmed = source.trim()
+  if (!trimmed) return ""
+
+  const match = trimmed.match(COPY_LABEL_RE)
+  const base = (match?.[1] ?? trimmed).trim()
+  if (!base) return ""
+
+  const normalize = (value: string) =>
+    options?.caseInsensitive ? value.trim().toUpperCase() : value.trim()
+  const used = new Set([...existingValues].map(normalize).filter(Boolean))
+
+  let copyNumber = 1
+  let candidate = formatDuplicateCopyLabel(base, copyNumber)
+  while (used.has(normalize(candidate))) {
+    copyNumber += 1
+    candidate = formatDuplicateCopyLabel(base, copyNumber)
+  }
+
+  return candidate
+}
+
 export function cloneStructureUnit(unit: StructureUnitDraft): StructureUnitDraft {
   return {
     ...unit,

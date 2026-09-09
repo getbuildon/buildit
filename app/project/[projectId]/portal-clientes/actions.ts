@@ -328,6 +328,7 @@ export async function savePortalClientesContent(
       id: item.id,
       project_id: input.projectId,
       name: item.name.trim(),
+      description: item.description.trim(),
       estimated_date: item.estimatedDate,
       status: item.status,
       sort_order: item.sortOrder,

@@ -35,7 +35,7 @@ export const PROJECT_ROLE_PERMISSION_TOOLTIPS: Record<
 > = {
   Admin: {
     description:
-      "Administrador operativo de los proyectos. Configura estructuras, equipos, permisos y mantiene el funcionamiento general de la operación.",
+      "Administrador operativo de los proyectos. Configura estructuras, equipos y permisos, certifica y edita tareas, y mantiene el funcionamiento general de la operación.",
     roles: formatRoleExamples("Admin"),
   },
   Supervisor: {
@@ -102,8 +102,8 @@ export const PROJECT_PERMISSION_TABLE: PermissionRow[] = [
     values: [true, true, true, true, "unitOnly"],
   },
   { action: "Cargar avances", key: "loadProgress", values: [true, true, true, true, false] },
-  { action: "Certificar tareas", key: "certifyTasks", values: [true, false, true, false, false] },
-  { action: "Editar tareas", key: "editTasks", values: [true, false, true, true, false] },
+  { action: "Certificar tareas", key: "certifyTasks", values: [true, true, true, false, false] },
+  { action: "Editar tareas", key: "editTasks", values: [true, true, true, true, false] },
   {
     action: "Ver registro de cambios",
     key: "viewAuditLog",

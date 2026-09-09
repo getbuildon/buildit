@@ -19,6 +19,3 @@ export type MiUnidadPageData = PortalClientesData & {
   weather: ProjectWeatherSnapshot | null
   units: MiUnidadAssignedUnit[]
 }
-
-export const MI_UNIDAD_MILESTONE_LOREM =
-  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
