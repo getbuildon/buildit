@@ -285,11 +285,14 @@ export function CreateProjectUnitTasksStep({
 
               {/* Units */}
               <AnimatedCollapsible open={floorExpanded}>
-                {floor.units.map((unit, unitIndex) => {
+                {floor.units.map((unit) => {
                   const unitDisabled = unitDisabledReason !== null
                   const unitExpanded =
                     !unitDisabled && expandedUnits.has(unit.id)
-                  const unitLabel = `${unit.type} ${unitIndex + 1}`
+                  const unitCode = unit.code.trim()
+                  const unitLabel = unitCode
+                    ? `${unit.type} · ${unitCode}`
+                    : unit.type
 
                   return (
                     <div

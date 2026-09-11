@@ -6,6 +6,7 @@ import { CheckIcon, ChevronDownIcon, ChevronRightIcon, ChevronUpIcon } from "luc
 
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
@@ -272,6 +273,20 @@ function NestedSelectCustomInput({
   )
 }
 
+function useNestedSelectSubmenuSide() {
+  const [side, setSide] = React.useState<"right" | "bottom">("right")
+
+  React.useEffect(() => {
+    const media = window.matchMedia("(min-width: 380px)")
+    const sync = () => setSide(media.matches ? "right" : "bottom")
+    sync()
+    media.addEventListener("change", sync)
+    return () => media.removeEventListener("change", sync)
+  }, [])
+
+  return side
+}
+
 function NestedSelect({
   id,
   value,
@@ -288,6 +303,7 @@ function NestedSelect({
   const [open, setOpen] = React.useState(false)
   const [editingKey, setEditingKey] = React.useState<string | null>(null)
   const [customDraft, setCustomDraft] = React.useState("")
+  const submenuSide = useNestedSelectSubmenuSide()
   const presetValues = React.useMemo(() => getPresetOptionValues(groups), [groups])
   const isCustomValue = Boolean(value) && !presetValues.has(value ?? "")
   const selectedGroupId =
@@ -315,12 +331,12 @@ function NestedSelect({
     .find((option) => !option.allowCustomInput && option.value === value)?.label
   const selectedLabel = selectedPresetLabel ?? (isCustomValue ? value : undefined)
 
-  function optionKey(groupId: string, optionValue: string) {
-    return `${groupId}::${optionValue}`
+  function optionKey(currentGroupId: string, optionValue: string) {
+    return `${currentGroupId}::${optionValue}`
   }
 
-  function startCustomEdit(groupId: string, option: NestedSelectOption) {
-    setEditingKey(optionKey(groupId, option.value))
+  function startCustomEdit(currentGroupId: string, option: NestedSelectOption) {
+    setEditingKey(optionKey(currentGroupId, option.value))
     setCustomDraft(isCustomValue && value ? value : "")
   }
 
@@ -373,83 +389,112 @@ function NestedSelect({
       </PopoverTrigger>
       <PopoverContent
         align="start"
+        side="bottom"
         sideOffset={4}
         collisionPadding={8}
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+        onInteractOutside={(event) => {
+          const target = event.target
+          if (
+            target instanceof Element &&
+            target.closest("[data-nested-select-submenu]")
+          ) {
+            event.preventDefault()
+          }
+        }}
         className="w-auto border-0 bg-transparent p-0 shadow-none"
       >
-        <div className="flex flex-col items-start gap-1 min-[380px]:flex-row">
-          <div className={cn(SELECT_CONTENT_CLASSNAME, "w-[198px] p-1")}>
-            {groups.map((group) => {
-              const isActive = group.id === activeGroup?.id
-              return (
-                <button
-                  key={group.id}
-                  type="button"
-                  data-highlighted={isActive ? "" : undefined}
-                  onMouseEnter={() => setActiveGroupId(group.id)}
-                  onFocus={() => setActiveGroupId(group.id)}
-                  onClick={() => setActiveGroupId(group.id)}
-                  className={cn(SELECT_ITEM_CLASSNAME, "pr-2", itemClassName)}
+        <div className={cn(SELECT_CONTENT_CLASSNAME, "w-[198px] p-1")}>
+          {groups.map((group) => {
+            const isActive = group.id === activeGroup?.id
+            const groupButton = (
+              <button
+                type="button"
+                data-highlighted={isActive ? "" : undefined}
+                onMouseEnter={() => setActiveGroupId(group.id)}
+                onFocus={() => setActiveGroupId(group.id)}
+                onClick={() => setActiveGroupId(group.id)}
+                className={cn(SELECT_ITEM_CLASSNAME, "pr-2", itemClassName)}
+              >
+                <span className="min-w-0 flex-1 truncate text-left">{group.label}</span>
+                <ChevronRightIcon className="size-4 text-[#43484e] opacity-70" />
+              </button>
+            )
+
+            if (!isActive || !activeGroup) {
+              return <React.Fragment key={group.id}>{groupButton}</React.Fragment>
+            }
+
+            return (
+              <Popover key={group.id} open>
+                <PopoverAnchor asChild>{groupButton}</PopoverAnchor>
+                <PopoverContent
+                  data-nested-select-submenu=""
+                  side={submenuSide}
+                  align="start"
+                  sideOffset={4}
+                  collisionPadding={8}
+                  onOpenAutoFocus={(event) => event.preventDefault()}
+                  onCloseAutoFocus={(event) => event.preventDefault()}
+                  onInteractOutside={(event) => event.preventDefault()}
+                  className={cn(
+                    SELECT_CONTENT_CLASSNAME,
+                    "w-[198px] max-h-(--radix-popover-content-available-height) overflow-y-auto p-1",
+                  )}
                 >
-                  <span className="min-w-0 flex-1 truncate text-left">{group.label}</span>
-                  <ChevronRightIcon className="size-4 text-[#43484e] opacity-70" />
-                </button>
-              )
-            })}
-          </div>
+                  {activeGroup.options.map((option) => {
+                    const key = optionKey(activeGroup.id, option.value)
+                    const isEditing = editingKey === key
+                    const isSelected =
+                      option.allowCustomInput
+                        ? (isCustomValue && activeGroup.id === groupId) ||
+                          (!isCustomValue && option.value === value)
+                        : option.value === value
 
-          {activeGroup ? (
-            <div className={cn(SELECT_CONTENT_CLASSNAME, "w-[198px] p-1")}>
-              {activeGroup.options.map((option) => {
-                const key = optionKey(activeGroup.id, option.value)
-                const isEditing = editingKey === key
-                const isSelected =
-                  option.allowCustomInput
-                    ? (isCustomValue && activeGroup.id === groupId) ||
-                      (!isCustomValue && option.value === value)
-                    : option.value === value
+                    if (option.allowCustomInput && isEditing) {
+                      return (
+                        <NestedSelectCustomInput
+                          key={key}
+                          value={customDraft}
+                          className={itemClassName}
+                          onChange={setCustomDraft}
+                          onCommit={() => commitCustomEdit(true)}
+                          onCancel={cancelCustomEdit}
+                        />
+                      )
+                    }
 
-                if (option.allowCustomInput && isEditing) {
-                  return (
-                    <NestedSelectCustomInput
-                      key={key}
-                      value={customDraft}
-                      className={itemClassName}
-                      onChange={setCustomDraft}
-                      onCommit={() => commitCustomEdit(true)}
-                      onCancel={cancelCustomEdit}
-                    />
-                  )
-                }
-
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    data-highlighted={isSelected ? "" : undefined}
-                    onClick={() => {
-                      if (option.allowCustomInput) {
-                        startCustomEdit(activeGroup.id, option)
-                        return
-                      }
-                      onValueChange(option.value, activeGroup.id)
-                      setOpen(false)
-                    }}
-                    className={cn(SELECT_ITEM_CLASSNAME, itemClassName)}
-                  >
-                    <span className="min-w-0 flex-1 truncate text-left">
-                      {option.allowCustomInput && isCustomValue && activeGroup.id === groupId
-                        ? value
-                        : option.label}
-                    </span>
-                    {isSelected ? (
-                      <CheckIcon className="absolute right-2 size-4 text-[#5a6169]" />
-                    ) : null}
-                  </button>
-                )
-              })}
-            </div>
-          ) : null}
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        data-highlighted={isSelected ? "" : undefined}
+                        onClick={() => {
+                          if (option.allowCustomInput) {
+                            startCustomEdit(activeGroup.id, option)
+                            return
+                          }
+                          onValueChange(option.value, activeGroup.id)
+                          setOpen(false)
+                        }}
+                        className={cn(SELECT_ITEM_CLASSNAME, itemClassName)}
+                      >
+                        <span className="min-w-0 flex-1 truncate text-left">
+                          {option.allowCustomInput && isCustomValue && activeGroup.id === groupId
+                            ? value
+                            : option.label}
+                        </span>
+                        {isSelected ? (
+                          <CheckIcon className="absolute right-2 size-4 text-[#5a6169]" />
+                        ) : null}
+                      </button>
+                    )
+                  })}
+                </PopoverContent>
+              </Popover>
+            )
+          })}
         </div>
       </PopoverContent>
     </Popover>

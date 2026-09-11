@@ -123,6 +123,22 @@ function stripUnitTaskExclusions(
   return next
 }
 
+function copyUnitTaskExclusions(
+  exclusions: CreateProjectDraft["unitTaskExclusions"],
+  pairs: Array<{ from: string; to: string }>,
+): CreateProjectDraft["unitTaskExclusions"] {
+  if (pairs.length === 0) return exclusions
+
+  let next: CreateProjectDraft["unitTaskExclusions"] | null = null
+  for (const { from, to } of pairs) {
+    const source = exclusions[from]
+    if (!source?.length) continue
+    if (!next) next = { ...exclusions }
+    next[to] = [...source]
+  }
+  return next ?? exclusions
+}
+
 type CreateProjectStructureStepProps = {
   draft: CreateProjectDraft
   onChange: (patch: Partial<CreateProjectDraft>) => void
@@ -228,7 +244,16 @@ export function CreateProjectStructureStep({
     const index = draft.floors.findIndex((item) => item.id === floorId)
     const next = [...draft.floors]
     next.splice(index + 1, 0, clone)
-    setFloors(next)
+    onChange({
+      floors: next,
+      unitTaskExclusions: copyUnitTaskExclusions(
+        draft.unitTaskExclusions,
+        floor.units.map((unit, unitIndex) => ({
+          from: unit.id,
+          to: clone.units[unitIndex].id,
+        })),
+      ),
+    })
     markAsNew(clone.id)
     for (const unit of clone.units) markAsNew(unit.id)
   }
@@ -246,7 +271,14 @@ export function CreateProjectStructureStep({
     const index = floor.units.findIndex((item) => item.id === unitId)
     const units = [...floor.units]
     units.splice(index + 1, 0, clone)
-    updateFloor(floorId, { units })
+    onChange({
+      floors: draft.floors.map((item) =>
+        item.id === floorId ? { ...item, units } : item,
+      ),
+      unitTaskExclusions: copyUnitTaskExclusions(draft.unitTaskExclusions, [
+        { from: unit.id, to: clone.id },
+      ]),
+    })
     markAsNew(clone.id)
   }
 
