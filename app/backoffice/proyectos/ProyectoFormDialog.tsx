@@ -69,7 +69,7 @@ function emptyFormState(): ProyectoFormState {
     name: "",
     company: null,
     location: "",
-    status: "active",
+    status: "draft",
     totalSurfaceM2: "",
     subscription: emptyProjectSubscriptionFormValue(),
   }
@@ -410,6 +410,7 @@ export function ProyectoFormDialog({
                     id="project-status"
                     value={form.status}
                     onChange={(event) => updateField("status", event.target.value)}
+                    disabled={!isEditing}
                     className={cn(FIELD_CLASSNAME, "px-3")}
                   >
                     {PROJECT_STATUS_OPTIONS.map((option) => (
@@ -418,6 +419,12 @@ export function ProyectoFormDialog({
                       </option>
                     ))}
                   </select>
+                  {!isEditing ? (
+                    <p className="text-xs text-muted-foreground">
+                      El proyecto se crea en borrador hasta que el cliente complete la
+                      configuración inicial.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex flex-col gap-1.5">

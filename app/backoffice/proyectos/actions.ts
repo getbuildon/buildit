@@ -1598,7 +1598,9 @@ export async function createBackofficeProject(
   await requireBackofficeUser()
   const admin = createAdminClient()
 
-  const normalized = normalizeProjectInput(input)
+  // Todo proyecto nuevo nace en borrador para que el cliente pase por el onboarding
+  // (/projects/new) antes de entrar a la app del proyecto.
+  const normalized = normalizeProjectInput({ ...input, status: "draft" })
   if (!normalized.ok) return normalized
 
   const { data: company, error: companyError } = await admin
