@@ -169,3 +169,8 @@ supabase/templates/generated/
 
 # Codex
 .codex
+# Planes internos de la Etapa 2 (no versionar)
+/docs/plan-etapa-2/
+
+# Instrucciones personales de Claude
+CLAUDE.local.md
