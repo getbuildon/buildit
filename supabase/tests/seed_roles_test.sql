@@ -58,8 +58,8 @@ BEGIN
   VALUES (v_project, 'Obra de Prueba', 'Córdoba', 'active', '00000000-0000-4000-a000-000000000001', v_company);
 
   -- equipo: el supervisor tiene cargo jefe_obra (antes la base no lo dejaba certificar)
-  INSERT INTO public.project_members (project_id, user_id, user_type_id, role_id, is_active)
-  SELECT v_project, m.uid, ut.id, pr.id, true
+  INSERT INTO public.project_members (project_id, user_id, user_type_id, role_id, is_active, first_name, last_name)
+  SELECT v_project, m.uid, ut.id, pr.id, true, p.first_name, p.last_name
   FROM (VALUES
     ('00000000-0000-4000-a000-000000000001'::uuid, 'owner', 'founder'),
     ('00000000-0000-4000-a000-000000000002'::uuid, 'admin', 'gerente'),
@@ -68,7 +68,8 @@ BEGIN
     ('00000000-0000-4000-a000-000000000005'::uuid, 'cliente', 'cliente')
   ) AS m(uid, ut_slug, pr_slug)
   JOIN public.user_types ut ON ut.slug = m.ut_slug
-  JOIN public.project_roles pr ON pr.slug = m.pr_slug;
+  JOIN public.project_roles pr ON pr.slug = m.pr_slug
+  JOIN public.profiles p ON p.id = m.uid;
 
   INSERT INTO public.project_floors (id, project_id, name, sort_order) VALUES (v_floor, v_project, 'Piso 1', 1);
   INSERT INTO public.project_units (id, project_id, floor_id, unit_type_id, code, name, sort_order)
