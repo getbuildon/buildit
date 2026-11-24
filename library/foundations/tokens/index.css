@@ -1,0 +1,4 @@
+/* Variables CSS de base. El color por rol, las voces, el radio y las curvas
+   viven en ../theme.css porque Tailwind los publica como utilidades. */
+@import "./primitives.css";
+@import "./tokens.css";

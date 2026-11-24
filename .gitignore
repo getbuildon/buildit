@@ -174,3 +174,15 @@ supabase/templates/generated/
 
 # Instrucciones personales de Claude
 CLAUDE.local.md
+
+# Storybook de la librería (se genera con npm run library:build)
+/library/storybook-static/
+
+# Capturas automáticas de la librería: referencias y diferencias, solo en cada máquina
+/library/snapshots/
+
+# Reportes para clientes (documentos internos, no se suben)
+/reportes/
+
+# Configuración local de Claude Code (tiene tokens y worktrees)
+/.claude/

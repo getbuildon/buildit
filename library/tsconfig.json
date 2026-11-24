@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "plugins": [],
+    "incremental": false,
+    "types": ["vite/client"]
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".storybook/**/*.ts", ".storybook/**/*.tsx"],
+  "exclude": ["storybook-static"]
+}

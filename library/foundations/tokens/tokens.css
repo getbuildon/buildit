@@ -1,0 +1,205 @@
+/*
+ * Foundations de BuildOn que no son color. Variables CSS puras: no dependen de
+ * Tailwind. theme.css las publica como utilidades.
+ *
+ * Regla (igual que Rootsy): se pide el oficio, no el paso ni un px.
+ * --space-group, no --space-4 ni 16px.
+ */
+:root {
+  /* ------------------------------------------------------------------ Tipografía */
+  /* Pixel perfect: tamaños en rem que dan px enteros (base 16) e interlineados en rem que también
+     dan px enteros, redondeados al valor del diseño (140% de 14 = 19.6 → 20). Así la caja de
+     cada línea cae en un píxel entero y el texto no se corre medio píxel. En rem (no px)
+     para que todo crezca junto si la persona agranda la letra del navegador. */
+  /* Voces y pesos viven en theme.css (--font-ui, --font-display, --font-weight-*). */
+
+  /* Apertura: landing, bienvenida. Una por pantalla. */
+  --type-display-font: var(--font-display);
+  --type-display-size: 3rem;
+  --type-display-leading: 3.125rem; /* 50px */
+  --type-display-weight: var(--font-weight-regular);
+  --type-display-tracking: -0.01em;
+  /* Título de pantalla */
+  --type-title-font: var(--font-display);
+  --type-title-size: 1.75rem;
+  --type-title-leading: 1.8125rem; /* 29px */
+  --type-title-weight: var(--font-weight-regular);
+  --type-title-tracking: -0.01em;
+  /* Título de bloque o de diálogo */
+  --type-heading-font: var(--font-display);
+  --type-heading-size: 1.5rem;
+  --type-heading-leading: 1.8125rem; /* 29px */
+  --type-heading-weight: var(--font-weight-regular);
+  --type-heading-tracking: 0;
+  /* Título de sección dentro de una card o un panel */
+  --type-section-font: var(--font-ui);
+  --type-section-size: 1.125rem;
+  --type-section-leading: 1.5625rem; /* 25px */
+  --type-section-weight: var(--font-weight-medium);
+  --type-section-tracking: -0.02em;
+  /* Lectura: landing, textos largos */
+  --type-reading-font: var(--font-ui);
+  --type-reading-size: 1rem;
+  --type-reading-leading: 1.5rem; /* 24px */
+  --type-reading-weight: var(--font-weight-regular);
+  --type-reading-tracking: 0;
+  --type-reading-measure: 65ch;
+  /* Cuerpo de operación: tablas, formularios, listas */
+  --type-body-font: var(--font-ui);
+  --type-body-size: 0.875rem;
+  --type-body-leading: 1.25rem; /* 20px */
+  --type-body-weight: var(--font-weight-regular);
+  --type-body-tracking: 0;
+  /* Nombre de campo, botón, dato destacado en fila */
+  --type-label-font: var(--font-ui);
+  --type-label-size: 0.875rem;
+  --type-label-leading: 1.25rem; /* 20px */
+  --type-label-weight: var(--font-weight-medium);
+  --type-label-tracking: 0;
+  /* Secundario: fechas, ayudas, meta de fila */
+  --type-meta-font: var(--font-ui);
+  --type-meta-size: 0.75rem;
+  --type-meta-leading: 1.0625rem; /* 17px */
+  --type-meta-weight: var(--font-weight-regular);
+  --type-meta-tracking: 0;
+  /* Mínimo: badges y contadores. Nunca un párrafo. */
+  --type-micro-font: var(--font-ui);
+  --type-micro-size: 0.625rem;
+  --type-micro-leading: 0.875rem; /* 14px */
+  --type-micro-weight: var(--font-weight-medium);
+  --type-micro-tracking: 0.02em;
+  /* Dato que decide: avance, totales */
+  --type-metric-font: var(--font-display);
+  --type-metric-size: 2.25rem;
+  --type-metric-leading: 2.375rem; /* 38px */
+  --type-metric-weight: var(--font-weight-regular);
+  --type-metric-tracking: -0.01em;
+
+  /* ------------------------------------------------------------------ Spacing */
+  /* Escala base 4. La app hoy usa sobre todo 4, 8, 12, 16 y 24. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-8: 2.5rem;
+  --space-10: 4rem;
+
+  /* Oficios del aire */
+  --space-related: var(--space-1); /* ícono y texto, label y valor */
+  --space-compact: var(--space-2); /* celdas, chips, filas densas */
+  --space-snug: var(--space-3); /* inset de campo, gap de botones */
+  --space-group: var(--space-4); /* cuerpo de una card, stack de form */
+  --space-block: var(--space-5); /* entre cards y módulos */
+  --space-chapter: var(--space-8); /* entre secciones de una pantalla */
+  --space-stage: var(--space-10); /* aire de la vista: landing, vacío */
+
+  /* ------------------------------------------------------------------ Radio */
+  /* Viven en theme.css: --radius-compact (6px), --radius-control (10px),
+     --radius-surface (16px), --radius-pill. */
+
+  /* ------------------------------------------------------------------ Size */
+  --size-icon-xs: 12px; /* dentro de badges y chips */
+  --size-icon-sm: 16px; /* el cuerpo del sistema: con texto */
+  --size-icon-md: 20px; /* botón grande, chrome */
+  --size-icon-lg: 24px; /* ícono solo, vacío */
+  --size-hit: 44px; /* mínimo tocable */
+  --size-control-height-compact: 36px; /* tablas, toolbars */
+  --size-control-height: 44px; /* forms, diálogos */
+  --size-control-height-large: 52px; /* landing, acción principal */
+  --size-avatar-sm: 32px;
+  --size-avatar-md: 40px;
+  --size-avatar-lg: 48px;
+
+  /* ------------------------------------------------------------------ Stroke */
+  --stroke-hairline: 1px; /* bordes y divisores */
+  --stroke-strong: 2px; /* selección, foco interno */
+  --icon-stroke: 1.75; /* trazo de los íconos lucide */
+
+  /* ------------------------------------------------------------------ Elevación */
+  /* Plano es el default: borde, sin sombra.
+     En oscuro la sombra casi no se ve: la distancia la da la superficie, que se
+     aclara al subir (canvas → raised → overlay). Por eso la sombra oscura es más
+     densa y negra, y el halo de marca desaparece. */
+  --elevation-flat: none;
+  /* Halo de marca muy suave: cards del backoffice. */
+  --elevation-hint: 0 0 5px light-dark(color-mix(in srgb, var(--buildon-ladrillo-600) 8%, transparent), transparent);
+  /* Algo que se levanta del lienzo: card en hover, barra fija. */
+  --elevation-near: 0 4px 16px light-dark(color-mix(in srgb, var(--buildon-hormigon-950) 8%, transparent), color-mix(in srgb, var(--buildon-negro) 40%, transparent));
+  /* Flota sobre todo: menú, popover, select. Va sobre canvas-overlay. */
+  --elevation-overlay: 0 8px 32px light-dark(color-mix(in srgb, var(--buildon-hormigon-950) 12%, transparent), color-mix(in srgb, var(--buildon-negro) 50%, transparent));
+  /* Destacada: una card sola sobre un fondo de color (el acceso). Diseño: 0 20px 50px 12%. */
+  --elevation-lift: 0 20px 50px light-dark(color-mix(in srgb, var(--buildon-negro) 12%, transparent), color-mix(in srgb, var(--buildon-negro) 45%, transparent));
+  /* Flotante: card sobre la tierra del inicio. Diseño: 0 20px 12.5px 10% + 0 8px 5px 10%. */
+  /* Panel que flota sobre el lienzo sin dirección de luz: el menú flotante de la obra. */
+  --elevation-panel: 0 0 39px 4px light-dark(color-mix(in srgb, var(--buildon-negro) 8%, transparent), color-mix(in srgb, var(--buildon-negro) 40%, transparent));
+  --elevation-float: 0 20px 12.5px color-mix(in srgb, var(--buildon-negro) 10%, transparent), 0 8px 5px color-mix(in srgb, var(--buildon-negro) 10%, transparent);
+  /* Pulgar: sombra mínima del ítem elegido de un segmentado (diseño: 0 0 2px 15%). */
+  --elevation-thumb: 0 0 2px light-dark(color-mix(in srgb, var(--buildon-negro) 15%, transparent), color-mix(in srgb, var(--buildon-negro) 50%, transparent));
+  /* Brillo del botón principal (diseño Figma 1127:2891). En oscuro, más suave. */
+  --elevation-action: 0 0 20px light-dark(color-mix(in srgb, var(--buildon-ladrillo-600) 30%, transparent), color-mix(in srgb, var(--buildon-ladrillo-600) 18%, transparent));
+  /* Bloquea la pantalla: diálogo. Va sobre canvas-overlay. */
+  --elevation-modal: 0 48px 120px light-dark(color-mix(in srgb, var(--buildon-negro) 20%, transparent), color-mix(in srgb, var(--buildon-negro) 60%, transparent));
+
+  /* ------------------------------------------------------------------ Focus */
+  --focus-ring-width: 3px;
+  --focus-ring: 0 0 0 var(--focus-ring-width) var(--color-focus-ring);
+
+  /* ------------------------------------------------------------------ Estados */
+  --state-disabled-opacity: 0.5;
+  --state-pending-opacity: 0.7;
+
+  /* ------------------------------------------------------------------ Motion */
+  --duration-fast: 150ms; /* press, hover */
+  --duration-base: 200ms; /* fade, cambio de color */
+  --duration-slow: 300ms; /* entrar, abrir un panel */
+  /* Curvas en theme.css: --ease-standard, --ease-emphasized. */
+  --motion-rise-from: 0.5rem;
+  --motion-press-to: 0.98;
+
+  /* ------------------------------------------------------------------ Stacking */
+  /* Un solo origen de z-index. Nada de z-[9999]. */
+  --z-base: 0;
+  --z-raised: 10; /* card levantada, sticky dentro de una tabla */
+  --z-sticky: 20; /* header y barras fijas */
+  --z-overlay: 40; /* popover, menú, select */
+  --z-modal: 50; /* diálogo y su velo */
+  --z-toast: 60; /* avisos: arriba de todo */
+
+  /* ------------------------------------------------------------------ Grilla */
+  --layout-page: 80rem; /* 1280: ancho máximo de pantalla */
+  --layout-sidebar: 220px; /* menú lateral de la obra y del backoffice */
+  --layout-sidebar-floating: 15.875rem; /* 254: el menú flotante de la obra, como hoy */
+  --layout-sheet: 24rem; /* 384: panel lateral */
+  --layout-reading: 45rem; /* 720: texto largo, formularios de una columna */
+  --layout-dialog-narrow: 28rem; /* 448: confirmar, card centrada */
+  --layout-auth: 27.875rem; /* 446: card del acceso */
+  --layout-dialog: 30rem; /* 480: diálogo default */
+  --layout-dialog-wide: 35rem; /* 560: diálogo con formulario */
+  --layout-margin: var(--space-4);
+  --layout-gutter: var(--space-4);
+}
+
+@media (min-width: 40rem) {
+  :root {
+    --layout-margin: var(--space-5);
+    --layout-gutter: var(--space-5);
+  }
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --layout-margin: var(--space-6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --motion-rise-from: 0px;
+    --motion-press-to: 1;
+  }
+}

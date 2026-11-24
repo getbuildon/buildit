@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Catálogo armado y capturas de la librería: se generan, no se editan.
+    "library/storybook-static/**",
+    "library/snapshots/**",
   ]),
 ]);
 

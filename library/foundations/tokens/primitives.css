@@ -1,0 +1,169 @@
+/*
+ * Rampas de BuildOn. Valores crudos: los componentes NO los piden.
+ * Se pide el rol (--color-action, --color-ink-muted), nunca --buildon-ladrillo-500.
+ *
+ * Origen: los pasos marcados con * son colores que la app ya usa hoy (relevamiento
+ * 2026-11-18). Los demás se interpolaron en OKLCH entre esos anclas para que la
+ * rampa sea pareja.
+ */
+:root {
+  /* Hormigón: neutros. Texto, líneas y superficies. Es la escala slate de Radix
+     que ya usa el diseño de BuildOn. */
+  --buildon-hormigon-50: #f9f9fb; /* * */
+  --buildon-hormigon-100: #f4f5f6; /* * */
+  --buildon-hormigon-200: #edeef0; /* * línea */
+  --buildon-hormigon-300: #d8d9db; /* * */
+  --buildon-hormigon-400: #afb3ba; /* * */
+  --buildon-hormigon-500: #777b84; /* * 4.1:1 sobre papel: no alcanza para texto chico */
+  /* 550: placeholder. El 500 de la app no llega a 4.5:1; este sí (4.65 sobre papel). */
+  --buildon-hormigon-550: #6f737c;
+  --buildon-hormigon-600: #696e77; /* * 5.0:1: el gris de texto secundario */
+  --buildon-hormigon-700: #43484e; /* * */
+  --buildon-hormigon-800: #363a3f; /* * */
+  --buildon-hormigon-900: #272a2d; /* * */
+  --buildon-hormigon-950: #18191b; /* * tinta */
+
+  /* Ladrillo: la marca. Acción y foco. */
+  --buildon-ladrillo-50: #fff6f1; /* * */
+  --buildon-ladrillo-100: #ffeae0; /* * */
+  --buildon-ladrillo-200: #ffd6c2; /* * */
+  --buildon-ladrillo-300: #fdba9a;
+  --buildon-ladrillo-400: #ff996c;
+  --buildon-ladrillo-500: #ff7433; /* * naranja de marca */
+  --buildon-ladrillo-600: #f3671f; /* * */
+  --buildon-ladrillo-700: #b8430f; /* * texto naranja sobre claro (5.3:1) */
+  --buildon-ladrillo-800: #883613;
+  --buildon-ladrillo-900: #5b2813;
+  --buildon-ladrillo-950: #321a10; /* * */
+
+  /* Brote: listo, aprobado, a tiempo. */
+  --buildon-brote-50: #f4fbf7; /* * */
+  --buildon-brote-100: #d1eddf;
+  --buildon-brote-200: #acdec8; /* * */
+  --buildon-brote-300: #84ccb2;
+  --buildon-brote-400: #56ba9f; /* * */
+  --buildon-brote-500: #45a78c;
+  --buildon-brote-600: #33957a;
+  --buildon-brote-700: #208368; /* * */
+  --buildon-brote-800: #05614b;
+  --buildon-brote-900: #023f30;
+  --buildon-brote-950: #002117;
+
+  /* Casco: atención, demora, pendiente. Como texto pide 800. */
+  --buildon-casco-50: #fffaec;
+  --buildon-casco-100: #f9ebc5;
+  --buildon-casco-200: #f0dcaa;
+  --buildon-casco-300: #e6ce8e;
+  --buildon-casco-400: #dcbf71;
+  --buildon-casco-500: #d3b151;
+  --buildon-casco-600: #c9a227; /* * */
+  --buildon-casco-700: #9c7c0e;
+  --buildon-casco-800: #715908;
+  --buildon-casco-900: #483702;
+  --buildon-casco-950: #231900;
+
+  /* Alarma: error, rechazo, borrar. */
+  --buildon-alarma-50: #fff5f5; /* * */
+  --buildon-alarma-100: #fff1f0; /* * */
+  --buildon-alarma-200: #f7c0be;
+  --buildon-alarma-300: #eb8e90; /* * */
+  --buildon-alarma-400: #e5696b;
+  --buildon-alarma-500: #dc3e42; /* * */
+  --buildon-alarma-600: #ce2c31; /* * */
+  --buildon-alarma-700: #a9252f;
+  --buildon-alarma-800: #861e2a;
+  --buildon-alarma-900: #641723; /* * */
+  --buildon-alarma-950: #330a10;
+
+  /* Plano: informa. El azul de los planos de obra. */
+  --buildon-plano-50: #f7fbfd;
+  --buildon-plano-100: #e6f4fe; /* * */
+  --buildon-plano-200: #c2dbee;
+  --buildon-plano-300: #9fc2df;
+  --buildon-plano-400: #7caacf;
+  --buildon-plano-500: #5b91bf;
+  --buildon-plano-600: #3978b0;
+  --buildon-plano-700: #0f5fa0; /* * */
+  --buildon-plano-800: #134882;
+  --buildon-plano-900: #113264; /* * */
+  --buildon-plano-950: #081a35;
+
+  /* Hormigón noche: los neutros del modo oscuro. Es la escala slate oscura de Radix,
+     la misma familia que los neutros claros. Igual que en claro, 50 es fondo y 950
+     es tinta. */
+  --buildon-noche-50: #111113; /* lienzo */
+  --buildon-noche-100: #18191b; /* elevada */
+  --buildon-noche-200: #212225; /* overlay */
+  --buildon-noche-300: #272a2d;
+  --buildon-noche-400: #2e3135;
+  --buildon-noche-500: #363a3f; /* línea */
+  --buildon-noche-600: #43484e; /* línea fuerte */
+  --buildon-noche-700: #5a6169; /* deshabilitado */
+  --buildon-noche-800: #777b84; /* sutil */
+  --buildon-noche-850: #888c94; /* placeholder: 4.7:1 o más sobre cualquier superficie oscura */
+  --buildon-noche-900: #b0b4ba; /* secundaria */
+  --buildon-noche-950: #edeef0; /* tinta */
+  --buildon-noche-profunda: #0b0b0d; /* hundido en oscuro */
+
+  /* Tonos: categorías y gráficos (rubros, unidades, series). Fondo suave, tinta
+     sobre ese fondo (≥ 4.5:1) y sólido para barras y puntos (≥ 3:1 contra la
+     superficie). Mismo tono, distinto valor por modo. */
+  --buildon-tono-naranja-fondo-claro: #ffece4;
+  --buildon-tono-naranja-tinta-claro: #8c4322;
+  --buildon-tono-naranja-solido-claro: #d56939;
+  --buildon-tono-naranja-fondo-oscuro: #391f14;
+  --buildon-tono-naranja-tinta-oscuro: #ffbca1;
+  --buildon-tono-naranja-solido-oscuro: #ec8559;
+  --buildon-tono-azul-fondo-claro: #e5f2ff;
+  --buildon-tono-azul-tinta-claro: #205e96;
+  --buildon-tono-azul-solido-claro: #3590e3;
+  --buildon-tono-azul-fondo-oscuro: #14283c;
+  --buildon-tono-azul-tinta-oscuro: #a8d2fe;
+  --buildon-tono-azul-solido-oscuro: #59aaf8;
+  --buildon-tono-verde-fondo-claro: #daf8ed;
+  --buildon-tono-verde-tinta-claro: #006b53;
+  --buildon-tono-verde-solido-claro: #17a481;
+  --buildon-tono-verde-fondo-oscuro: #0a2d23;
+  --buildon-tono-verde-tinta-oscuro: #90e1c5;
+  --buildon-tono-verde-solido-oscuro: #12c097;
+  --buildon-tono-amarillo-fondo-claro: #f9f0d6;
+  --buildon-tono-amarillo-tinta-claro: #6f5807;
+  --buildon-tono-amarillo-solido-claro: #aa870f;
+  --buildon-tono-amarillo-fondo-oscuro: #2f2509;
+  --buildon-tono-amarillo-tinta-oscuro: #e5cc89;
+  --buildon-tono-amarillo-solido-oscuro: #c79f1e;
+  --buildon-tono-rojo-fondo-claro: #ffebe9;
+  --buildon-tono-rojo-tinta-claro: #8e3e3a;
+  --buildon-tono-rojo-solido-claro: #d8625c;
+  --buildon-tono-rojo-fondo-oscuro: #3a1d1b;
+  --buildon-tono-rojo-tinta-oscuro: #febab3;
+  --buildon-tono-rojo-solido-oscuro: #f07f77;
+  --buildon-tono-violeta-fondo-claro: #f1edff;
+  --buildon-tono-violeta-tinta-claro: #604c91;
+  --buildon-tono-violeta-solido-claro: #9477dd;
+  --buildon-tono-violeta-fondo-oscuro: #28223a;
+  --buildon-tono-violeta-tinta-oscuro: #d1c4ff;
+  --buildon-tono-violeta-solido-oscuro: #ab91f2;
+  --buildon-tono-turquesa-fondo-claro: #d6f8f9;
+  --buildon-tono-turquesa-tinta-claro: #02686c;
+  --buildon-tono-turquesa-solido-claro: #049fa6;
+  --buildon-tono-turquesa-fondo-oscuro: #012d2f;
+  --buildon-tono-turquesa-tinta-oscuro: #82e0e5;
+  --buildon-tono-turquesa-solido-oscuro: #19bac2;
+  --buildon-tono-rosa-fondo-claro: #ffe9f3;
+  --buildon-tono-rosa-tinta-claro: #873e63;
+  --buildon-tono-rosa-solido-claro: #cd6199;
+  --buildon-tono-rosa-fondo-oscuro: #371d29;
+  --buildon-tono-rosa-tinta-oscuro: #fcb6d6;
+  --buildon-tono-rosa-solido-oscuro: #e57db1;
+
+  /* Tierra: el fondo cálido del inicio (degradé de #572d1c a #371f15). */
+  --buildon-tierra: #572d1c; /* * */
+  --buildon-tierra-honda: #371f15; /* * */
+  --buildon-tierra-hover: #3d2114; /* * hover del botón de la barra */
+
+  /* Fuera de rampa. */
+  --buildon-papel: #fefcfb; /* * el fondo cálido de la app */
+  --buildon-blanco: #ffffff;
+  --buildon-negro: #000000;
+}
