@@ -1,5 +1,6 @@
 "use server"
 
+import { createAdminClient } from "@/utils/supabase/admin"
 import { createClient } from "@/utils/supabase/server"
 import { getAuthenticatedUserOrNull } from "@/lib/authHelpers"
 import type { HomeProjectListItem, UserProjectListItem } from "@/lib/projects/types"
@@ -263,7 +264,10 @@ export async function getHomeProjectsProgress(
   const ids = unique.filter((id) => allowed.has(id))
   if (ids.length === 0) return {}
 
-  const progressMap = await loadProjectsHomeProgress(supabase, ids)
+  // Las obras ya se filtraron por acceso. El porcentaje se calcula con service role
+  // porque un cliente solo puede leer los avances de su unidad, pero la tarjeta
+  // muestra el de toda la obra; solo se devuelven porcentajes, no filas.
+  const progressMap = await loadProjectsHomeProgress(createAdminClient(), ids)
   const result: Record<string, ProjectHomeProgress> = {}
   for (const id of ids) {
     result[id] = progressMap.get(id) ?? {

@@ -6,7 +6,11 @@ import { useRouter } from "next/navigation"
 import { AlertCircle, CheckCircle, Eye, EyeOff, Lock, Mail, User } from "lucide-react"
 import { BackButton } from "@/components/ui/BackButton"
 import { useAuth } from "@/context/AuthContextSupabase"
-import { updateEmailClient, updatePasswordClient } from "@/lib/auth/clientAuth"
+import {
+  updateEmailClient,
+  updatePasswordClient,
+  verifyCurrentPasswordClient,
+} from "@/lib/auth/clientAuth"
 import {
   PASSWORD_REQUIREMENTS_HINT,
   validateNewPasswordFields,
@@ -242,11 +246,11 @@ export function PerfilView({ projectId, showBackButton = false }: PerfilViewProp
 
     const form = event.currentTarget
     const data = new FormData(form)
-    const currentPwd = (data.get("current-password") as string | null)?.trim() ?? ""
+    const currentPwd = (data.get("current-password") as string | null) ?? ""
     const newPwd = (data.get("new-password") as string | null) ?? ""
     const confirmPwd = (data.get("confirm-password") as string | null) ?? ""
 
-    if (!currentPwd) {
+    if (!currentPwd.trim()) {
       setPasswordFeedback({ type: "error", message: "Ingresá tu contraseña actual." })
       return
     }
@@ -262,7 +266,19 @@ export function PerfilView({ projectId, showBackButton = false }: PerfilViewProp
       return
     }
 
+    if (!user?.email) {
+      setPasswordFeedback({ type: "error", message: "No pudimos identificar tu cuenta. Volvé a iniciar sesión." })
+      return
+    }
+
     setPasswordLoading(true)
+    const check = await verifyCurrentPasswordClient(user.email, currentPwd)
+    if (check.error) {
+      setPasswordLoading(false)
+      setPasswordFeedback({ type: "error", message: check.error })
+      return
+    }
+
     const result = await updatePasswordClient(newPwd)
     setPasswordLoading(false)
 

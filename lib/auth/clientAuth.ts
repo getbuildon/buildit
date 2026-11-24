@@ -2,6 +2,8 @@
 
 import { mapAuthError, withAuthTimeout } from "@/lib/auth/mapAuthError"
 import type { AppUser, AuthResult } from "@/lib/auth/types"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import { resolveClientSupabaseConfig } from "@/lib/auth/clientSupabaseConfig"
 import { createClient } from "@/utils/supabase/client"
 
 export const RECOVERY_PASSWORD_NEXT = "/recovery-password?paso=nueva"
@@ -122,6 +124,36 @@ export async function requestPasswordResetClient(email: string): Promise<AuthRes
     return { needsEmailConfirmation: true }
   } catch (err) {
     return { error: mapAuthError(err, "Error al enviar el correo de recuperación") }
+  }
+}
+
+/**
+ * Comprueba la contraseña actual sin tocar la sesión abierta: usa un cliente
+ * aparte que no guarda nada en el navegador. No se llama a signOut porque por
+ * defecto cerraría todas las sesiones del usuario.
+ */
+export async function verifyCurrentPasswordClient(
+  email: string,
+  password: string,
+): Promise<AuthResult> {
+  try {
+    const config = resolveClientSupabaseConfig()
+    if (!config) return { error: "Supabase no está configurado" }
+    const verifier = createSupabaseClient(config.url, config.anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    })
+    const { error } = await withAuthTimeout(
+      verifier.auth.signInWithPassword({ email: email.trim(), password }),
+    )
+    if (error) {
+      if (error.code === "invalid_credentials" || /invalid login credentials/i.test(error.message)) {
+        return { error: "La contraseña actual no es correcta." }
+      }
+      return { error: mapAuthError(error, "No pudimos verificar tu contraseña actual") }
+    }
+    return {}
+  } catch (err) {
+    return { error: mapAuthError(err, "No pudimos verificar tu contraseña actual") }
   }
 }
 
