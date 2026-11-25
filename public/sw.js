@@ -5,7 +5,7 @@
  *
  * Subir VERSION cuando cambie este archivo: al activarse borra las copias viejas.
  */
-const VERSION = "2";
+const VERSION = "3";
 const CACHE_APP = `buildon-app-v${VERSION}`;
 const CACHE_ARCHIVOS = `buildon-archivos-v${VERSION}`;
 
@@ -103,6 +103,53 @@ async function pantalla(request) {
   return respuesta ?? guardada;
 }
 
+const PAGINA_SIN_SENAL = `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sin conexión — BuildOn</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f6f6f4;color:#1c1c1a;padding:24px}
+  main{max-width:360px;text-align:center}
+  h1{font-size:20px;margin:0 0 8px}
+  p{font-size:15px;line-height:1.5;margin:0 0 20px;color:#55554f}
+  a,button{display:inline-block;border:0;border-radius:999px;padding:10px 20px;font-size:15px;
+    font-weight:600;cursor:pointer;text-decoration:none;margin:4px}
+  a{background:#1c1c1a;color:#fff}
+  button{background:#e4e4df;color:#1c1c1a}
+</style>
+</head>
+<body>
+<main>
+  <h1>Estás sin conexión</h1>
+  <p>Esta pantalla todavía no se puede abrir sin internet. Desde el inicio podés ver lo último que se guardó en este dispositivo.</p>
+  <a href="/home">Ir al inicio</a>
+  <button onclick="location.reload()">Reintentar</button>
+</main>
+</body>
+</html>`;
+
+/**
+ * Cualquier otra dirección: va a la red como siempre. Si no hay señal:
+ *  - la dirección principal lleva al inicio de la app (como hacen las apps instaladas);
+ *  - el resto muestra un aviso propio en lugar del error del navegador.
+ */
+async function otraDireccion(request, url) {
+  try {
+    return await fetch(request);
+  } catch {
+    if (url.pathname === "/" && (await (await caches.open(CACHE_APP)).match("/home"))) {
+      return Response.redirect("/home", 302);
+    }
+    return new Response(PAGINA_SIN_SENAL, {
+      status: 503,
+      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+    });
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
@@ -111,6 +158,7 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     if (PANTALLAS_SIN_SENAL.includes(url.pathname)) event.respondWith(pantalla(request));
+    else event.respondWith(otraDireccion(request, url));
     return;
   }
   if (esArchivoFijo(url)) event.respondWith(archivoFijo(request));
