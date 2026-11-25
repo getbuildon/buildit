@@ -5,7 +5,7 @@
  *
  * Subir VERSION cuando cambie este archivo: al activarse borra las copias viejas.
  */
-const VERSION = "1";
+const VERSION = "2";
 const CACHE_APP = `buildon-app-v${VERSION}`;
 const CACHE_ARCHIVOS = `buildon-archivos-v${VERSION}`;
 
@@ -15,8 +15,43 @@ const PANTALLAS_SIN_SENAL = ["/home"];
 /** Cuánto se espera a la red antes de abrir con lo guardado. */
 const ESPERA_MS = 4000;
 
-self.addEventListener("install", () => {
+/**
+ * Guarda el HTML de una pantalla y los archivos fijos que ese HTML nombra, para que
+ * abra sin señal aunque la persona nunca la haya cargado directamente (por ejemplo,
+ * si llegó desde el login sin recargar).
+ */
+async function guardarPantalla(ruta, respuestaYaLeida) {
+  try {
+    const respuesta = respuestaYaLeida ?? (await fetch(ruta, { credentials: "same-origin" }));
+    const esHtml = (respuesta.headers.get("content-type") ?? "").includes("text/html");
+    if (!respuesta.ok || respuesta.redirected || !esHtml) return;
+    const html = await respuesta.clone().text();
+    await (await caches.open(CACHE_APP)).put(ruta, respuesta);
+    const archivos = [...new Set(html.match(/\/_next\/static\/[^"'\\\s)<>]+/g) ?? [])];
+    const cache = await caches.open(CACHE_ARCHIVOS);
+    await Promise.all(
+      archivos.map(async (archivo) => {
+        if (await cache.match(archivo)) return;
+        try {
+          const r = await fetch(archivo);
+          if (r.ok) await cache.put(archivo, r);
+        } catch {
+          /* se guardará la próxima vez */
+        }
+      }),
+    );
+  } catch {
+    /* sin red ahora: se guardará la próxima vez */
+  }
+}
+
+function guardarPantallas() {
+  return Promise.all(PANTALLAS_SIN_SENAL.map((ruta) => guardarPantalla(ruta)));
+}
+
+self.addEventListener("install", (event) => {
   self.skipWaiting();
+  event.waitUntil(guardarPantallas());
 });
 
 self.addEventListener("activate", (event) => {
@@ -56,8 +91,7 @@ async function pantalla(request) {
   const cache = await caches.open(CACHE_APP);
   const clave = new URL(request.url).pathname;
   const deLaRed = fetch(request).then((respuesta) => {
-    const esHtml = (respuesta.headers.get("content-type") ?? "").includes("text/html");
-    if (respuesta.ok && !respuesta.redirected && esHtml) cache.put(clave, respuesta.clone());
+    void guardarPantalla(clave, respuesta.clone());
     return respuesta;
   });
   const guardada = await cache.match(clave);
@@ -112,18 +146,8 @@ self.addEventListener("message", (event) => {
             }
           }),
       );
-      // La pantalla actual también, para poder abrirla sin señal desde ya.
-      if (typeof datos.pantalla === "string" && PANTALLAS_SIN_SENAL.includes(datos.pantalla)) {
-        try {
-          const respuesta = await fetch(datos.pantalla, { credentials: "same-origin" });
-          const esHtml = (respuesta.headers.get("content-type") ?? "").includes("text/html");
-          if (respuesta.ok && !respuesta.redirected && esHtml) {
-            await (await caches.open(CACHE_APP)).put(datos.pantalla, respuesta);
-          }
-        } catch {
-          /* se guardará la próxima vez */
-        }
-      }
+      // Y las pantallas que abren sin señal, con sus archivos.
+      await guardarPantallas();
     })(),
   );
 });
