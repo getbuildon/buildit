@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 
 import { AppRouteLoadingProvider } from "@/components/navigation/AppRouteLoadingProvider"
+import { RegistrarServiceWorker } from "@/components/providers/RegistrarServiceWorker"
 import { ToastProvider } from "@/components/ui/toast"
 
 type AppProvidersProps = {
@@ -30,6 +31,7 @@ export function AppProviders({ children }: AppProvidersProps) {
       <AppRouteLoadingProvider>
         <ToastProvider>{children}</ToastProvider>
       </AppRouteLoadingProvider>
+      <RegistrarServiceWorker />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   )

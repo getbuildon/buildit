@@ -9,9 +9,10 @@ import {
 } from "react"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import {
-  getClientSessionUser,
+  getDeviceSessionUser,
   signOutClient,
 } from "@/lib/auth/clientAuth"
+import { borrarCopias } from "@/lib/api/disco"
 import { injectClientSupabaseConfig } from "@/lib/auth/clientSupabaseConfig"
 import { withAuthTimeout } from "@/lib/auth/mapAuthError"
 import type { PublicSupabaseConfig } from "@/lib/auth/publicSupabaseConfig"
@@ -41,10 +42,16 @@ export function AuthProvider({ children, supabasePublicConfig }: AuthProviderPro
   const [loading, setLoading] = useState(true)
 
   const refreshSession = async () => {
-    const sessionUser = await withAuthTimeout(getClientSessionUser(), 10000).catch(
+    // Lee la sesión guardada en el dispositivo (no viaja salvo para renovarla), así la
+    // app abre al instante y también sin señal. El servidor valida cada pedido.
+    const sessionUser = await withAuthTimeout(getDeviceSessionUser(), 10000).catch(
       () => null,
     )
-    setUser(sessionUser)
+    setUser((actual) =>
+      actual?.id === sessionUser?.id && actual?.email === sessionUser?.email
+        ? actual
+        : sessionUser,
+    )
   }
 
   useEffect(() => {
@@ -87,6 +94,8 @@ export function AuthProvider({ children, supabasePublicConfig }: AuthProviderPro
   const logOut = async () => {
     await signOutClient()
     await clearLoginAudience()
+    // Dispositivo compartido: al salir no queda guardado nada de esta persona.
+    await borrarCopias()
     setUser(null)
   }
 

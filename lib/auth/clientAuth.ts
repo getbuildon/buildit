@@ -4,6 +4,7 @@ import { mapAuthError, withAuthTimeout } from "@/lib/auth/mapAuthError"
 import type { AppUser, AuthResult } from "@/lib/auth/types"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { resolveClientSupabaseConfig } from "@/lib/auth/clientSupabaseConfig"
+import { olvidarSesion, recordarSesion, sesionRecordada } from "@/lib/auth/sesionRecordada"
 import { createClient } from "@/utils/supabase/client"
 
 export const RECOVERY_PASSWORD_NEXT = "/recovery-password?paso=nueva"
@@ -22,6 +23,53 @@ export async function getClientSessionUser(): Promise<AppUser | null> {
   } = await withAuthTimeout(supabase.auth.getUser())
   if (error) return null
   return userFromSession(user ? { user } : null)
+}
+
+function sinSenal(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false
+}
+
+/** El error fue por no llegar al servidor (no porque la sesión no valga). */
+function esFallaDeRed(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+  const { name, message, status } = error as { name?: string; message?: string; status?: number }
+  if (name === "AuthRetryableFetchError") return true
+  if (typeof status === "number" && status >= 500) return true
+  const texto = (message ?? "").toLowerCase()
+  return (
+    texto.includes("failed to fetch") ||
+    texto.includes("networkerror") ||
+    texto.includes("load failed") ||
+    texto.includes("fetch failed") ||
+    texto.includes("no respondió a tiempo")
+  )
+}
+
+/**
+ * La persona de la sesión guardada en el dispositivo, sin viajar si no hace falta.
+ * Es lo que usa la app para decidir si muestra las pantallas con sesión:
+ *  - con señal: la sesión guardada (se renueva sola si venció);
+ *  - sin señal o si el servidor de sesiones no contesta: la última persona que entró,
+ *    para que la app abra con lo guardado. El servidor valida igual cada pedido.
+ */
+export async function getDeviceSessionUser(): Promise<AppUser | null> {
+  const recordada = sesionRecordada()
+  if (sinSenal() && recordada) return recordada
+
+  try {
+    const supabase = createClient()
+    const { data, error } = await withAuthTimeout(supabase.auth.getSession(), 8000)
+    const user = userFromSession(data.session)
+    if (user) {
+      recordarSesion(user)
+      return user
+    }
+    if (error && esFallaDeRed(error)) return recordada
+    olvidarSesion()
+    return null
+  } catch (error) {
+    return esFallaDeRed(error) || sinSenal() ? recordada : null
+  }
 }
 
 export async function signInWithPasswordClient(
@@ -102,6 +150,7 @@ export async function signUpClient(email: string, password: string): Promise<Aut
 
 export async function signOutClient(): Promise<void> {
   const supabase = createClient()
+  olvidarSesion()
   await withAuthTimeout(supabase.auth.signOut())
 }
 
