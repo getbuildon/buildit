@@ -5,7 +5,7 @@
  *
  * Subir VERSION cuando cambie este archivo: al activarse borra las copias viejas.
  */
-const VERSION = "3";
+const VERSION = "4";
 const CACHE_APP = `buildon-app-v${VERSION}`;
 const CACHE_ARCHIVOS = `buildon-archivos-v${VERSION}`;
 
@@ -124,10 +124,18 @@ const PAGINA_SIN_SENAL = `<!doctype html>
 <body>
 <main>
   <h1>Estás sin conexión</h1>
-  <p>Esta pantalla todavía no se puede abrir sin internet. Desde el inicio podés ver lo último que se guardó en este dispositivo.</p>
-  <a href="/home">Ir al inicio</a>
+  <p id="texto">Esta pantalla todavía no se puede abrir sin internet. Desde el inicio podés ver lo último que se guardó en este dispositivo.</p>
+  <a id="inicio" href="/home">Ir al inicio</a>
   <button onclick="location.reload()">Reintentar</button>
 </main>
+<script>
+  // El portal de clientes necesita conexión: no se ofrece el inicio del equipo.
+  if (/(?:^|;\\s*)buildon_login_audience=cliente(?:;|$)/.test(document.cookie)) {
+    document.getElementById("texto").textContent =
+      "Para ver el avance de tu unidad necesitás conexión a internet. Volvé a intentar cuando tengas señal.";
+    document.getElementById("inicio").remove();
+  }
+</script>
 </body>
 </html>`;
 
@@ -136,11 +144,24 @@ const PAGINA_SIN_SENAL = `<!doctype html>
  *  - la dirección principal lleva al inicio de la app (como hacen las apps instaladas);
  *  - el resto muestra un aviso propio en lugar del error del navegador.
  */
+/** Quien entró por el acceso de clientes usa el portal, que necesita conexión. */
+async function esCliente() {
+  try {
+    return (await self.cookieStore?.get("buildon_login_audience"))?.value === "cliente";
+  } catch {
+    return false;
+  }
+}
+
 async function otraDireccion(request, url) {
   try {
     return await fetch(request);
   } catch {
-    if (url.pathname === "/" && (await (await caches.open(CACHE_APP)).match("/home"))) {
+    if (
+      url.pathname === "/" &&
+      !(await esCliente()) &&
+      (await (await caches.open(CACHE_APP)).match("/home"))
+    ) {
       return Response.redirect("/home", 302);
     }
     return new Response(PAGINA_SIN_SENAL, {
