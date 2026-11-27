@@ -5,6 +5,7 @@
     "node": ">=20 <25"
   },
   "scripts": {
+    "tema:islas": "node scripts/generar-islas-de-tema.mjs",
     "dev": "NODE_OPTIONS='--disable-warning=DEP0205' next dev --webpack",
     "dev:lan": "node scripts/dev-lan.mjs",
     "build": "next build",

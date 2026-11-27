@@ -3,6 +3,7 @@
    borrar las clases de siempre. Las pantallas se pasan de a una (library/README.md). */
 @import "../library/foundations/tokens/index.css";
 @import "../library/foundations/roles.css";
+@import "../library/foundations/islas.css";
 /* El catálogo y sus historias no son parte de la app: no generan clases acá. */
 @source not "../library/**/*.stories.tsx";
 @source not "../library/storybook-static";

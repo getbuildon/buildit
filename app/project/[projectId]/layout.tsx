@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 import type { ReactNode } from "react"
 import { MarcoDeObra } from "@/components/obra/MarcoDeObra"
+import { ObraEnElNavegador } from "@/components/obra/ObraEnElNavegador"
 import { ProjectShell } from "@/components/project-shell/ProjectShell"
 import { ProjectAccessProvider } from "@/components/project-shell/ProjectAccessProvider"
 import { getProjectSetupStatus } from "@/app/projects/new/actions"
@@ -15,7 +16,19 @@ type ProjectLayoutProps = {
   params: Promise<{ projectId: string }>
 }
 
+/** Con servidor de datos (test): el marco de la obra se arma en el navegador, sin consultas acá. */
+const conServidorDeDatos = Boolean(process.env.NEXT_PUBLIC_API_URL?.trim())
+
 export default async function ProjectLayout({ children, params }: ProjectLayoutProps) {
+  if (conServidorDeDatos) {
+    return (
+      <ProjectShell>
+        <ObraEnElNavegador>{children}</ObraEnElNavegador>
+      </ProjectShell>
+    )
+  }
+
+  // Sin servidor de datos (producción por ahora): el camino de siempre.
   const { projectId } = await params
 
   const setupStatus = await getProjectSetupStatus(projectId)

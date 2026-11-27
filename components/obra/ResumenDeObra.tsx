@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import type { MouseEvent } from "react"
 import { AlertTriangle, CheckCircle2, ClipboardCheck, TrendingUp } from "lucide-react"
 
 import { Button } from "@/library/atoms/button/Button"
@@ -15,6 +16,7 @@ import { getUnitDisplayCode } from "@/lib/projects/floorLabels"
 import { getUnitTypeIcon } from "@/lib/projects/unitTypeIcons"
 import { getUnitDashboardLabel } from "@/lib/projects/unitTypes"
 import { projectHref } from "@/lib/project/routes"
+import { useProjectNavigation } from "@/components/project-shell/ProjectNavigationContext"
 
 /**
  * El Dashboard de la obra armado con la librería BuildOn: es «Pantallas/Obra/Resumen ·
@@ -33,6 +35,12 @@ const CONTENIDO = "flex flex-col gap-block py-compact sm:gap-6 sm:py-block"
 
 export function ResumenDeObra({ project, dashboard, aviso }: ResumenDeObraProps) {
   const { floors, stats } = dashboard
+  const { navigate } = useProjectNavigation()
+  const abrirUnidad = (href: string) => (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+    e.preventDefault()
+    navigate(href)
+  }
   return (
     <div className={CONTENIDO}>
       {aviso ? (
@@ -107,7 +115,12 @@ export function ResumenDeObra({ project, dashboard, aviso }: ResumenDeObraProps)
                     icon={getUnitTypeIcon(unit.unit_type)}
                     progress={unit.progress}
                     blocked={unit.hasBlockedTasks}
-                    link={<Link href={projectHref(project.id, `unidades/${unit.id}`)} />}
+                    link={
+                      <Link
+                        href={projectHref(project.id, `unidades/${unit.id}`)}
+                        onClick={abrirUnidad(projectHref(project.id, `unidades/${unit.id}`))}
+                      />
+                    }
                   />
                 ))}
               </FloorItem>

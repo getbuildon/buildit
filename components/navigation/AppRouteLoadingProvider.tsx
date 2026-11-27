@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { esLaMismaObra, irDentroDeLaObra } from "@/lib/project/navegacionEnObra"
 
 import { BackofficeShellSkeleton } from "@/components/backoffice-shell/BackofficeShellSkeleton"
 import { CompanyWorkspaceSkeleton } from "@/components/company-shell/CompanyWorkspaceSkeleton"
@@ -42,6 +43,12 @@ export function AppRouteLoadingProvider({ children }: { children: ReactNode }) {
 
   const navigate = useCallback(
     (href: string) => {
+      // Dentro de la misma obra (p. ej. Mi Perfil desde el menú): sin ir al servidor.
+      if (esLaMismaObra(pathname, href)) {
+        irDentroDeLaObra(href)
+        return
+      }
+
       const nextLoadingType = getAppRouteLoadingType(href)
 
       if (!nextLoadingType) {

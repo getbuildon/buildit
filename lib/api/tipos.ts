@@ -19,6 +19,8 @@ export type ObraDelArranque = {
   pisos: number
   empresa: { id: string; nombre: string; logoUrl: string | null } | null
   portadaUrl: string | null
+  /** El rol en el equipo de la obra («Director de obra»), si es parte del equipo. */
+  rol?: string | null
   acceso: AccesoAObra
 }
 

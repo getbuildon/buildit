@@ -9,6 +9,7 @@
  *   tokens/     los valores (rampas, medidas, tiempos)
  *   strict.css  borra la paleta y las escalas por defecto de Tailwind
  *   roles.css   los roles como utilidades: bg-canvas, text-ink-muted, rounded-control…
+ *   islas.css   generado: cada [data-theme] recalcula sus colores (npm run tema:islas)
  *
  * Mientras conviven pantallas viejas y nuevas, la app importa tokens + roles.css
  * (sin strict.css), así sus clases de siempre siguen funcionando.
@@ -18,3 +19,4 @@
 @import "./tokens/index.css";
 @import "./strict.css";
 @import "./roles.css";
+@import "./islas.css";

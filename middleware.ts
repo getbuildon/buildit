@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  let response = NextResponse.next({ request })
+  const response = NextResponse.next({ request })
 
   const supabase = createServerClient(config.url, config.anonKey, {
     cookies: {
@@ -45,7 +45,9 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  await supabase.auth.getUser()
+  // Renueva la sesión si venció y valida la firma con la clave pública: sin el viaje al
+  // servicio de cuentas que hacía getUser() antes de cada página.
+  await supabase.auth.getClaims()
 
   return response
 }

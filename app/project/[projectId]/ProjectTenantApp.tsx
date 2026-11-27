@@ -32,6 +32,7 @@ import { armarCertificaciones } from "@/lib/projects/armarCertificaciones"
 import { getCertificacionesData } from "./certificaciones/actions"
 import { Clientes, ClientesCargando, ClientesError } from "@/components/obra/Clientes"
 import { useLecturaConCopia } from "@/lib/api/useLecturaConCopia"
+import { esLaMismaObra } from "@/lib/project/navegacionEnObra"
 import { getProjectClientsData } from "./clientes/actions"
 import { getConfigPageData, getDashboardData } from "./configuracion/actions"
 import { ConfiguracionView } from "./configuracion/ConfiguracionView"
@@ -75,9 +76,10 @@ export function ProjectTenantApp({ projectId, section }: ProjectTenantAppProps) 
   const redirectTo = tenantRouteRedirectHref(access, projectId, route)
 
   useEffect(() => {
-    if (redirectTo) {
-      router.replace(redirectTo)
-    }
+    if (!redirectTo) return
+    // Dentro de la misma obra se reemplaza la dirección sin ir al servidor.
+    if (esLaMismaObra(window.location.pathname, redirectTo)) window.history.replaceState(null, "", redirectTo)
+    else router.replace(redirectTo)
   }, [redirectTo, router])
 
   // Se está yendo a otra sección: nada en el medio (sin «Redirigiendo…»).

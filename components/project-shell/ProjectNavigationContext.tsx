@@ -12,6 +12,7 @@ import {
 import { usePathname, useRouter } from "next/navigation"
 
 import { isProjectDashboardPath } from "@/lib/project/routes"
+import { esLaMismaObra, irDentroDeLaObra } from "@/lib/project/navegacionEnObra"
 
 type ProjectNavigationContextValue = {
   isNavigating: boolean
@@ -59,6 +60,12 @@ export function ProjectNavigationProvider({ children }: { children: ReactNode })
   const navigate = useCallback(
     (href: string) => {
       if (hasReachedProjectNavHref(pathname, href)) return
+
+      // Dentro de la misma obra: sin ir al servidor, al instante.
+      if (esLaMismaObra(pathname, href)) {
+        irDentroDeLaObra(href)
+        return
+      }
 
       setPendingHref(href)
       startTransition(() => {
