@@ -38,6 +38,9 @@ export function useLectura<T extends object>(opciones: OpcionesDeLectura): UseQu
     queryKey: clave,
     enabled: habilitada && Boolean(userId),
     staleTime: frescoMs,
+    // En memoria media hora después de salir de la pantalla: volver muestra el contenido al
+    // instante, sin el esqueleto de leer la copia del disco.
+    gcTime: 30 * 60_000,
     // Corre aunque el navegador diga "sin conexión": hay que llegar a leer la copia.
     networkMode: "always",
     // Sin reintentos en lo que no se arregla solo (sesión, permisos, no existe); con espera creciente en el resto.

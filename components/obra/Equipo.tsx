@@ -767,7 +767,7 @@ export function Equipo({ projectId, data, aviso }: { projectId: string; data: Pr
             aria-expanded={permisosAbiertos}
             aria-controls="tabla-permisos"
             onClick={() => setPermisosAbiertos((valor) => !valor)}
-            className="focus-ring flex w-full cursor-pointer items-center gap-compact rounded-box text-left text-reading"
+            className="focus-ring flex w-full max-w-none! cursor-pointer items-center gap-compact rounded-box text-left text-reading"
           >
             <Icon icon={ShieldCheck} className="text-ink-muted" />
             <span className="flex-1">Permisos de usuarios</span>

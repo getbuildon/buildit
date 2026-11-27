@@ -203,7 +203,7 @@ function SettingsCard({
         aria-labelledby={titleId}
         className="flex flex-col gap-5 rounded-surface border border-line bg-canvas-raised p-group shadow-hint sm:p-block"
       >
-        <h2 id={titleId} className="text-reading">
+        <h2 id={titleId} className="max-w-none! text-reading">
           {title}
         </h2>
         {children}
@@ -216,7 +216,7 @@ function SettingsCard({
       aria-labelledby={titleId}
       className="flex flex-col rounded-surface border border-line bg-canvas-raised p-group shadow-hint sm:p-block"
     >
-      <h2 id={titleId} className="text-reading">
+      <h2 id={titleId} className="max-w-none! text-reading">
         <button
           type="button"
           onClick={() => setOpen(!open)}

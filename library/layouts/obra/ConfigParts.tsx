@@ -386,7 +386,7 @@ export function SettingsCard({
       aria-labelledby={`${id}-titulo`}
       className="flex flex-col rounded-surface border border-line bg-canvas-raised p-group shadow-hint sm:p-block"
     >
-      <h2 id={`${id}-titulo`} className="text-reading">
+      <h2 id={`${id}-titulo`} className="max-w-none! text-reading">
         {collapsible ? (
           <button
             type="button"

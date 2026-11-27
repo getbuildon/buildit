@@ -28,6 +28,9 @@ export function useLecturaConCopia<T>(opciones: {
     queryKey: clave,
     enabled: habilitada && Boolean(userId),
     staleTime: frescoMs,
+    // En memoria media hora después de salir de la pantalla: volver muestra el contenido al
+    // instante, sin el esqueleto de leer la copia del disco.
+    gcTime: 30 * 60_000,
     networkMode: "always",
     retry: (intentos, error) => error.status !== 0 && error.esDeRed && intentos < 1,
     refetchOnReconnect: "always",

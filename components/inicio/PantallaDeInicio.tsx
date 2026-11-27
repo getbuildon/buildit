@@ -286,6 +286,19 @@ export type PantallaDeInicioProps = {
   error: { mensaje: string; reintentar: () => void } | null
 }
 
+/**
+ * Precarga la página de cada obra (Next la guarda 5 minutos): entrar a una obra desde el
+ * inicio no espera al servidor. La página no trae datos; los datos salen de la copia.
+ */
+function usePrecargarObras(ids: string[]) {
+  const router = useRouter()
+  const clave = ids.join(",")
+  useEffect(() => {
+    if (!clave) return
+    for (const id of clave.split(",")) router.prefetch(`/project/${id}`)
+  }, [clave, router])
+}
+
 export function PantallaDeInicio({
   email,
   shell,
@@ -298,6 +311,7 @@ export function PantallaDeInicio({
 }: PantallaDeInicioProps) {
   useFocoVisible()
   const irA = useIrA()
+  usePrecargarObras(projects.filter((p) => p.status !== "draft").map((p) => p.projectId))
 
   if (error) {
     return (

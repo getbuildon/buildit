@@ -179,7 +179,7 @@ function HitoEditable({
               alQuitarError("name")
               alCambiar({ name: event.target.value })
             }}
-            className="text-reading font-medium"
+            className="max-w-none! text-reading font-medium"
           />
         </Field>
         <Field label="Descripción" optional>

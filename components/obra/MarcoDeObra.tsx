@@ -307,6 +307,9 @@ function BarraDelCelular({ project, userProfile }: DatosDelMarco) {
 
 export function MarcoDeObra({ project, userProfile, children }: DatosDelMarco & { children: ReactNode }) {
   useEffect(() => installFocusModality(), [])
+  // Precarga el inicio (Next lo guarda 5 minutos): volver a «Cambiar de obra» no espera al servidor.
+  const router = useRouter()
+  useEffect(() => router.prefetch("/home"), [router])
   const datos = { project, userProfile }
   return (
     <ProjectMobileMenuProvider>
