@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Script from "next/script"
 import localFont from "next/font/local"
 import { Google_Sans_Flex } from "next/font/google"
 import { AuthHashCallbackHandler } from "@/components/auth/AuthHashCallbackHandler"
@@ -7,6 +8,7 @@ import { SupabaseConfigMissing } from "@/components/auth/SupabaseConfigMissing"
 import { AppProviders } from "@/components/providers/AppProviders"
 import { AuthProvider } from "@/context/AuthContextSupabase"
 import { BRAND_NAME } from "@/lib/brand"
+import { SCRIPT_DEL_TEMA } from "@/lib/tema"
 import { readPublicSupabaseConfigFromEnv } from "@/lib/auth/publicSupabaseConfig"
 import "./globals.css"
 
@@ -74,10 +76,14 @@ export default function RootLayout({
   const supabasePublicConfig = readPublicSupabaseConfigFromEnv()
 
   return (
-    <html lang="es">
+    // data-theme lo pone el script del tema según lo elegido en el dispositivo (por eso
+    // suppressHydrationWarning). beforeInteractive: Next lo manda en <head> y corre antes
+    // de pintar, así no hay un parpadeo claro al abrir en oscuro.
+    <html lang="es" suppressHydrationWarning>
       <body
         className={`${recoleta.variable} ${googleSansFlex.variable} font-sans antialiased`}
       >
+        <Script id="tema" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: SCRIPT_DEL_TEMA }} />
         {supabasePublicConfig ? (
           <AuthProvider supabasePublicConfig={supabasePublicConfig}>
             <AuthHashCallbackHandler />

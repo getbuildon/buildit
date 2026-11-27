@@ -1,22 +1,19 @@
 "use client"
 
 import { useQueryClient } from "@tanstack/react-query"
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react"
 import { createPortal } from "react-dom"
-import { AlertCircle, Building2, CalendarDays, Check, ChevronDown, MapPin } from "lucide-react"
+import { Building2, Check, ChevronDown, CircleAlert, MapPin, WifiOff } from "lucide-react"
 import { CompanyLogoMark } from "@/components/company/CompanyLogoMark"
-import { Button } from "@/components/ui/button"
-import { DatePicker } from "@/components/ui/date-picker"
-import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
+import { RequestPlanUpgradeModal } from "@/components/team/RequestPlanUpgradeModal"
+import { Button, Icon, Input } from "@/library/atoms"
+import { DatePicker, Field, InputGroup, Notice } from "@/library/molecules"
+import { cn } from "@/library/lib/cn"
+import { AVISO_SIN_SENAL_PARA_GUARDAR, useEnLinea } from "@/lib/api/useEnLinea"
 import { invalidateProjectQueries } from "@/lib/project/invalidateProjectQueries"
 import { ConfigConfirmDialog } from "./ConfigConfirmDialog"
 import { ConfiguracionSectionsSkeleton } from "./ConfiguracionSectionsSkeleton"
-import { FieldErrorTooltip } from "@/components/ui/field-error-tooltip"
-import {
-  createProjectFieldErrorInputClassName,
-  createProjectFieldErrorInputStyle,
-} from "@/components/projects/new/CreateProjectFormField"
 import {
   getConfigBasicsFieldErrors,
   type ConfigBasicsFieldErrors,
@@ -43,10 +40,8 @@ import {
   refreshConfigDraftAfterSave,
 } from "@/lib/projects/refreshConfigDraftAfterSave"
 import { useProjectMobileMenuOpen } from "@/components/project-shell/ProjectMobileMenuContext"
-import { CREATE_PROJECT_LAYOUT } from "@/lib/projects/createProjectTokens"
 import {
   buildConfigSnapshot,
-  buildAssignmentDraftFromSnapshot,
   getConfigDirtySections,
   getConfigSaveConfirmMessage,
   isConfigBasicsDirty,
@@ -60,8 +55,8 @@ import {
   hasStructureStepFieldErrors,
   type StructureStepFieldErrors,
 } from "@/lib/projects/createProjectStructureValidation"
-import { PlanSurfaceLimitNotice } from "@/components/projects/new/PlanSurfaceLimitNotice"
 import {
+  formatSquareMeters,
   getProjectPlanSurfaceLimitErrorFromDraft,
   isTotalSurfaceOverPlanLimit,
   parseTotalSurfaceM2,
@@ -71,7 +66,6 @@ import {
   finalizeTotalSurfaceInput,
   normalizeTotalSurfaceInput,
 } from "@/lib/projects/totalSurfaceInput"
-import { cn } from "@/lib/utils"
 import { AnimatedCollapsible, ANIMATED_COLLAPSE_DURATION_MS } from "@/components/ui/animated-collapsible"
 import {
   clearUnitAssetsFromDraft,
@@ -111,15 +105,25 @@ type SaveFeedback = { type: "success" | "error"; message: string } | null
 function useAnimatedFooterVisibility(isDirty: boolean) {
   const [mounted, setMounted] = useState(isDirty)
   const [visible, setVisible] = useState(isDirty)
+  const [prevDirty, setPrevDirty] = useState(isDirty)
+
+  // Al cambiar isDirty: si hay cambios se monta la barra; si no, se empieza a esconder.
+  if (prevDirty !== isDirty) {
+    setPrevDirty(isDirty)
+    if (isDirty) {
+      setMounted(true)
+    } else {
+      setVisible(false)
+    }
+  }
 
   useEffect(() => {
     if (isDirty) {
-      setMounted(true)
       const frame = requestAnimationFrame(() => setVisible(true))
       return () => cancelAnimationFrame(frame)
     }
 
-    setVisible(false)
+    // Se desmonta cuando termina la animación de salida.
     const timeout = window.setTimeout(
       () => setMounted(false),
       CONFIG_SAVE_FOOTER_ANIMATION_MS,
@@ -130,19 +134,17 @@ function useAnimatedFooterVisibility(isDirty: boolean) {
   return { mounted, visible }
 }
 
-// Inputs de la card Información Básica — Figma 1226:6422: 42px, r10, borde #e2e8f0
-const basicInputClassName =
-  "h-[42px] w-full rounded-[10px] border bg-white px-3 text-[14px] font-normal leading-5 text-[#0a0a0a] shadow-none placeholder:text-[#777b84] focus-visible:border-[#ff7433] focus-visible:ring-0"
-const basicInputStyle = { borderColor: "#e2e8f0" } as const
-const basicDatePickerClassName = cn(basicInputClassName, "border-[#e2e8f0] text-left")
-
-const CONFIG_CARD_SHADOW = "0 0 10px rgba(243, 103, 31, 0.08)" as const
 
 const CONFIG_SAVE_FOOTER_ANIMATION_MS = 320
 const CONFIG_SAVE_FOOTER_HEIGHT = 96
 const CONFIG_SAVE_FOOTER_SCROLL_GAP = 16
 
+/**
+ * Tarjeta de cada sección de la configuración. Las plegables arman su contenido
+ * recién al abrirse y lo desarman cuando termina la animación de cierre.
+ */
 function SettingsCard({
+  id,
   title,
   children,
   collapsible = false,
@@ -150,6 +152,7 @@ function SettingsCard({
   open: controlledOpen,
   onOpenChange,
 }: {
+  id: string
   title: string
   children: ReactNode
   collapsible?: boolean
@@ -165,11 +168,13 @@ function SettingsCard({
     return isControlled ? Boolean(controlledOpen) : defaultOpen
   })
 
+  // Al abrirse (también desde afuera, por ejemplo por un error) se arma el contenido.
+  if (open && !mountContent) {
+    setMountContent(true)
+  }
+
   useEffect(() => {
-    if (open) {
-      setMountContent(true)
-      return
-    }
+    if (open) return
 
     const timeout = window.setTimeout(
       () => setMountContent(false),
@@ -189,13 +194,18 @@ function SettingsCard({
     setInternalOpen(next)
   }
 
+  const titleId = `${id}-titulo`
+  const contentId = `${id}-contenido`
+
   if (!collapsible) {
     return (
       <section
-        className="flex flex-col gap-4 rounded-[16px] border border-[#edeef0] bg-white p-4 sm:gap-5 sm:p-6"
-        style={{ boxShadow: CONFIG_CARD_SHADOW }}
+        aria-labelledby={titleId}
+        className="flex flex-col gap-5 rounded-surface border border-line bg-canvas-raised p-group shadow-hint sm:p-block"
       >
-        <h2 className="text-[16px] font-normal leading-5 text-[#272a2d] sm:text-[18px]">{title}</h2>
+        <h2 id={titleId} className="text-reading">
+          {title}
+        </h2>
         {children}
       </section>
     )
@@ -203,28 +213,29 @@ function SettingsCard({
 
   return (
     <section
-      className="rounded-[16px] border border-[#edeef0] bg-white px-4 py-4 sm:px-6"
-      style={{ boxShadow: CONFIG_CARD_SHADOW }}
+      aria-labelledby={titleId}
+      className="flex flex-col rounded-surface border border-line bg-canvas-raised p-group shadow-hint sm:p-block"
     >
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2"
-        aria-expanded={open}
-      >
-        <h2 className="flex-1 text-left text-[16px] font-normal leading-5 text-[#272a2d] sm:text-[18px]">
-          {title}
-        </h2>
-        <ChevronDown
-          className={cn(
-            "size-4 shrink-0 text-[#43484e] transition-transform duration-300 ease-in-out",
-            open && "rotate-180",
-          )}
-          aria-hidden
-        />
-      </button>
+      <h2 id={titleId} className="text-reading">
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          aria-controls={contentId}
+          className="focus-ring flex w-full cursor-pointer items-center gap-compact rounded-box text-left"
+        >
+          <span className="flex-1">{title}</span>
+          <Icon
+            icon={ChevronDown}
+            className={cn(
+              "text-ink-muted transition-transform duration-(--duration-base)",
+              open && "rotate-180",
+            )}
+          />
+        </button>
+      </h2>
       <AnimatedCollapsible open={open}>
-        <div className="mt-5 flex flex-col gap-5">
+        <div id={contentId} className="mt-5 flex flex-col gap-5">
           {mountContent ? children : null}
         </div>
       </AnimatedCollapsible>
@@ -232,21 +243,47 @@ function SettingsCard({
   )
 }
 
-function FieldLabel({
-  icon,
-  children,
-  error,
+/**
+ * Aviso de que la superficie total supera la del plan, con el pedido de mejora.
+ * El atributo data-structure-surface-limit-banner es el que busca el scroll al aviso.
+ */
+function PlanSurfaceLimitNotice({
+  planSurfaceMaxM2,
+  projectId,
+  reportedSurfaceM2,
 }: {
-  icon?: ReactNode
-  children: ReactNode
-  error?: string
+  planSurfaceMaxM2: number
+  projectId: string
+  reportedSurfaceM2: number
 }) {
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
+
   return (
-    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[12px] font-normal leading-4 text-[#43484e]">
-      {icon ? <span className="shrink-0 text-[#43484e]">{icon}</span> : null}
-      <span className="min-w-0">{children}</span>
-      {error ? <FieldErrorTooltip message={error} className="ml-auto" /> : null}
-    </span>
+    <>
+      <div data-structure-surface-limit-banner>
+        <Notice
+          tone="info"
+          title={`Superaste la superficie permitida por tu plan (${formatSquareMeters(planSurfaceMaxM2)}).`}
+          action={
+            <Button variant="outline" size="compact" onClick={() => setUpgradeModalOpen(true)}>
+              Mejorar plan
+            </Button>
+          }
+        >
+          Para agregar más metros cuadrados, pedile una mejora del plan al administrador de
+          la organización.
+        </Notice>
+      </div>
+      <RequestPlanUpgradeModal
+        projectId={projectId}
+        surfaceLimit={{
+          planSurfaceMaxM2,
+          unitsSurfaceM2: reportedSurfaceM2,
+        }}
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+      />
+    </>
   )
 }
 
@@ -302,11 +339,20 @@ function useContentFooterAlign(contentRef: RefObject<HTMLDivElement | null>) {
   return align
 }
 
+/**
+ * Barra de "Cambios sin guardar": aparece abajo cuando hay cambios, alineada con el
+ * contenido de la página, y se esconde mientras está abierto el menú del celular.
+ * Sin señal se puede seguir editando, pero no guardar.
+ */
+/** Para saber si ya estamos en el cliente (el portal necesita document). */
+const subscribeNothing = () => () => {}
+
 function ConfigSaveFooter({
   visible,
   saving,
   errorMessage,
   disableSave = false,
+  offline,
   onRequestDiscard,
   onSave,
   align,
@@ -315,29 +361,26 @@ function ConfigSaveFooter({
   saving: boolean
   errorMessage: string | null
   disableSave?: boolean
+  offline: boolean
   onRequestDiscard: () => void
   onSave: () => void
   align: FooterAlign | null
 }) {
   const footerRef = useRef<HTMLDivElement>(null)
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
+  const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false)
+  const portalTarget = isClient ? document.body : null
   const [entered, setEntered] = useState(false)
   const mobileMenuOpen = useProjectMobileMenuOpen()
   const showFooter = visible && !mobileMenuOpen
 
-  useEffect(() => {
-    setPortalTarget(document.body)
-  }, [])
+  // Al esconderse vuelve al estado de entrada, para animar la próxima vez que aparezca.
+  if (!showFooter && entered) {
+    setEntered(false)
+  }
 
   useLayoutEffect(() => {
-    if (!showFooter) {
-      setEntered(false)
-      return
-    }
+    if (!showFooter || !align || entered) return
 
-    if (!align || entered) return
-
-    setEntered(false)
     let innerFrame = 0
     const outerFrame = requestAnimationFrame(() => {
       innerFrame = requestAnimationFrame(() => {
@@ -356,7 +399,7 @@ function ConfigSaveFooter({
   return createPortal(
     <div
       aria-hidden={!showFooter}
-      className="pointer-events-none fixed bottom-0 z-50"
+      className="pointer-events-none fixed bottom-0 z-(--z-sticky)"
       style={{
         left: align.left,
         width: align.width,
@@ -377,46 +420,60 @@ function ConfigSaveFooter({
           ref={footerRef}
           aria-label="Cambios sin guardar"
           data-viewport-bottom-inset={showFooter ? "" : undefined}
-          className="pointer-events-auto flex w-full items-center overflow-hidden rounded-t-[12px] border border-b-0 border-[#ffeae0] bg-[#fff6f1] px-[25px] py-[17px]"
+          className="pointer-events-auto flex w-full flex-col gap-compact overflow-hidden rounded-t-control border border-b-0 border-action/20 bg-action-soft px-block py-group text-ink"
         >
-          <div className="flex w-full items-center justify-end gap-2 sm:justify-between sm:gap-6">
-            <div className="hidden min-w-0 flex-col gap-0 leading-[1.4] text-[#111113] sm:flex">
-              <p className="text-[16px] font-medium">Cambios sin guardar</p>
+          <div className="flex w-full items-center justify-end gap-compact sm:justify-between sm:gap-block">
+            <div className="hidden min-w-0 flex-col sm:flex" aria-live="polite">
+              <p className="text-reading font-medium">Cambios sin guardar</p>
               {errorMessage ? (
-                <p className="mt-1 flex items-start gap-1.5 text-[14px] font-normal text-[#b91c1c]">
-                  <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                <p className="mt-related flex items-start gap-related text-body text-fn-danger">
+                  <Icon icon={CircleAlert} size="xs" className="mt-1" />
                   <span>{errorMessage}</span>
                 </p>
-              ) : (
-                <p className="text-[14px] font-normal">
-                  Guardá para aplicar la configuración del proyecto
+              ) : offline ? (
+                <p className="flex items-start gap-related text-body">
+                  <Icon icon={WifiOff} size="xs" className="mt-1" />
+                  <span>{AVISO_SIN_SENAL_PARA_GUARDAR}</span>
                 </p>
+              ) : (
+                <p className="text-body">Guardá para aplicar la configuración del proyecto</p>
               )}
             </div>
 
-            <div className="flex w-full min-w-0 shrink-0 items-center gap-2 sm:w-auto sm:justify-end">
+            <div className="flex w-full min-w-0 shrink-0 items-center gap-compact sm:w-auto sm:justify-end">
               <Button
-                type="button"
                 variant="outline"
                 onClick={onRequestDiscard}
                 disabled={saving}
-                className="h-auto min-h-[44px] min-w-0 flex-1 whitespace-nowrap rounded-[10px] border-[#696e77] bg-transparent px-3 py-3 text-[14px] font-normal leading-[1.4] text-[#363a3f] shadow-none hover:border-[#696e77] hover:bg-[#fff6f1] hover:text-[#272a2d] sm:w-auto sm:flex-none sm:px-4"
+                className="min-w-0 flex-1 sm:flex-none"
               >
                 Descartar cambios
               </Button>
               <Button
-                type="button"
-                variant="brand"
-                size="brand"
                 onClick={onSave}
-                disabled={saving || disableSave}
-                className="h-auto min-h-[44px] min-w-0 flex-1 gap-2 whitespace-nowrap rounded-[10px] px-3 py-3 text-[14px] font-normal leading-[1.4] shadow-[0_0_10px_rgba(243,103,31,0.3)] sm:w-auto sm:flex-none sm:px-6"
+                loading={saving}
+                loadingLabel="Guardando…"
+                disabled={disableSave || offline}
+                className="min-w-0 flex-1 sm:flex-none"
               >
-                <Check className="size-4 shrink-0" aria-hidden />
-                {saving ? "Guardando..." : "Guardar cambios"}
+                <Icon icon={Check} />
+                {saving ? "Guardando…" : "Guardar cambios"}
               </Button>
             </div>
           </div>
+
+          {/* En el celular el texto de la izquierda no entra: el error y la falta de señal van debajo de los botones. */}
+          {errorMessage ? (
+            <p className="flex items-start gap-related text-meta text-fn-danger sm:hidden">
+              <Icon icon={CircleAlert} size="xs" className="mt-0.5" />
+              <span>{errorMessage}</span>
+            </p>
+          ) : offline ? (
+            <p className="flex items-start gap-related text-meta sm:hidden">
+              <Icon icon={WifiOff} size="xs" className="mt-0.5" />
+              <span>{AVISO_SIN_SENAL_PARA_GUARDAR}</span>
+            </p>
+          ) : null}
         </section>
       </div>
     </div>,
@@ -434,6 +491,7 @@ export function ConfiguracionView({
 }: ConfiguracionViewProps) {
   const toast = useToast()
   const queryClient = useQueryClient()
+  const enLinea = useEnLinea()
   const [draft, setDraft] = useState<CreateProjectDraft | null>(() =>
     buildConfigDraftFromProjectData({
       projectName: project.name,
@@ -547,11 +605,14 @@ export function ConfiguracionView({
     }
   }
 
-  useEffect(() => {
+  // Si aparecen errores en la estructura, se abre su sección.
+  const [prevStructureFieldErrors, setPrevStructureFieldErrors] = useState(structureFieldErrors)
+  if (prevStructureFieldErrors !== structureFieldErrors) {
+    setPrevStructureFieldErrors(structureFieldErrors)
     if (hasStructureStepFieldErrors(structureFieldErrors)) {
       setStructureSectionOpen(true)
     }
-  }, [structureFieldErrors])
+  }
 
   const scrollToStructureFieldError = (errors: StructureStepFieldErrors) => {
     const target = getFirstStructureFieldErrorTarget(errors)
@@ -583,7 +644,8 @@ export function ConfiguracionView({
       scrollToStructureSurfaceLimitBanner()
       return
     }
-    focusStructureSurfaceLimit()
+    // Abrir la sección cambia el estado: se hace en el próximo cuadro, fuera del cuerpo del efecto.
+    requestAnimationFrame(() => focusStructureSurfaceLimit())
   }, [planSurfaceLimitError, totalSurfaceOverPlan])
 
   const applySavedBasics = (basics: ConfigBasicsState) => {
@@ -964,237 +1026,203 @@ export function ConfiguracionView({
   }
 
   const handleConfirmSave = async () => {
+    // Guardar necesita señal: si se cortó con el diálogo abierto, se cierra y la barra de abajo lo avisa.
+    if (!enLinea) {
+      setSaveDialogOpen(false)
+      return
+    }
     const saved = await handleSave()
     if (saved) {
       setSaveDialogOpen(false)
+      return
     }
+    // Si no se pudo guardar, el diálogo queda abierto (el error se ve en la barra de abajo).
+    throw new Error("No se pudieron guardar los cambios.")
   }
+
 
   return (
     <>
-      <div
-        ref={contentRef}
-        className="mx-auto flex w-full flex-col"
-        style={{
-          maxWidth: CREATE_PROJECT_LAYOUT.contentMaxWidth,
-        }}
-      >
+      <div ref={contentRef} className="mx-auto flex w-full max-w-224 flex-col">
         <div
-          className="flex flex-col gap-4 sm:gap-5"
+          className="flex flex-col gap-group sm:gap-block"
           style={{ paddingBottom: footerScrollPadding }}
         >
-        {/* Header */}
-        <div className="flex flex-col gap-2">
-          <h1 className="font-recoleta text-[26px] font-normal leading-tight text-[#272a2d] sm:text-[28px]">
-            Configuración del Proyecto
-          </h1>
-          <p className="text-[14px] leading-5 text-[#43484e]">
-            Administra la estructura, rubros y equipo del proyecto.
-          </p>
-        </div>
-
-      {/* Información Básica */}
-      <SettingsCard title="Información Básica">
-        <div id="config-basic-info" className="flex flex-col gap-4">
-          {totalSurfaceOverPlan && planSurfaceMaxM2 != null ? (
-            <PlanSurfaceLimitNotice
-              planSurfaceMaxM2={planSurfaceMaxM2}
-              projectId={project.id}
-              reportedSurfaceM2={parseTotalSurfaceM2(totalSurface) ?? 0}
-            />
-          ) : null}
-
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-4">
-            <CompanyLogoMark
-              logoUrl={project.companyLogoUrl}
-              alt={`Logo de ${project.companyName || "la empresa"}`}
-              className="size-16 shrink-0 rounded-[10px] border border-[#e2e8f0] bg-[#ff7433] sm:size-20"
-              fallback={<Building2 className="size-8 text-white sm:size-10" aria-hidden />}
-            />
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-              <FieldLabel error={basicFieldErrors.projectName}>Nombre del Proyecto *</FieldLabel>
-              <Input
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value)
-                  updateDraft({ projectName: e.target.value })
-                  setFeedback(null)
-                  if (basicFieldErrors.projectName) {
-                    setBasicFieldErrors((current) => ({ ...current, projectName: undefined }))
-                  }
-                }}
-                className={cn(
-                  basicInputClassName,
-                  basicFieldErrors.projectName && createProjectFieldErrorInputClassName,
-                )}
-                style={
-                  basicFieldErrors.projectName
-                    ? { ...basicInputStyle, ...createProjectFieldErrorInputStyle }
-                    : basicInputStyle
-                }
-                aria-invalid={Boolean(basicFieldErrors.projectName)}
-              />
-            </div>
+          {/* Encabezado */}
+          <div className="flex flex-col gap-compact">
+            <h1 className="text-title">Configuración del Proyecto</h1>
+            <p className="text-body text-ink-muted">
+              Administrá la estructura, los rubros y las tareas de la obra.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel icon={<MapPin className="size-3" aria-hidden />} error={basicFieldErrors.location}>
-                Ubicación *
-              </FieldLabel>
-              <Input
-                value={location}
-                onChange={(e) => {
-                  setLocation(e.target.value)
-                  updateDraft({ location: e.target.value })
-                  if (basicFieldErrors.location) {
-                    setBasicFieldErrors((current) => ({ ...current, location: undefined }))
-                  }
-                }}
-                className={cn(
-                  basicInputClassName,
-                  basicFieldErrors.location && createProjectFieldErrorInputClassName,
-                )}
-                style={
-                  basicFieldErrors.location
-                    ? { ...basicInputStyle, ...createProjectFieldErrorInputStyle }
-                    : basicInputStyle
-                }
-                aria-invalid={Boolean(basicFieldErrors.location)}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel error={basicFieldErrors.totalSurface}>
-                Superficie total *
-              </FieldLabel>
-              <Input
-                placeholder="Ej: 2.000,50"
-                inputMode="decimal"
-                value={totalSurface}
-                onChange={(e) => {
-                  const nextValue = normalizeTotalSurfaceInput(e.target.value)
-                  setTotalSurface(nextValue)
-                  updateDraft({ totalSurface: nextValue })
-                  if (basicFieldErrors.totalSurface) {
-                    setBasicFieldErrors((current) => ({
-                      ...current,
-                      totalSurface: undefined,
-                    }))
-                  }
-                }}
-                onBlur={() => {
-                  const nextValue = finalizeTotalSurfaceInput(totalSurface)
-                  setTotalSurface(nextValue)
-                  updateDraft({ totalSurface: nextValue })
-                }}
-                className={cn(
-                  basicInputClassName,
-                  basicFieldErrors.totalSurface && createProjectFieldErrorInputClassName,
-                )}
-                style={
-                  basicFieldErrors.totalSurface
-                    ? { ...basicInputStyle, ...createProjectFieldErrorInputStyle }
-                    : basicInputStyle
-                }
-                aria-invalid={Boolean(basicFieldErrors.totalSurface)}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel icon={<CalendarDays className="size-3" aria-hidden />} error={basicFieldErrors.startDate}>
-                Fecha de Inicio *
-              </FieldLabel>
-              <DatePicker
-                id="config-start-date"
-                value={parsedStartDate}
-                onChange={(date) => {
-                  const nextStartDate = formatDraftDateString(date)
-                  setStartDate(nextStartDate)
-                  if (date && parsedEndDate && date > parsedEndDate) {
-                    setEndDate(nextStartDate)
-                  }
-                  if (basicFieldErrors.startDate) {
-                    setBasicFieldErrors((current) => ({ ...current, startDate: undefined }))
-                  }
-                }}
-                toDate={parsedEndDate}
-                placeholder="Seleccionar fecha"
-                popoverSide="bottom"
-                className={cn(
-                  basicDatePickerClassName,
-                  basicFieldErrors.startDate && createProjectFieldErrorInputClassName,
-                )}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel icon={<CalendarDays className="size-3" aria-hidden />} error={basicFieldErrors.endDate}>
-                Finalización Estimada *
-              </FieldLabel>
-              <DatePicker
-                id="config-end-date"
-                value={parsedEndDate}
-                onChange={(date) => {
-                  const nextEndDate = formatDraftDateString(date)
-                  setEndDate(nextEndDate)
-                  if (date && parsedStartDate && date < parsedStartDate) {
-                    setStartDate(nextEndDate)
-                  }
-                  if (basicFieldErrors.endDate) {
-                    setBasicFieldErrors((current) => ({ ...current, endDate: undefined }))
-                  }
-                }}
-                fromDate={parsedStartDate}
-                placeholder="Seleccionar fecha"
-                popoverSide="bottom"
-                className={cn(
-                  basicDatePickerClassName,
-                  basicFieldErrors.endDate && createProjectFieldErrorInputClassName,
-                )}
-              />
-            </div>
-          </div>
-        </div>
-      </SettingsCard>
+          {!enLinea ? <Notice tone="caution">{AVISO_SIN_SENAL_PARA_GUARDAR}</Notice> : null}
 
-      {/* Estructura, rubros y asignaciones por unidad */}
-      {draft ? (
-        <>
-          <SettingsCard
-            title="Configuración de Niveles y Locales"
-            collapsible
-            open={structureSectionOpen}
-            onOpenChange={setStructureSectionOpen}
-          >
-            <CreateProjectStructureStep
-              draft={draft}
-              onChange={updateDraft}
-              fieldErrors={structureFieldErrors}
-              projectId={project.id}
-              planSurfaceMaxM2={planSurfaceMaxM2}
-            />
+          {/* Información Básica */}
+          <SettingsCard id="config-basica" title="Información Básica">
+            <div id="config-basic-info" className="flex flex-col gap-group">
+              {totalSurfaceOverPlan && planSurfaceMaxM2 != null ? (
+                <PlanSurfaceLimitNotice
+                  planSurfaceMaxM2={planSurfaceMaxM2}
+                  projectId={project.id}
+                  reportedSurfaceM2={parseTotalSurfaceM2(totalSurface) ?? 0}
+                />
+              ) : null}
+
+              <div className="flex flex-col gap-group sm:flex-row sm:items-end">
+                <CompanyLogoMark
+                  logoUrl={project.companyLogoUrl}
+                  alt={`Logo de ${project.companyName || "la empresa"}`}
+                  className="size-16 shrink-0 rounded-mark bg-action text-action-ink sm:size-20"
+                  fallback={<Icon icon={Building2} size="lg" />}
+                />
+                <Field
+                  label="Nombre del Proyecto"
+                  required
+                  error={basicFieldErrors.projectName}
+                  className="min-w-0 flex-1"
+                >
+                  <Input
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value)
+                      updateDraft({ projectName: e.target.value })
+                      setFeedback(null)
+                      if (basicFieldErrors.projectName) {
+                        setBasicFieldErrors((current) => ({ ...current, projectName: undefined }))
+                      }
+                    }}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-1 gap-group sm:grid-cols-2 lg:grid-cols-4">
+                <Field label="Ubicación" required error={basicFieldErrors.location}>
+                  <InputGroup
+                    start={<Icon icon={MapPin} size="xs" />}
+                    value={location}
+                    onChange={(e) => {
+                      setLocation(e.target.value)
+                      updateDraft({ location: e.target.value })
+                      if (basicFieldErrors.location) {
+                        setBasicFieldErrors((current) => ({ ...current, location: undefined }))
+                      }
+                    }}
+                  />
+                </Field>
+                <Field label="Superficie total" required error={basicFieldErrors.totalSurface}>
+                  <InputGroup
+                    end="m²"
+                    placeholder="Ej. 2.000,50"
+                    inputMode="decimal"
+                    value={totalSurface}
+                    onChange={(e) => {
+                      const nextValue = normalizeTotalSurfaceInput(e.target.value)
+                      setTotalSurface(nextValue)
+                      updateDraft({ totalSurface: nextValue })
+                      if (basicFieldErrors.totalSurface) {
+                        setBasicFieldErrors((current) => ({
+                          ...current,
+                          totalSurface: undefined,
+                        }))
+                      }
+                    }}
+                    onBlur={() => {
+                      const nextValue = finalizeTotalSurfaceInput(totalSurface)
+                      setTotalSurface(nextValue)
+                      updateDraft({ totalSurface: nextValue })
+                    }}
+                  />
+                </Field>
+                <Field
+                  id="config-start-date"
+                  label="Fecha de inicio"
+                  required
+                  error={basicFieldErrors.startDate}
+                >
+                  <DatePicker
+                    value={parsedStartDate}
+                    onChange={(date) => {
+                      const nextStartDate = formatDraftDateString(date)
+                      setStartDate(nextStartDate)
+                      if (date && parsedEndDate && date > parsedEndDate) {
+                        setEndDate(nextStartDate)
+                      }
+                      if (basicFieldErrors.startDate) {
+                        setBasicFieldErrors((current) => ({ ...current, startDate: undefined }))
+                      }
+                    }}
+                    max={parsedEndDate}
+                  />
+                </Field>
+                <Field
+                  id="config-end-date"
+                  label="Finalización estimada"
+                  required
+                  error={basicFieldErrors.endDate}
+                >
+                  <DatePicker
+                    value={parsedEndDate}
+                    onChange={(date) => {
+                      const nextEndDate = formatDraftDateString(date)
+                      setEndDate(nextEndDate)
+                      if (date && parsedStartDate && date < parsedStartDate) {
+                        setStartDate(nextEndDate)
+                      }
+                      if (basicFieldErrors.endDate) {
+                        setBasicFieldErrors((current) => ({ ...current, endDate: undefined }))
+                      }
+                    }}
+                    min={parsedStartDate}
+                  />
+                </Field>
+              </div>
+            </div>
           </SettingsCard>
 
-          <SettingsCard
-            title="Rubros y Tareas"
-            collapsible
-            defaultOpen={false}
-          >
-            <CreateProjectTasksStep draft={draft} onChange={updateDraft} />
-          </SettingsCard>
+          {/* Estructura, rubros y asignaciones por unidad */}
+          {draft ? (
+            <>
+              <SettingsCard
+                id="config-estructura"
+                title="Configuración de Niveles y Locales"
+                collapsible
+                open={structureSectionOpen}
+                onOpenChange={setStructureSectionOpen}
+              >
+                <CreateProjectStructureStep
+                  draft={draft}
+                  onChange={updateDraft}
+                  fieldErrors={structureFieldErrors}
+                  projectId={project.id}
+                  planSurfaceMaxM2={planSurfaceMaxM2}
+                />
+              </SettingsCard>
 
-          <SettingsCard
-            title="Aplicación de Rubros y Tareas por Unidad Funcional"
-            collapsible
-            defaultOpen={false}
-          >
-            <CreateProjectUnitTasksStep
-              draft={draft}
-              onChange={updateDraft}
-            />
-          </SettingsCard>
-        </>
-      ) : (
-        <ConfiguracionSectionsSkeleton />
-      )}
+              <SettingsCard
+                id="config-rubros"
+                title="Rubros y Tareas"
+                collapsible
+                defaultOpen={false}
+              >
+                <CreateProjectTasksStep draft={draft} onChange={updateDraft} />
+              </SettingsCard>
+
+              <SettingsCard
+                id="config-por-unidad"
+                title="Aplicación de Rubros y Tareas por Unidad Funcional"
+                collapsible
+                defaultOpen={false}
+              >
+                <CreateProjectUnitTasksStep
+                  draft={draft}
+                  onChange={updateDraft}
+                />
+              </SettingsCard>
+            </>
+          ) : (
+            <ConfiguracionSectionsSkeleton />
+          )}
         </div>
       </div>
 
@@ -1203,8 +1231,10 @@ export function ConfiguracionView({
           visible={footerVisible}
           saving={saving}
           errorMessage={errorMessage}
+          offline={!enLinea}
           onRequestDiscard={() => setDiscardDialogOpen(true)}
           onSave={() => {
+            if (!enLinea) return
             if (!validateBeforeSave()) return
             setSaveDialogOpen(true)
           }}
@@ -1222,17 +1252,17 @@ export function ConfiguracionView({
         description={saveConfirmMessage}
         confirmLabel="Confirmar"
         cancelLabel="Seguir editando"
-        loading={saving}
-        onConfirm={() => void handleConfirmSave()}
+        onConfirm={handleConfirmSave}
       />
 
       <ConfigConfirmDialog
         open={discardDialogOpen}
         onOpenChange={setDiscardDialogOpen}
         title="¿Descartar cambios?"
-        description="Se perderán todos los cambios no guardados en la configuración del proyecto. ¿Deseás continuar?"
+        description="Se perderán todos los cambios no guardados en la configuración del proyecto. ¿Querés continuar?"
         confirmLabel="Descartar cambios"
         cancelLabel="Seguir editando"
+        tone="danger"
         onConfirm={handleConfirmDiscard}
       />
     </>

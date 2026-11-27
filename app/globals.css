@@ -1,4 +1,12 @@
 @import "tailwindcss";
+/* Librería BuildOn en convivencia: suma los roles (bg-canvas, text-ink, p-group…) sin
+   borrar las clases de siempre. Las pantallas se pasan de a una (library/README.md). */
+@import "../library/foundations/tokens/index.css";
+@import "../library/foundations/roles.css";
+/* El catálogo y sus historias no son parte de la app: no generan clases acá. */
+@source not "../library/**/*.stories.tsx";
+@source not "../library/storybook-static";
+@source not "../library/snapshots";
 
 @custom-variant dark (&:is(.dark *));
 

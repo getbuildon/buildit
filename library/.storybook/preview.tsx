@@ -65,7 +65,7 @@ const preview: Preview = {
           "Átomos",
           ["Auditoría", "Button", "IconButton", "Input", "Label", "Checkbox", "Radio", "Switch", "Badge", "Tag", "Avatar", "Progress", "Spinner", "Tooltip", "Link"],
           "Moléculas",
-          ["Auditoría", "Field", "InputGroup", "Select", "Combobox", "DatePicker", "InlineEdit", "FileField", "Dialog", "Menu", "Tabs", "Notice", "Card"],
+          ["Auditoría", "Field", "InputGroup", "CodeField", "Select", "Combobox", "DatePicker", "InlineEdit", "FileField", "Dialog", "Menu", "Tabs", "Notice", "Card"],
           "Organismos",
           ["Auditoría", "Sidebar", "PageHeader", "ListToolbar", "DataTable", "Metric", "ProjectCard", "Avance por piso", "Wizard", "FormSection", "Gráficos", "Plano por piso"],
           "Estructuras",

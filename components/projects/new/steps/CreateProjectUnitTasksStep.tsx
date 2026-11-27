@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
 import { ChevronDown } from "lucide-react"
 import type {
   CreateProjectDraft,
   RubroItemDraft,
 } from "@/lib/projects/createProjectDraft"
-import { cn } from "@/lib/utils"
-import { AnimatedCollapsible } from "@/components/ui/animated-collapsible"
+import { Checkbox } from "@/library/atoms/checkbox/Checkbox"
+import { Icon } from "@/library/atoms/icon/Icon"
+import { cn } from "@/library/lib/cn"
 
 type Props = {
   draft: CreateProjectDraft
@@ -62,9 +63,7 @@ function getRubroDisabledReason(rubro: RubroItemDraft): string | null {
 }
 
 function DisabledReasonSuffix({ reason }: { reason: string }) {
-  return (
-    <span className="font-normal text-[#777b84]">{` (${reason})`}</span>
-  )
+  return <span className="font-normal text-ink-muted">{` (${reason})`}</span>
 }
 
 function isTaskIncluded(
@@ -124,49 +123,47 @@ function applyRubroToggle(
   return result
 }
 
-function UnitCheckbox({
-  state,
-  onToggle,
+/** Pasa el estado propio de la casilla al formato de la casilla de la librería. */
+function toCheckedValue(state: CheckboxState): boolean | "indeterminate" {
+  if (state === "indeterminate") return "indeterminate"
+  return state === "checked"
+}
+
+/* Botón que abre o cierra un nivel, una unidad o un rubro (con la flechita). */
+function Disclosure({
+  expanded,
   disabled = false,
+  onToggle,
+  className,
+  children,
 }: {
-  state: CheckboxState
-  onToggle: () => void
+  expanded: boolean
   disabled?: boolean
+  onToggle: () => void
+  className?: string
+  children: ReactNode
 }) {
-  const isActive = !disabled && (state === "checked" || state === "indeterminate")
   return (
     <button
       type="button"
-      role="checkbox"
-      aria-checked={disabled ? false : state === "indeterminate" ? "mixed" : state === "checked"}
-      aria-disabled={disabled}
-      onClick={(e) => {
-        e.stopPropagation()
-        if (!disabled) onToggle()
-      }}
+      aria-expanded={disabled ? undefined : expanded}
+      disabled={disabled}
+      onClick={onToggle}
       className={cn(
-        "flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
-        disabled
-          ? "cursor-not-allowed border-[#d1d4d9] bg-[#f0f1f3]"
-          : isActive
-          ? "border-[#ff7433] bg-[#ff7433]"
-          : "border-[#afb3ba] bg-white",
+        "focus-ring flex min-h-10 min-w-0 flex-1 cursor-pointer items-center gap-compact rounded-box text-left text-body",
+        disabled && "cursor-not-allowed",
+        className,
       )}
     >
-      {!disabled && state === "checked" && (
-        <svg width="11" height="8" viewBox="0 0 11 8" fill="none" aria-hidden>
-          <path
-            d="M1 4L4 7L10 1"
-            stroke="white"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      )}
-      {!disabled && state === "indeterminate" && (
-        <span className="h-0.5 w-2.5 rounded-full bg-white" />
-      )}
+      <Icon
+        icon={ChevronDown}
+        size="xs"
+        className={cn(
+          "text-ink-muted transition-transform",
+          !expanded && "-rotate-90",
+        )}
+      />
+      {children}
     </button>
   )
 }
@@ -188,27 +185,14 @@ export function CreateProjectUnitTasksStep({
   const unitDisabledReason = getUnitDisabledReason(draft)
   const exclusions = draft.unitTaskExclusions
 
-  function toggleFloor(id: string) {
-    setExpandedFloors((prev) => {
+  function toggleInSet(
+    setter: Dispatch<SetStateAction<Set<string>>>,
+    id: string,
+  ) {
+    setter((prev) => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
-
-  function toggleUnit(id: string) {
-    setExpandedUnits((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
-
-  function toggleRubroExpanded(unitId: string, rubroId: string) {
-    const key = `${unitId}::${rubroId}`
-    setExpandedRubros((prev) => {
-      const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
@@ -228,7 +212,7 @@ export function CreateProjectUnitTasksStep({
 
   if (draft.floors.length === 0) {
     return (
-      <p className="text-[14px] text-[#777b84]">
+      <p className="text-body text-ink-muted">
         No hay niveles definidos. Agregá niveles en el paso de estructura.
       </p>
     )
@@ -237,194 +221,179 @@ export function CreateProjectUnitTasksStep({
   const hasAssignableRubros = flatRubros.length > 0
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-[14px] leading-[1.4] text-[#18191b]">
+    <div className="flex flex-col gap-snug">
+      <p className="text-body text-ink-muted">
         {hasAssignableRubros
           ? "Todos los rubros y tareas fueron asignadas automáticamente a todos los niveles y unidades funcionales. Revisá todas las unidades y quitá aquellos rubros o tareas que no le correspondan."
           : "Completá la estructura del edificio y definí rubros con tareas para poder asignarlos por unidad."}
       </p>
 
-      <div className="flex flex-col gap-0.5 rounded-[8px]">
+      <ul className="flex flex-col gap-related">
         {draft.floors.map((floor) => {
           const floorDisabledReason = getFloorDisabledReason(floor)
           const floorDisabled = floorDisabledReason !== null
           const floorExpanded = !floorDisabled && expandedFloors.has(floor.id)
 
           return (
-            <div
+            <li
               key={floor.id}
               className={cn(
-                "flex flex-col rounded-[4px] bg-[rgba(237,238,240,0.3)]",
+                "flex flex-col rounded-box bg-canvas-sunken/50",
                 floorDisabled && "opacity-50",
               )}
             >
-              {/* Floor header */}
-              <button
-                type="button"
+              <Disclosure
+                expanded={floorExpanded}
                 disabled={floorDisabled}
-                onClick={() => toggleFloor(floor.id)}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 text-left",
-                  floorDisabled && "cursor-not-allowed",
-                )}
+                onToggle={() => toggleInSet(setExpandedFloors, floor.id)}
+                className="px-compact font-medium"
               >
-                <ChevronDown
-                  className={cn(
-                    "size-4 shrink-0 text-[#272a2d] transition-transform duration-300 ease-in-out",
-                    !floorExpanded && "-rotate-90",
-                    floorDisabled && "opacity-60",
-                  )}
-                />
-                <span className="text-[14px] font-medium leading-[1.4] text-[#272a2d]">
+                <span className="min-w-0">
                   {floor.name}
                   {floorDisabledReason ? (
                     <DisabledReasonSuffix reason={floorDisabledReason} />
                   ) : null}
                 </span>
-              </button>
+              </Disclosure>
 
-              {/* Units */}
-              <AnimatedCollapsible open={floorExpanded}>
-                {floor.units.map((unit) => {
-                  const unitDisabled = unitDisabledReason !== null
-                  const unitExpanded =
-                    !unitDisabled && expandedUnits.has(unit.id)
-                  const unitCode = unit.code.trim()
-                  const unitLabel = unitCode
-                    ? `${unit.type} · ${unitCode}`
-                    : unit.type
+              {floorExpanded ? (
+                <ul className="pb-compact">
+                  {floor.units.map((unit) => {
+                    const unitDisabled = unitDisabledReason !== null
+                    const unitExpanded =
+                      !unitDisabled && expandedUnits.has(unit.id)
+                    const unitCode = unit.code.trim()
+                    const unitLabel = unitCode
+                      ? `${unit.type} · ${unitCode}`
+                      : unit.type
 
-                  return (
-                    <div
-                      key={unit.id}
-                      className={cn("flex flex-col", unitDisabled && "opacity-50")}
-                    >
-                      {/* Unit header */}
-                      <button
-                        type="button"
-                        disabled={unitDisabled}
-                        onClick={() => toggleUnit(unit.id)}
+                    return (
+                      <li
+                        key={unit.id}
                         className={cn(
-                          "flex items-center gap-2 px-4 py-1 text-left",
-                          unitDisabled && "cursor-not-allowed",
+                          "flex flex-col pl-group",
+                          unitDisabled && "opacity-50",
                         )}
                       >
-                        <ChevronDown
-                          className={cn(
-                            "size-4 shrink-0 text-[#272a2d] transition-transform duration-300 ease-in-out",
-                            !unitExpanded && "-rotate-90",
-                            unitDisabled && "opacity-60",
-                          )}
-                        />
-                        <span className="min-w-0 flex-1 text-[14px] font-medium leading-[1.4] text-[#272a2d]">
-                          {unitLabel}
-                          {unitDisabledReason ? (
-                            <DisabledReasonSuffix reason={unitDisabledReason} />
-                          ) : null}
-                        </span>
-                      </button>
+                        <Disclosure
+                          expanded={unitExpanded}
+                          disabled={unitDisabled}
+                          onToggle={() => toggleInSet(setExpandedUnits, unit.id)}
+                          className="font-medium"
+                        >
+                          <span className="min-w-0 flex-1">
+                            {unitLabel}
+                            {unitDisabledReason ? (
+                              <DisabledReasonSuffix reason={unitDisabledReason} />
+                            ) : null}
+                          </span>
+                        </Disclosure>
 
-                      {/* Rubros */}
-                      <AnimatedCollapsible open={unitExpanded}>
-                        {allFlatRubros.map(({ rubro, groupNumber, rubroNumber }) => {
-                          const rubroKey = `${unit.id}::${rubro.id}`
-                          const rubroDisabledReason = getRubroDisabledReason(rubro)
-                          const rubroDisabled = rubroDisabledReason !== null
-                          const rubroExpanded =
-                            !rubroDisabled && expandedRubros.has(rubroKey)
-                          const rubroState = getRubroCheckboxState(
-                            exclusions,
-                            unit.id,
-                            rubro,
-                          )
-                          const rubroPrefix = `${groupNumber}.${rubroNumber}`
+                        {unitExpanded ? (
+                          <ul className="pl-8">
+                            {allFlatRubros.map(({ rubro, groupNumber, rubroNumber }) => {
+                              const rubroKey = `${unit.id}::${rubro.id}`
+                              const rubroDisabledReason = getRubroDisabledReason(rubro)
+                              const rubroDisabled = rubroDisabledReason !== null
+                              const rubroExpanded =
+                                !rubroDisabled && expandedRubros.has(rubroKey)
+                              const rubroState = getRubroCheckboxState(
+                                exclusions,
+                                unit.id,
+                                rubro,
+                              )
+                              const rubroPrefix = `${groupNumber}.${rubroNumber}`
 
-                          return (
-                            <div
-                              key={rubro.id}
-                              className={cn(rubroDisabled && "opacity-50")}
-                            >
-                              {/* Rubro row */}
-                              <div className="flex items-center justify-between border-b-2 border-white pl-8 pr-3 py-1">
-                                <button
-                                  type="button"
-                                  disabled={rubroDisabled}
-                                  onClick={() =>
-                                    toggleRubroExpanded(unit.id, rubro.id)
-                                  }
+                              return (
+                                <li
+                                  key={rubro.id}
                                   className={cn(
-                                    "flex min-w-0 flex-1 items-center gap-2 text-left",
-                                    rubroDisabled && "cursor-not-allowed",
+                                    "border-b-2 border-canvas-raised",
+                                    rubroDisabled && "opacity-50",
                                   )}
                                 >
-                                  <ChevronDown
-                                    className={cn(
-                                      "size-4 shrink-0 text-[#272a2d] transition-transform duration-300 ease-in-out",
-                                      !rubroExpanded && "-rotate-90",
-                                      rubroDisabled && "opacity-60",
-                                    )}
-                                  />
-                                  <span className="min-w-0 truncate text-[14px] font-medium leading-[1.4] text-[#272a2d]">
-                                    {rubroPrefix}. {rubro.name}
-                                    {rubroDisabledReason ? (
-                                      <DisabledReasonSuffix reason={rubroDisabledReason} />
-                                    ) : null}
-                                  </span>
-                                </button>
-                                <UnitCheckbox
-                                  state={rubroState}
-                                  disabled={rubroDisabled}
-                                  onToggle={() =>
-                                    handleRubroToggle(unit.id, rubro, rubroState)
-                                  }
-                                />
-                              </div>
-
-                              <AnimatedCollapsible open={rubroExpanded}>
-                                {rubro.tasks
-                                  .map((task, taskIndex) => ({ task, taskIndex }))
-                                  .filter(({ task }) => task.name.trim())
-                                  .map(({ task, taskIndex }) => {
-                                  const included = isTaskIncluded(
-                                    exclusions,
-                                    unit.id,
-                                    task.id,
-                                  )
-                                  return (
-                                    <div
-                                      key={task.id}
-                                      className="flex items-center justify-between border-b-2 border-white pl-16 pr-3 py-1"
+                                  <div className="flex items-center gap-compact pr-compact">
+                                    <Disclosure
+                                      expanded={rubroExpanded}
+                                      disabled={rubroDisabled}
+                                      onToggle={() =>
+                                        toggleInSet(setExpandedRubros, rubroKey)
+                                      }
+                                      className="font-medium"
                                     >
-                                      <span className="min-w-0 flex-1 text-[14px] leading-[1.4] text-[#272a2d]">
-                                        {rubroPrefix}.{taskIndex + 1}.{" "}
-                                        {task.name}
+                                      <span className="min-w-0 truncate">
+                                        {rubroPrefix}. {rubro.name}
+                                        {rubroDisabledReason ? (
+                                          <DisabledReasonSuffix reason={rubroDisabledReason} />
+                                        ) : null}
                                       </span>
-                                      <UnitCheckbox
-                                        state={included ? "checked" : "unchecked"}
-                                        onToggle={() =>
-                                          handleTaskToggle(
+                                    </Disclosure>
+                                    <Checkbox
+                                      aria-label={`${rubro.name} en ${unitLabel}`}
+                                      checked={
+                                        rubroDisabled ? false : toCheckedValue(rubroState)
+                                      }
+                                      disabled={rubroDisabled}
+                                      onCheckedChange={() =>
+                                        handleRubroToggle(unit.id, rubro, rubroState)
+                                      }
+                                    />
+                                  </div>
+
+                                  {rubroExpanded ? (
+                                    <ul className="pl-8">
+                                      {rubro.tasks
+                                        .map((task, taskIndex) => ({ task, taskIndex }))
+                                        .filter(({ task }) => task.name.trim())
+                                        .map(({ task, taskIndex }) => {
+                                          const included = isTaskIncluded(
+                                            exclusions,
                                             unit.id,
                                             task.id,
-                                            included,
                                           )
-                                        }
-                                      />
-                                    </div>
-                                  )
-                                })}
-                              </AnimatedCollapsible>
-                            </div>
-                          )
-                        })}
-                      </AnimatedCollapsible>
-                    </div>
-                  )
-                })}
-              </AnimatedCollapsible>
-            </div>
+                                          const checkboxId = `tarea-${rubroKey}-${task.id}`
+                                          return (
+                                            <li
+                                              key={task.id}
+                                              className="flex min-h-9 items-center gap-compact pr-compact text-body"
+                                            >
+                                              <label
+                                                htmlFor={checkboxId}
+                                                className="min-w-0 flex-1 cursor-pointer"
+                                              >
+                                                {rubroPrefix}.{taskIndex + 1}.{" "}
+                                                {task.name}
+                                              </label>
+                                              <Checkbox
+                                                id={checkboxId}
+                                                checked={included}
+                                                onCheckedChange={() =>
+                                                  handleTaskToggle(
+                                                    unit.id,
+                                                    task.id,
+                                                    included,
+                                                  )
+                                                }
+                                              />
+                                            </li>
+                                          )
+                                        })}
+                                    </ul>
+                                  ) : null}
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        ) : null}
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : null}
+            </li>
           )
         })}
-      </div>
+      </ul>
     </div>
   )
 }

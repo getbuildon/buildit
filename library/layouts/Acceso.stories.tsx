@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { ArrowLeft, Mail, MailCheck } from "lucide-react"
 import { Avatar } from "../atoms/avatar/Avatar"
@@ -7,6 +7,7 @@ import { Icon } from "../atoms/icon/Icon"
 import { Link } from "../atoms/link/Link"
 import { Logo } from "../atoms/logo/Logo"
 import { Spinner } from "../atoms/spinner/Spinner"
+import { CodeField } from "../molecules/code-field/CodeField"
 import { Field } from "../molecules/field/Field"
 import { InputGroup } from "../molecules/input-group/InputGroup"
 import { Notice } from "../molecules/notice/Notice"
@@ -165,15 +166,15 @@ function RecoveryRequest() {
     setSent(true)
   }
 
-  if (sent) return <RecoverySent />
+  if (sent) return <RecoveryCode email={email} />
 
   return (
     <Screen>
-      <AuthCard title="Recuperar contraseña" description="Ingresá tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.">
+      <AuthCard title="Recuperar contraseña" description="Ingresá tu correo electrónico y te enviaremos un código para elegir una contraseña nueva.">
         <form className="flex flex-col gap-group" noValidate onSubmit={submit}>
           <EmailField value={email} onChange={setEmail} error={error} />
           <Button type="submit" variant="ink" fullWidth loading={loading} loadingLabel="Enviando">
-            Enviar enlace de recuperación
+            Enviar código
           </Button>
           <p className="pt-compact text-center text-body">
             <Link href="#ingresar" tone="ink" className="no-underline hover:underline">
@@ -186,11 +187,89 @@ function RecoveryRequest() {
   )
 }
 
-function RecoverySent() {
+/** Paso del código (como en la app): el código correcto de la demo es 123456. */
+function RecoveryCode({ email = "lucia@constructora.com", initialError }: { email?: string; initialError?: string }) {
+  const [code, setCode] = useState("")
+  const [error, setError] = useState(initialError)
+  const [loading, setLoading] = useState(false)
+  const [resendIn, setResendIn] = useState(60)
+  const [resent, setResent] = useState(false)
+  const [ok, setOk] = useState(false)
+
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendIn])
+
+  const verify = async (value: string) => {
+    if (value.length !== 6) {
+      setError("Escribí los 6 dígitos del código.")
+      return
+    }
+    setLoading(true)
+    await wait(700)
+    setLoading(false)
+    if (value !== "123456") {
+      setError("El código no es correcto o ya venció. Revisalo o pedí otro.")
+      return
+    }
+    setOk(true)
+  }
+
+  if (ok) return <RecoveryNewPassword />
+
   return (
     <Screen>
-      <AuthCard title="Revisá tu correo">
-        <Notice tone="info">Si existe una cuenta con ese correo, te enviamos un enlace para restablecer tu contraseña.</Notice>
+      <AuthCard
+        title="Revisá tu correo"
+        description={
+          <>
+            Si existe una cuenta con <strong className="text-ink">{email}</strong>, te enviamos un código de 6 dígitos. Escribilo acá para elegir una contraseña nueva.
+          </>
+        }
+      >
+        {resent ? <Notice tone="ok">Te enviamos un código nuevo. El anterior ya no sirve.</Notice> : null}
+        <form
+          className="flex flex-col gap-group"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault()
+            void verify(code)
+          }}
+        >
+          <CodeField
+            value={code}
+            disabled={loading}
+            description="Vence en 1 hora. Si no lo ves, revisá la carpeta de correo no deseado."
+            error={error}
+            onChange={(value) => {
+              setCode(value)
+              setError(undefined)
+            }}
+            onComplete={(value) => void verify(value)}
+          />
+          <Button type="submit" variant="ink" fullWidth loading={loading} loadingLabel="Verificando">
+            Continuar
+          </Button>
+          <Button
+            variant="ghost"
+            fullWidth
+            disabled={resendIn > 0}
+            onClick={() => {
+              setResent(true)
+              setCode("")
+              setResendIn(60)
+            }}
+          >
+            {resendIn > 0 ? `Reenviar el código en ${resendIn} s` : "Reenviar el código"}
+          </Button>
+          <p className="text-center text-body">
+            <Link href="#recuperar" tone="ink" className="no-underline hover:underline">
+              Usar otro correo
+            </Link>
+          </p>
+        </form>
         <Link href="#ingresar" tone="ink" className="self-center no-underline hover:underline">
           <Icon icon={ArrowLeft} /> Volver al inicio de sesión
         </Link>
@@ -223,7 +302,7 @@ function RecoveryNewPassword() {
   return (
     <Screen>
       <AuthCard title="Nueva contraseña" description="Elegí una contraseña nueva para tu cuenta.">
-        {done ? <Notice tone="ok">Contraseña actualizada. Te llevamos al inicio de sesión…</Notice> : null}
+        {done ? <Notice tone="ok">Contraseña actualizada. Entrando…</Notice> : null}
         <form className="flex flex-col gap-group" noValidate onSubmit={submit}>
           <Field label="Nueva contraseña" description={PASSWORD_HINT} error={errors.password}>
             <PasswordInput autoComplete="new-password" value={password} disabled={done} onChange={(event) => setPassword(event.target.value)} />
@@ -327,7 +406,11 @@ export const IngresarEquipo: StoryObj = { name: "Ingresar · equipo", render: ()
 export const IngresarClientes: StoryObj = { name: "Ingresar · clientes", render: () => <Login audience="cliente" /> }
 export const IngresarError: StoryObj = { name: "Ingresar · con error", render: () => <Login audience="equipo" initialError="No pudimos completar el inicio de sesión. Intentá de nuevo." /> }
 export const RecuperarPedir: StoryObj = { name: "Recuperar · pedir enlace", render: () => <RecoveryRequest /> }
-export const RecuperarEnviado: StoryObj = { name: "Recuperar · revisá tu correo", render: () => <RecoverySent /> }
+export const RecuperarCodigo: StoryObj = { name: "Recuperar · código", render: () => <RecoveryCode /> }
+export const RecuperarCodigoError: StoryObj = {
+  name: "Recuperar · código incorrecto",
+  render: () => <RecoveryCode initialError="El código no es correcto o ya venció. Revisalo o pedí otro." />,
+}
 export const RecuperarVerificando: StoryObj = { name: "Recuperar · verificando", render: () => <RecoveryChecking /> }
 export const RecuperarNueva: StoryObj = { name: "Recuperar · nueva contraseña", render: () => <RecoveryNewPassword /> }
 export const RecuperarInvalido: StoryObj = { name: "Recuperar · enlace inválido", render: () => <RecoveryInvalid /> }

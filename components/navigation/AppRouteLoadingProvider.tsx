@@ -14,7 +14,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { BackofficeShellSkeleton } from "@/components/backoffice-shell/BackofficeShellSkeleton"
 import { CompanyWorkspaceSkeleton } from "@/components/company-shell/CompanyWorkspaceSkeleton"
 import { CreateProjectLoadingScreen } from "@/components/projects/new/CreateProjectLoadingScreen"
-import { HomePageSkeleton } from "@/components/home/HomePageSkeleton"
+import { EsqueletoDeInicio } from "@/components/inicio/PantallaDeInicio"
 import { PerfilPageSkeleton } from "@/components/profile/PerfilPageSkeleton"
 import { ProjectWorkspaceSkeleton } from "@/components/project-shell/ProjectWorkspaceSkeleton"
 import {
@@ -81,7 +81,7 @@ export function AppRouteLoadingProvider({ children }: { children: ReactNode }) {
       {isLoading ? (
         <div className="fixed inset-0 z-[200]">
           {loadingType === "home" ? (
-            <HomePageSkeleton />
+            <EsqueletoDeInicio />
           ) : loadingType === "backoffice" ? (
             <BackofficeShellSkeleton />
           ) : loadingType === "company" ? (

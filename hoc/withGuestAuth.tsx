@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, type ComponentType } from "react"
+import { useEffect, useState, type ComponentType } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContextSupabase"
 import {
@@ -8,20 +8,10 @@ import {
   getLoginAudienceFromDocument,
   postLoginPath,
 } from "@/lib/auth/loginAudience"
-import { Spinner } from "@/components/ui/spinner"
 
-function RedirectingFallback({ message }: { message: string }) {
-  return (
-    <div
-      className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background text-foreground"
-      role="status"
-      aria-live="polite"
-      aria-busy="true"
-    >
-      <Spinner className="size-8 text-muted-foreground" />
-      <span className="text-sm text-muted-foreground">{message}</span>
-    </div>
-  )
+/** Fondo vacío mientras se lee la sesión: sin textos de «Cargando…» ni «Redirigiendo…». */
+function EnEspera() {
+  return <div className="min-h-dvh bg-background" role="status" aria-busy="true" aria-label="Cargando" />
 }
 
 export function withGuestAuth<P extends object>(Component: ComponentType<P>) {
@@ -29,6 +19,10 @@ export function withGuestAuth<P extends object>(Component: ComponentType<P>) {
     const { user, loading } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
+    // Si el formulario ya se vio (la persona acaba de ingresar acá), queda en pantalla
+    // —con su botón «Entrando…»— hasta que aparece el Inicio, sin una pantalla en el medio.
+    const [yaSeVio, setYaSeVio] = useState(false)
+    if (!yaSeVio && !loading && !user) setYaSeVio(true)
 
     useEffect(() => {
       if (loading || !user) return
@@ -39,14 +33,7 @@ export function withGuestAuth<P extends object>(Component: ComponentType<P>) {
       router.replace(postLoginPath(audience))
     }, [user, loading, pathname, router])
 
-    if (loading) {
-      return <RedirectingFallback message="Cargando sesión…" />
-    }
-
-    if (user) {
-      return <RedirectingFallback message="Redirigiendo…" />
-    }
-
+    if (!yaSeVio) return <EnEspera />
     return <Component {...props} />
   }
 

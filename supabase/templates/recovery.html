@@ -34,22 +34,17 @@
                   Recibimos una solicitud para restablecer la contraseña de tu cuenta en BuildOn.
                 </p>
                 <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #363a3f;">
-                  Hacé clic en el botón para elegir una nueva contraseña. El enlace expira en breve y solo puede usarse una vez.
+                  Escribí este código en la pantalla de BuildOn donde pediste el cambio:
                 </p>
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                   <tr>
-                    <td style="border-radius: 10px; background-color: #ff7433;">
-                      <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 14px 28px; font-size: 15px; font-weight: 600; line-height: 1.4; color: #ffffff; text-decoration: none; border-radius: 10px;">
-                        Restablecer contraseña
-                      </a>
+                    <td align="center" style="padding: 20px 16px; border-radius: 10px; background-color: #f4f5f6;">
+                      <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 32px; font-weight: 700; line-height: 1.2; letter-spacing: 8px; color: #18191b;">{{ .Token }}</span>
                     </td>
                   </tr>
                 </table>
                 <p style="margin: 24px 0 0; font-size: 13px; line-height: 1.6; color: #777b84;">
-                  Si el botón no funciona, copiá y pegá este enlace en tu navegador:
-                </p>
-                <p style="margin: 8px 0 0; font-size: 13px; line-height: 1.6; word-break: break-all;">
-                  <a href="{{ .ConfirmationURL }}" style="color: #ff7433; text-decoration: underline;">{{ .ConfirmationURL }}</a>
+                  El código vence en 1 hora y sirve una sola vez. Nadie de BuildOn te lo va a pedir: no lo compartas.
                 </p>
                 <p style="margin: 24px 0 0; font-size: 13px; line-height: 1.6; color: #777b84;">
                   Si no solicitaste este cambio, podés ignorar este correo. Tu contraseña no se modificará.

@@ -1,0 +1,22 @@
+/*
+ * Modo estricto: borra la paleta y las escalas por defecto de Tailwind para que solo
+ * existan los roles (roles.css). Un bg-slate-500 o un rounded-lg dejan de existir.
+ * Tiene que ir ANTES de roles.css.
+ */
+@theme static {
+  --color-*: initial;
+  --font-*: initial;
+  --font-weight-*: initial;
+  --text-*: initial;
+  --tracking-*: initial;
+  --leading-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+  --blur-*: initial;
+  --ease-*: initial;
+  --animate-*: initial;
+  --container-*: initial;
+}

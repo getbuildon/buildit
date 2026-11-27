@@ -49,7 +49,7 @@ const groups: { title: string; lede?: string; roles: ColorRole[] }[] = [
   },
   {
     title: "Acción",
-    lede: "El naranja de marca no cambia. Lleva tinta oscura encima: 6:1 en los dos modos.",
+    lede: "El naranja de marca no cambia. Los botones usan un naranja ladrillo con letra blanca en claro (4.7:1) y el naranja de marca con tinta oscura en oscuro (6:1).",
     roles: [
       { token: "--color-action", title: "Acción", uses: "Botón principal, selección, progreso." },
       { token: "--color-action-hover", title: "Acción hover", uses: "Mouse encima." },

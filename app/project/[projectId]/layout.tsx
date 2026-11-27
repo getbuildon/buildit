@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation"
 import type { ReactNode } from "react"
-import { ProjectWorkspace } from "@/components/project-shell/ProjectWorkspace"
+import { MarcoDeObra } from "@/components/obra/MarcoDeObra"
 import { ProjectShell } from "@/components/project-shell/ProjectShell"
 import { ProjectAccessProvider } from "@/components/project-shell/ProjectAccessProvider"
 import { getProjectSetupStatus } from "@/app/projects/new/actions"
@@ -40,9 +40,9 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
   return (
     <ProjectAccessProvider value={accessContext}>
       <ProjectShell>
-        <ProjectWorkspace project={project} userProfile={userProfile}>
+        <MarcoDeObra project={project} userProfile={userProfile}>
           {children}
-        </ProjectWorkspace>
+        </MarcoDeObra>
       </ProjectShell>
     </ProjectAccessProvider>
   )

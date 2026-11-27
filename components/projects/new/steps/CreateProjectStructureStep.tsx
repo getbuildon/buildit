@@ -16,28 +16,24 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { Building2, Copy, Plus, SquarePlus, Trash2 } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
-import {
-  NestedSelect,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  FieldLabelWithTooltip,
-  FLOOR_IDENTIFIER_TOOLTIP,
-  UNIT_CODE_TOOLTIP,
-} from "@/components/projects/new/FieldLabelWithTooltip"
-import { StructureSurfaceLimitBanner } from "@/components/projects/new/StructureSurfaceLimitBanner"
-import { StructureUnitAttachUpload } from "@/components/projects/new/StructureUnitAttachUpload"
+import { Building2, Copy, GripVertical, Plus, SquarePlus, Trash2 } from "lucide-react"
+import { Button } from "@/library/atoms/button/Button"
+import { IconButton } from "@/library/atoms/button/IconButton"
+import { Icon } from "@/library/atoms/icon/Icon"
+import { Input } from "@/library/atoms/input/Input"
+import { Tooltip } from "@/library/atoms/tooltip/Tooltip"
+import { cn } from "@/library/lib/cn"
+import { ConfirmDialog } from "@/library/molecules/confirm-dialog/ConfirmDialog"
+import { Field } from "@/library/molecules/field/Field"
+import { Notice } from "@/library/molecules/notice/Notice"
+import { Select, SelectItem } from "@/library/molecules/select/Select"
 import { RequestPlanUpgradeModal } from "@/components/team/RequestPlanUpgradeModal"
-import { CreateProjectFormField, createProjectFieldErrorInputClassName, createProjectFieldErrorInputStyle } from "@/components/projects/new/CreateProjectFormField"
-import { FieldErrorTooltip } from "@/components/ui/field-error-tooltip"
+import {
+  newItemHighlightClass,
+  useNewItemHighlight,
+} from "@/components/projects/new/useNewItemHighlight"
+import { AdjuntarImagen } from "@/components/projects/new/steps/estructura/AdjuntarImagen"
+import { SelectorDeTipo } from "@/components/projects/new/steps/estructura/SelectorDeTipo"
 import {
   finalizeTotalSurfaceInput,
   normalizeTotalSurfaceInput,
@@ -54,48 +50,23 @@ import {
   type StructureUnitDraft,
 } from "@/lib/projects/createProjectDraft"
 import {
-  structureFloorInputClassName,
-  structureFloorInputStyle,
-  structureFloorLabelStyle,
-  structureLabelClassName,
-  structureMutedLabelStyle,
-  structureUnitInputClassName,
-  structureUnitInputStyle,
-  structureUnitSelectItemClassName,
-  structureUnitSelectTriggerClassName,
-  structureUnitFieldColumnClassName,
-  STRUCTURE_STEP_COLORS,
-  STRUCTURE_STEP_LAYOUT,
-} from "@/lib/projects/structureStepTokens"
-import {
-  STRUCTURE_UNIT_TYPE_GROUPS,
-  isUnitTypeGroupId,
   getUnitVariantField,
   getUnitVariantFieldLabel,
+  isUnitTypeGroupId,
   isUnitVariantFieldEnabled,
   OFFICE_SIZE_OPTIONS,
   UNIT_ROOM_COUNT_OPTIONS,
 } from "@/lib/projects/unitTypes"
-import type { StructureFloorFieldErrors, StructureStepFieldErrors, StructureUnitFieldErrors } from "@/lib/projects/createProjectStructureValidation"
-import { getStructureSurfaceLimitState, scrollToStructureSurfaceLimitBanner } from "@/lib/projects/structureSurfaceLimits"
-import { cn } from "@/lib/utils"
+import type {
+  StructureFloorFieldErrors,
+  StructureStepFieldErrors,
+  StructureUnitFieldErrors,
+} from "@/lib/projects/createProjectStructureValidation"
 import {
-  newItemHighlightClass,
-  useNewItemHighlight,
-} from "@/components/projects/new/useNewItemHighlight"
-
-function StructureDragHandleIcon() {
-  return (
-    <svg width="7" height="12" viewBox="0 0 7 12" fill="#c45c26" aria-hidden>
-      <circle cx="1.5" cy="1.5" r="1.05" />
-      <circle cx="5.5" cy="1.5" r="1.05" />
-      <circle cx="1.5" cy="6" r="1.05" />
-      <circle cx="5.5" cy="6" r="1.05" />
-      <circle cx="1.5" cy="10.5" r="1.05" />
-      <circle cx="5.5" cy="10.5" r="1.05" />
-    </svg>
-  )
-}
+  formatSquareMeters,
+  getStructureSurfaceLimitState,
+  scrollToStructureSurfaceLimitBanner,
+} from "@/lib/projects/structureSurfaceLimits"
 
 const STRUCTURE_DELETE_CONFIRM = {
   title: "Confirmar cambios",
@@ -291,6 +262,16 @@ export function CreateProjectStructureStep({
     updateFloor(floorId, { units: arrayMove(floor.units, oldIndex, newIndex) })
   }
 
+  /** Mueve un local un lugar arriba o abajo (desde el teclado, con el agarre). */
+  const moveUnit = (floorId: string, unitId: string, delta: -1 | 1) => {
+    const floor = draft.floors.find((item) => item.id === floorId)
+    if (!floor) return
+    const oldIndex = floor.units.findIndex((unit) => unit.id === unitId)
+    const newIndex = oldIndex + delta
+    if (oldIndex < 0 || newIndex < 0 || newIndex >= floor.units.length) return
+    updateFloor(floorId, { units: arrayMove(floor.units, oldIndex, newIndex) })
+  }
+
   const updateUnit = (
     floorId: string,
     unitId: string,
@@ -343,107 +324,88 @@ export function CreateProjectStructureStep({
         ? STRUCTURE_DELETE_CONFIRM.unitDescription
         : ""
 
-  return (
-    <div
-      className="flex w-full flex-col gap-4"
-      style={{ maxWidth: STRUCTURE_STEP_LAYOUT.contentMaxWidth }}
-    >
-      {surfaceLimitState.isOverLimit && surfaceLimitState.planSurfaceMaxM2 != null ? (
-        <StructureSurfaceLimitBanner
-          planSurfaceMaxM2={surfaceLimitState.planSurfaceMaxM2}
-          onUpgradeClick={() => setUpgradeModalOpen(true)}
-        />
-      ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <div className="flex flex-col gap-2">
-          <p className="text-[14px] font-normal leading-5 text-[#272a2d]">
-            Cantidad de niveles
-          </p>
-          <div className="flex flex-col gap-2">
-            <p className="text-[24px] font-medium leading-[25px] text-[#18191b]">
-              {floorCount} {floorCount === 1 ? "nivel" : "niveles"}
-            </p>
-            <p className="text-[14px] font-normal leading-5 text-[#18191b]">
-              Agregá o eliminá niveles según sea necesario.
-            </p>
-          </div>
-        </div>
-        <Button
-          type="button"
-          variant="brand"
-          size="brand"
-          onClick={addFloor}
-          className="w-full text-[14px] font-normal leading-5 sm:w-auto"
+  const surfaceLimitBanner =
+    surfaceLimitState.isOverLimit && surfaceLimitState.planSurfaceMaxM2 != null ? (
+      <div data-structure-surface-limit-banner>
+        <Notice
+          tone="info"
+          title={`Superaste la superficie permitida por tu plan (${formatSquareMeters(surfaceLimitState.planSurfaceMaxM2)}).`}
+          action={
+            <Button variant="outline" size="compact" onClick={() => setUpgradeModalOpen(true)}>
+              Mejorar Plan
+            </Button>
+          }
         >
-          <Plus className="size-4" aria-hidden />
-          Agregar nivel
+          Para poder agregar más metros cuadrados, debés solicitar una mejora del plan al
+          administrador de la organización.
+        </Notice>
+      </div>
+    ) : null
+
+  return (
+    <div className="flex w-full max-w-207.5 flex-col gap-group">
+      {surfaceLimitBanner}
+
+      <div className="flex flex-col gap-snug sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-meta text-ink-muted">Cantidad de niveles</p>
+          <p className="text-heading">
+            {floorCount} {floorCount === 1 ? "nivel" : "niveles"}
+          </p>
+          <p className="text-meta text-ink-muted">
+            Agregá o eliminá niveles según sea necesario.
+          </p>
+        </div>
+        <Button className="w-full sm:w-auto" onClick={addFloor}>
+          <Icon icon={Plus} /> Agregar nivel
         </Button>
       </div>
 
-      <div
-        className="flex w-full flex-col gap-4 rounded-[10px] p-4"
-        style={{ backgroundColor: STRUCTURE_STEP_COLORS.unitsSectionBg }}
-      >
-        <div className="flex flex-col gap-1">
-          <h3 className="text-[14px] font-normal leading-5 text-[#18191b]">
-            Locales por Nivel
-          </h3>
-          <p className="text-[12px] font-normal leading-4 text-[#43484e]">
-            Configurá los locales de cada nivel:
-          </p>
+      <div className="flex flex-col gap-snug rounded-control bg-action-soft p-group">
+        <div>
+          <h3 className="text-label">Locales por Nivel</h3>
+          <p className="text-meta text-ink-muted">Configurá los locales de cada nivel:</p>
         </div>
 
         {draft.floors.length === 0 ? (
-          <p className="rounded-[10px] bg-white py-6 text-center text-[12px] font-normal leading-4 text-[#afb3ba]">
+          <p className="rounded-control bg-canvas-raised py-block text-center text-meta text-ink-muted">
             Todavía no hay niveles. Usá &quot;Agregar nivel&quot; para empezar.
           </p>
         ) : (
-          <div
-            className="flex w-full flex-col gap-2"
-            style={{ maxWidth: STRUCTURE_STEP_LAYOUT.floorCardMaxWidth }}
-          >
-            {draft.floors.map((floor) => (
-              <StructureFloorCard
-                key={floor.id}
-                floor={floor}
-                isHighlighted={isHighlighted(floor.id)}
-                fieldErrors={fieldErrors[floor.id]}
-                onUpdateFloor={(patch) => updateFloor(floor.id, patch)}
-                onRemoveFloor={() => requestRemoveFloor(floor.id)}
-                onDuplicateFloor={() => duplicateFloor(floor.id)}
-                onAddUnit={() => addUnit(floor.id)}
-                onUpdateUnit={(unitId, patch) =>
-                  updateUnit(floor.id, unitId, patch)
-                }
-                onDuplicateUnit={(unitId) => duplicateUnit(floor.id, unitId)}
-                onRemoveUnit={(unitId) => requestRemoveUnit(floor.id, unitId)}
-                onReorderUnits={(activeId, overId) =>
-                  reorderUnits(floor.id, activeId, overId)
-                }
-                isUnitHighlighted={isHighlighted}
-              />
-            ))}
-          </div>
+          draft.floors.map((floor) => (
+            <StructureFloorCard
+              key={floor.id}
+              floor={floor}
+              isHighlighted={isHighlighted(floor.id)}
+              fieldErrors={fieldErrors[floor.id]}
+              onUpdateFloor={(patch) => updateFloor(floor.id, patch)}
+              onRemoveFloor={() => requestRemoveFloor(floor.id)}
+              onDuplicateFloor={() => duplicateFloor(floor.id)}
+              onAddUnit={() => addUnit(floor.id)}
+              onUpdateUnit={(unitId, patch) => updateUnit(floor.id, unitId, patch)}
+              onDuplicateUnit={(unitId) => duplicateUnit(floor.id, unitId)}
+              onRemoveUnit={(unitId) => requestRemoveUnit(floor.id, unitId)}
+              onReorderUnits={(activeId, overId) => reorderUnits(floor.id, activeId, overId)}
+              onMoveUnit={(unitId, delta) => moveUnit(floor.id, unitId, delta)}
+              isUnitHighlighted={isHighlighted}
+            />
+          ))
         )}
 
-        <button
-          type="button"
-          onClick={addFloor}
-          className="inline-flex h-10 w-full items-center justify-center gap-3 rounded-[10px] border border-dashed bg-white text-[14px] font-medium leading-5 tracking-[-0.15px] text-[#696e77] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
-          style={{
-            borderColor: STRUCTURE_STEP_COLORS.addLocalBorder,
-            maxWidth: STRUCTURE_STEP_LAYOUT.floorCardMaxWidth,
-          }}
-        >
-          <Plus className="size-4" strokeWidth={1.75} aria-hidden />
-          Agregar nivel
-        </button>
+        <BotonAgregar onClick={addFloor}>Agregar nivel</BotonAgregar>
       </div>
 
-      <StructureProjectSummary floorCount={floorCount} unitCount={unitCount} />
+      <p className="flex items-center gap-compact rounded-control border border-action/20 bg-action-soft px-group py-snug text-body">
+        <Icon icon={Building2} className="text-action-text" />
+        <span>
+          <span className="font-medium">Resumen del Proyecto</span> · Total: {floorCount}{" "}
+          {floorCount === 1 ? "nivel" : "niveles"} • {unitCount}{" "}
+          {unitCount === 1 ? "unidad" : "unidades"}
+        </span>
+      </p>
 
-      <ConfirmActionDialog
+      <ConfirmDialog
         open={pendingDelete != null}
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null)
@@ -451,6 +413,7 @@ export function CreateProjectStructureStep({
         title={STRUCTURE_DELETE_CONFIRM.title}
         description={pendingDeleteDescription}
         confirmLabel={STRUCTURE_DELETE_CONFIRM.confirmLabel}
+        tone="danger"
         onConfirm={handleConfirmDelete}
       />
 
@@ -471,45 +434,26 @@ export function CreateProjectStructureStep({
   )
 }
 
-/** Figma 1128:5593 — resumen al pie del paso estructura. */
-function StructureProjectSummary({
-  floorCount,
-  unitCount,
+/** Botón de borde punteado para sumar un nivel o un local. */
+function BotonAgregar({
+  onClick,
+  children,
+  detalle,
 }: {
-  floorCount: number
-  unitCount: number
+  onClick: () => void
+  children: string
+  /** Texto solo para el lector de pantalla: « a Planta Baja». */
+  detalle?: string
 }) {
   return (
-    <div
-      className="w-full rounded-[10px] border p-[17px]"
-      style={{
-        borderColor: STRUCTURE_STEP_COLORS.summaryBorder,
-        backgroundColor: STRUCTURE_STEP_COLORS.summaryBg,
-      }}
+    <button
+      type="button"
+      onClick={onClick}
+      className="focus-ring motion-color flex h-10 w-full cursor-pointer items-center justify-center gap-compact rounded-control border border-dashed border-line-strong bg-canvas-raised text-label text-ink-muted hover:border-action hover:text-action-text"
     >
-      <div className="flex items-start gap-3">
-        <Building2
-          className="mt-0.5 size-5 shrink-0"
-          style={{ color: STRUCTURE_STEP_COLORS.summaryText }}
-          aria-hidden
-        />
-        <div className="flex flex-col gap-1">
-          <p
-            className="text-[14px] font-normal leading-[1.4]"
-            style={{ color: STRUCTURE_STEP_COLORS.summaryText }}
-          >
-            Resumen del Proyecto
-          </p>
-          <p
-            className="text-[14px] font-normal leading-[1.4]"
-            style={{ color: STRUCTURE_STEP_COLORS.summaryText }}
-          >
-            Total: {floorCount} {floorCount === 1 ? "nivel" : "niveles"} • {unitCount}{" "}
-            {unitCount === 1 ? "unidad" : "unidades"}
-          </p>
-        </div>
-      </div>
-    </div>
+      <Icon icon={Plus} size="xs" /> {children}
+      {detalle ? <span className="sr-only">{detalle}</span> : null}
+    </button>
   )
 }
 
@@ -525,6 +469,7 @@ type StructureFloorCardProps = {
   onDuplicateUnit: (unitId: string) => void
   onRemoveUnit: (unitId: string) => void
   onReorderUnits: (activeId: string, overId: string) => void
+  onMoveUnit: (unitId: string, delta: -1 | 1) => void
   isUnitHighlighted: (unitId: string) => boolean
 }
 
@@ -540,14 +485,14 @@ function StructureFloorCard({
   onDuplicateUnit,
   onRemoveUnit,
   onReorderUnits,
+  onMoveUnit,
   isUnitHighlighted,
 }: StructureFloorCardProps) {
-  const nameError = fieldErrors?.name
-  const identifierError = fieldErrors?.identifier
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   )
   const [isDraggingUnits, setIsDraggingUnits] = useState(false)
+  const floorLabel = floor.name || "Nivel sin nombre"
 
   function handleDragStart() {
     setIsDraggingUnits(true)
@@ -565,443 +510,305 @@ function StructureFloorCard({
   }
 
   return (
-    <div
+    <section
+      aria-label={floorLabel}
       data-new-item-id={floor.id}
       data-structure-floor-id={floor.id}
       className={cn(
-        "flex w-full flex-col gap-6 rounded-[10px] bg-white p-3",
+        "flex flex-col gap-snug rounded-control bg-canvas-raised p-group shadow-hint",
         newItemHighlightClass(isHighlighted),
       )}
-      style={{
-        maxWidth: STRUCTURE_STEP_LAYOUT.floorCardMaxWidth,
-        boxShadow: "0 0 7.5px rgba(0, 0, 0, 0.05)",
-      }}
     >
-      <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:gap-2.5">
-        <div className="grid grid-cols-1 gap-2.5 sm:flex sm:min-w-0 sm:flex-1 sm:items-start sm:gap-2.5">
-        <CreateProjectFormField
-          label="Nombre del Nivel *"
-          htmlFor={`floor-name-${floor.id}`}
-          className="min-w-0 flex-1 gap-1"
-          labelClassName={structureLabelClassName}
-          labelStyle={structureFloorLabelStyle}
-          error={nameError}
-          errorDisplay="tooltip"
-        >
-          <Input
+      <div className="flex flex-col gap-snug lg:flex-row lg:items-end">
+        <div className="grid flex-1 grid-cols-1 gap-snug sm:grid-cols-3">
+          <Field
             id={`floor-name-${floor.id}`}
-            placeholder="Ej. Planta Baja"
-            value={floor.name}
-            onChange={(e) => onUpdateFloor({ name: e.target.value })}
-            className={structureFloorInputClassName}
-            style={structureFloorInputStyle}
-          />
-        </CreateProjectFormField>
-
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex items-center justify-between gap-1">
-            <FieldLabelWithTooltip
-              label="Identificador"
-              tooltip={FLOOR_IDENTIFIER_TOOLTIP}
-              htmlFor={`floor-identifier-${floor.id}`}
-              required
-              labelClassName={structureLabelClassName}
-              labelStyle={structureMutedLabelStyle}
+            label="Nombre del Nivel"
+            required
+            error={fieldErrors?.name}
+          >
+            <Input
+              size="compact"
+              value={floor.name}
+              placeholder="Ej. Planta Baja"
+              onChange={(event) => onUpdateFloor({ name: event.target.value })}
             />
-            {identifierError ? <FieldErrorTooltip message={identifierError} /> : null}
-          </div>
-          <Input
+          </Field>
+          <Field
             id={`floor-identifier-${floor.id}`}
-            placeholder="Ej. PB, P01, SS."
-            value={floor.identifier}
-            maxLength={32}
-            onChange={(e) => onUpdateFloor({ identifier: e.target.value })}
-            className={cn(
-              structureFloorInputClassName,
-              identifierError && createProjectFieldErrorInputClassName,
-            )}
-            style={{
-              ...structureFloorInputStyle,
-              ...(identifierError ? createProjectFieldErrorInputStyle : {}),
-              borderColor: identifierError
-                ? createProjectFieldErrorInputStyle.borderColor
-                : structureFloorInputStyle.borderColor,
-            }}
-            aria-invalid={Boolean(identifierError)}
-          />
+            label="Identificador"
+            required
+            description="Nombre corto: PB, P01, SS."
+            error={fieldErrors?.identifier}
+          >
+            <Input
+              size="compact"
+              maxLength={32}
+              value={floor.identifier}
+              placeholder="Ej. PB, P01, SS."
+              onChange={(event) => onUpdateFloor({ identifier: event.target.value })}
+            />
+          </Field>
+          <Field id={`floor-level-${floor.id}`} label="Nivel" optional>
+            <Input
+              size="compact"
+              value={floor.level}
+              placeholder="Ej: +1.90"
+              onChange={(event) => onUpdateFloor({ level: event.target.value })}
+            />
+          </Field>
         </div>
-
-        <CreateProjectFormField
-          label="Nivel"
-          htmlFor={`floor-level-${floor.id}`}
-          className="min-w-0 flex-1 gap-1"
-          labelClassName={structureLabelClassName}
-          labelStyle={structureFloorLabelStyle}
-          errorDisplay="tooltip"
-        >
-          <Input
-            id={`floor-level-${floor.id}`}
-            placeholder="Ej: +1.90"
-            value={floor.level}
-            onChange={(e) => onUpdateFloor({ level: e.target.value })}
-            className={structureFloorInputClassName}
-            style={structureFloorInputStyle}
-          />
-        </CreateProjectFormField>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-4 sm:px-3 sm:pb-2">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={onDuplicateFloor}
-              className="inline-flex items-center gap-1 text-[12px] font-medium leading-[1.4] text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
-            >
-              <Copy className="size-3.5" strokeWidth={1.75} aria-hidden />
-              Duplicar Nivel
-            </button>
-            <button
-              type="button"
-              onClick={onAddUnit}
-              className="inline-flex items-center gap-1 text-[12px] font-medium leading-[1.4] text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
-            >
-              <SquarePlus className="size-3.5" strokeWidth={1.75} aria-hidden />
-              Agregar Local
-            </button>
-          </div>
-          <button
-            type="button"
+        <div className="flex flex-wrap items-center gap-related">
+          <Button variant="ghost" size="compact" onClick={onDuplicateFloor}>
+            <Icon icon={Copy} size="xs" /> Duplicar nivel
+            <span className="sr-only"> {floorLabel}</span>
+          </Button>
+          <Button variant="ghost" size="compact" onClick={onAddUnit}>
+            <Icon icon={SquarePlus} size="xs" /> Agregar local
+            <span className="sr-only"> a {floorLabel}</span>
+          </Button>
+          <IconButton
+            icon={Trash2}
+            label={`Eliminar ${floor.name || "nivel sin nombre"}`}
+            size="compact"
             onClick={onRemoveFloor}
-            className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
-            aria-label={`Eliminar ${floor.name}`}
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </button>
+          />
         </div>
       </div>
 
-      <div className="flex w-full flex-col gap-2">
-        {floor.units.length > 0 ? (
-          <div
-            className={cn("w-full", isDraggingUnits ? "overflow-hidden" : "overflow-x-auto")}
+      {floor.units.length > 0 ? (
+        <div className={cn("w-full", isDraggingUnits ? "overflow-hidden" : "overflow-x-auto")}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            autoScroll={false}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
           >
-            <div
-              className="flex flex-col gap-2"
-              style={{ minWidth: STRUCTURE_STEP_LAYOUT.unitRowMinWidth }}
+            <SortableContext
+              items={floor.units.map((unit) => unit.id)}
+              strategy={verticalListSortingStrategy}
             >
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                autoScroll={false}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDragCancel={handleDragCancel}
-              >
-                <SortableContext
-                  items={floor.units.map((unit) => unit.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {floor.units.map((unit) => (
-                    <StructureUnitRow
-                      key={unit.id}
-                      unit={unit}
-                      isHighlighted={isUnitHighlighted(unit.id)}
-                      fieldErrors={fieldErrors?.unitErrors?.[unit.id]}
-                      onUpdateUnit={(patch) => onUpdateUnit(unit.id, patch)}
-                      onDuplicateUnit={() => onDuplicateUnit(unit.id)}
-                      onRemoveUnit={() => onRemoveUnit(unit.id)}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            </div>
-          </div>
-        ) : null}
+              <ul className="flex flex-col gap-compact" aria-label={`Locales de ${floorLabel}`}>
+                {floor.units.map((unit, index) => (
+                  <StructureUnitRow
+                    key={unit.id}
+                    unit={unit}
+                    index={index}
+                    isHighlighted={isUnitHighlighted(unit.id)}
+                    fieldErrors={fieldErrors?.unitErrors?.[unit.id]}
+                    onUpdateUnit={(patch) => onUpdateUnit(unit.id, patch)}
+                    onDuplicateUnit={() => onDuplicateUnit(unit.id)}
+                    onRemoveUnit={() => onRemoveUnit(unit.id)}
+                    onMove={(delta) => onMoveUnit(unit.id, delta)}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
+        </div>
+      ) : null}
 
-        <button
-          type="button"
-          onClick={onAddUnit}
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[10px] border border-dashed bg-white text-[14px] font-medium leading-5 tracking-[-0.15px] text-[#696e77] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
-          style={{ borderColor: STRUCTURE_STEP_COLORS.addLocalBorder }}
-        >
-          <Plus className="size-4" strokeWidth={1.75} aria-hidden />
-          Agregar local
-        </button>
-      </div>
-    </div>
+      <BotonAgregar onClick={onAddUnit} detalle={` a ${floorLabel}`}>
+        Agregar local
+      </BotonAgregar>
+    </section>
   )
 }
 
 type StructureUnitRowProps = {
   unit: StructureUnitDraft
+  index: number
   isHighlighted: boolean
   fieldErrors?: StructureUnitFieldErrors
   onUpdateUnit: (patch: Partial<StructureUnitDraft>) => void
   onDuplicateUnit: () => void
   onRemoveUnit: () => void
+  onMove: (delta: -1 | 1) => void
 }
 
 function StructureUnitRow({
   unit,
+  index,
   isHighlighted,
   fieldErrors,
   onUpdateUnit,
   onDuplicateUnit,
   onRemoveUnit,
+  onMove,
 }: StructureUnitRowProps) {
-  const codeError = fieldErrors?.code
-  const squareMetersError = fieldErrors?.squareMeters
   const variantEnabled = isUnitVariantFieldEnabled(unit.type)
   const variantLabel = getUnitVariantFieldLabel(unit.type)
   const variantField = getUnitVariantField(unit.type)
   const variantValue = variantField === "officeSize" ? unit.officeSize : unit.roomCount
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: unit.id })
+  const unitLabel = unit.code || String(index + 1)
 
   return (
-    <div
+    <li
       ref={setNodeRef}
       data-new-item-id={unit.id}
       data-structure-unit-id={unit.id}
       className={cn(
-        "w-full rounded-[4px] pr-3",
+        "flex min-w-190 items-start gap-snug rounded-control bg-action-soft p-snug",
+        isDragging && "opacity-55",
         newItemHighlightClass(isHighlighted),
       )}
-      style={{
-        backgroundColor: STRUCTURE_STEP_COLORS.unitRowBg,
-        minHeight: STRUCTURE_STEP_LAYOUT.unitRowMinHeight,
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.55 : 1,
-      }}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
     >
-      <div className="flex items-stretch gap-2">
+      {/* Se reordena arrastrando con el mouse o, con el foco en el agarre, con las flechas. */}
+      <Tooltip content="Arrastrá o mové con las flechas ↑ ↓">
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="flex w-[15px] shrink-0 cursor-grab items-center justify-center self-stretch px-1 py-0.5 touch-none outline-none active:cursor-grabbing"
-          style={{ backgroundColor: STRUCTURE_STEP_COLORS.dragHandleBg }}
-          aria-label="Arrastrar para reordenar"
+          aria-roledescription="agarre para reordenar"
+          aria-label={`Mover el local ${unitLabel}. Arrastrá o usá las flechas arriba y abajo.`}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
+            event.preventDefault()
+            onMove(event.key === "ArrowUp" ? -1 : 1)
+          }}
+          className="focus-ring grid h-11 w-6 shrink-0 cursor-grab touch-none place-items-center self-center rounded-compact bg-canvas-raised/70 text-action-text active:cursor-grabbing"
         >
-          <StructureDragHandleIcon />
+          <Icon icon={GripVertical} size="xs" />
         </button>
+      </Tooltip>
 
-        <div className="flex flex-1 items-end gap-2 py-2">
-          <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.type)}>
-            <span className={structureLabelClassName} style={structureMutedLabelStyle}>
-              Tipo
-            </span>
-            <NestedSelect
-              size="sm"
-              value={unit.type}
-              groupId={unit.typeCategory}
-              aria-label="Tipo"
-              placeholder="Seleccionar tipo"
-              triggerClassName={structureUnitSelectTriggerClassName}
-              itemClassName={structureUnitSelectItemClassName}
-              groups={STRUCTURE_UNIT_TYPE_GROUPS.map((group) => ({
-                id: group.id,
-                label: group.label,
-                options: group.types.map((type) => ({
-                  value: type,
-                  label: type,
-                  allowCustomInput: type === "Otro",
-                })),
-              }))}
-              onValueChange={(type, groupId) =>
-                onUpdateUnit({
-                  type,
-                  typeCategory: isUnitTypeGroupId(groupId)
-                    ? groupId
-                    : unit.typeCategory,
-                  roomCount: type === "Departamento" ? unit.roomCount : "",
-                  officeSize: type === "Departamento" ? "" : unit.officeSize,
-                })
-              }
-            />
-          </div>
+      <Field id={`unit-type-${unit.id}`} label="Tipo" className="w-42">
+        <SelectorDeTipo
+          value={unit.type}
+          groupId={unit.typeCategory}
+          onValueChange={(type, groupId) =>
+            onUpdateUnit({
+              type,
+              typeCategory: isUnitTypeGroupId(groupId) ? groupId : unit.typeCategory,
+              roomCount: type === "Departamento" ? unit.roomCount : "",
+              officeSize: type === "Departamento" ? "" : unit.officeSize,
+            })
+          }
+        />
+      </Field>
 
-          <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.compact)}>
-            <div className="flex items-center justify-between gap-1">
-              <FieldLabelWithTooltip
-                label="ID"
-                tooltip={UNIT_CODE_TOOLTIP}
-                htmlFor={`unit-code-${unit.id}`}
-                required
-                labelClassName={structureLabelClassName}
-                labelStyle={structureMutedLabelStyle}
-              />
-              {codeError ? <FieldErrorTooltip message={codeError} /> : null}
-            </div>
-            <Input
-              id={`unit-code-${unit.id}`}
-              placeholder="Ej. 101"
-              value={unit.code}
-              maxLength={32}
-              onChange={(e) => onUpdateUnit({ code: e.target.value })}
-              className={cn(
-                structureUnitInputClassName,
-                codeError && createProjectFieldErrorInputClassName,
-              )}
-              style={{
-                ...structureUnitInputStyle,
-                ...(codeError ? createProjectFieldErrorInputStyle : {}),
-                borderColor: codeError
-                  ? createProjectFieldErrorInputStyle.borderColor
-                  : structureUnitInputStyle.borderColor,
-              }}
-              aria-invalid={Boolean(codeError)}
-            />
-          </div>
+      <Field id={`unit-code-${unit.id}`} label="ID" required error={fieldErrors?.code} className="w-24">
+        <Input
+          size="compact"
+          maxLength={32}
+          value={unit.code}
+          placeholder="Ej. 101"
+          onChange={(event) => onUpdateUnit({ code: event.target.value })}
+        />
+      </Field>
 
-          <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.compact)}>
-            <div className="flex items-center justify-between gap-1">
-              <span className={structureLabelClassName} style={structureMutedLabelStyle}>
-                m² *
-              </span>
-              {squareMetersError ? <FieldErrorTooltip message={squareMetersError} /> : null}
-            </div>
-            <Input
-              id={`unit-m2-${unit.id}`}
-              inputMode="decimal"
-              placeholder="Ej. 45,50"
-              value={unit.squareMeters}
-              onChange={(e) =>
-                onUpdateUnit({ squareMeters: normalizeTotalSurfaceInput(e.target.value) })
-              }
-              onBlur={() =>
-                onUpdateUnit({ squareMeters: finalizeTotalSurfaceInput(unit.squareMeters) })
-              }
-              className={cn(
-                structureUnitInputClassName,
-                squareMetersError && createProjectFieldErrorInputClassName,
-              )}
-              style={{
-                ...structureUnitInputStyle,
-                ...(squareMetersError ? createProjectFieldErrorInputStyle : {}),
-                borderColor: squareMetersError
-                  ? createProjectFieldErrorInputStyle.borderColor
-                  : structureUnitInputStyle.borderColor,
-              }}
-              aria-invalid={Boolean(squareMetersError)}
-            />
-          </div>
+      <Field
+        id={`unit-m2-${unit.id}`}
+        label="m²"
+        required
+        error={fieldErrors?.squareMeters}
+        className="w-24"
+      >
+        <Input
+          size="compact"
+          inputMode="decimal"
+          value={unit.squareMeters}
+          placeholder="Ej. 45,50"
+          onChange={(event) =>
+            onUpdateUnit({ squareMeters: normalizeTotalSurfaceInput(event.target.value) })
+          }
+          onBlur={() =>
+            onUpdateUnit({ squareMeters: finalizeTotalSurfaceInput(unit.squareMeters) })
+          }
+        />
+      </Field>
 
-          <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.compact)}>
-            <span className={structureLabelClassName} style={structureMutedLabelStyle}>
-              {variantLabel}
-            </span>
-            <Select
-              value={variantValue || undefined}
-              onValueChange={(value) => {
-                if (variantField === "officeSize") {
-                  onUpdateUnit({ officeSize: value })
-                  return
-                }
-                onUpdateUnit({ roomCount: value })
-              }}
-              disabled={!variantEnabled}
-            >
-              <SelectTrigger
-                size="sm"
-                aria-label={variantLabel}
-                className={structureUnitSelectTriggerClassName}
-              >
-                <SelectValue
-                  placeholder={variantField === "officeSize" ? "Tamaño" : "Cant."}
-                />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                {variantField === "officeSize"
-                  ? OFFICE_SIZE_OPTIONS.map((size) => (
-                      <SelectItem
-                        key={size}
-                        value={size}
-                        className={structureUnitSelectItemClassName}
-                      >
-                        {size}
-                      </SelectItem>
-                    ))
-                  : UNIT_ROOM_COUNT_OPTIONS.map((count) => (
-                      <SelectItem
-                        key={count}
-                        value={String(count)}
-                        className={structureUnitSelectItemClassName}
-                      >
-                        {count}
-                      </SelectItem>
-                    ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <Field id={`unit-variant-${unit.id}`} label={variantLabel} className="w-24">
+        <Select
+          size="compact"
+          value={variantValue || undefined}
+          disabled={!variantEnabled}
+          placeholder={variantField === "officeSize" ? "Tamaño" : "Cant."}
+          onValueChange={(value) => {
+            if (variantField === "officeSize") {
+              onUpdateUnit({ officeSize: value })
+              return
+            }
+            onUpdateUnit({ roomCount: value })
+          }}
+        >
+          {variantField === "officeSize"
+            ? OFFICE_SIZE_OPTIONS.map((size) => (
+                <SelectItem key={size} value={size}>
+                  {size}
+                </SelectItem>
+              ))
+            : UNIT_ROOM_COUNT_OPTIONS.map((count) => (
+                <SelectItem key={count} value={String(count)}>
+                  {count}
+                </SelectItem>
+              ))}
+        </Select>
+      </Field>
 
-          <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.attach)}>
-            <span className={structureLabelClassName} style={structureMutedLabelStyle}>
-              Planta
-            </span>
-            <StructureUnitAttachUpload
-              value={unit.planImage}
-              existingUrl={unit.planUrl}
-              onChange={(planImage) =>
-                onUpdateUnit({
-                  planImage,
-                  ...(planImage ? { planRemoved: false } : {}),
-                })
-              }
-              onRemoveExisting={() =>
-                onUpdateUnit({
-                  planImage: null,
-                  planUrl: null,
-                  planRemoved: true,
-                })
-              }
-            />
-          </div>
-
-          <div className={cn("flex flex-col gap-1", structureUnitFieldColumnClassName.attach)}>
-            <span className={structureLabelClassName} style={structureMutedLabelStyle}>
-              Render
-            </span>
-            <StructureUnitAttachUpload
-              value={unit.renderImage}
-              existingUrl={unit.renderUrl}
-              onChange={(renderImage) =>
-                onUpdateUnit({
-                  renderImage,
-                  ...(renderImage ? { renderRemoved: false } : {}),
-                })
-              }
-              onRemoveExisting={() =>
-                onUpdateUnit({
-                  renderImage: null,
-                  renderUrl: null,
-                  renderRemoved: true,
-                })
-              }
-            />
-          </div>
-        </div>
-
-        <div className="flex shrink-0 items-center justify-end gap-0.5 self-center pl-2">
-          <button
-            type="button"
-            onClick={onDuplicateUnit}
-            className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
-            aria-label="Duplicar local"
-          >
-            <Copy className="size-4" aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={onRemoveUnit}
-            className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center text-[#5a6169] outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80"
-            aria-label="Eliminar local"
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </button>
-        </div>
+      <div className="flex w-28 flex-col gap-compact">
+        <span className="text-label">Planta</span>
+        <AdjuntarImagen
+          descripcion={`planta del local ${unitLabel}`}
+          value={unit.planImage}
+          existingUrl={unit.planUrl}
+          onChange={(planImage) =>
+            onUpdateUnit({
+              planImage,
+              ...(planImage ? { planRemoved: false } : {}),
+            })
+          }
+          onRemoveExisting={() =>
+            onUpdateUnit({
+              planImage: null,
+              planUrl: null,
+              planRemoved: true,
+            })
+          }
+        />
       </div>
-    </div>
+
+      <div className="flex w-28 flex-col gap-compact">
+        <span className="text-label">Render</span>
+        <AdjuntarImagen
+          descripcion={`render del local ${unitLabel}`}
+          value={unit.renderImage}
+          existingUrl={unit.renderUrl}
+          onChange={(renderImage) =>
+            onUpdateUnit({
+              renderImage,
+              ...(renderImage ? { renderRemoved: false } : {}),
+            })
+          }
+          onRemoveExisting={() =>
+            onUpdateUnit({
+              renderImage: null,
+              renderUrl: null,
+              renderRemoved: true,
+            })
+          }
+        />
+      </div>
+
+      <div className="ml-auto flex items-center gap-related self-center">
+        <IconButton
+          icon={Copy}
+          label={`Duplicar el local ${unitLabel}`}
+          size="compact"
+          onClick={onDuplicateUnit}
+        />
+        <IconButton
+          icon={Trash2}
+          label={`Eliminar el local ${unitLabel}`}
+          size="compact"
+          onClick={onRemoveUnit}
+        />
+      </div>
+    </li>
   )
 }

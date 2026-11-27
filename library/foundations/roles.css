@@ -1,0 +1,519 @@
+/*
+ * Roles de la librería BuildOn como utilidades de Tailwind: bg-canvas, text-ink-muted,
+ * rounded-control, shadow-overlay, text-body, p-group.
+ *
+ * Este archivo SUMA los roles; no borra nada de Tailwind. Es lo que importa la app
+ * mientras conviven las pantallas viejas y las nuevas (paso 1 de "Adoptarla en la app"
+ * del README). El modo estricto, que además borra la paleta y las escalas por defecto,
+ * es theme.css.
+ *
+ * Necesita los tokens: @import "./tokens/index.css" antes que este archivo.
+ */
+@theme static {
+  /* ------------------------------------------------------------ Color por rol */
+  /* Cada rol es un par claro/oscuro: light-dark(claro, oscuro). Lo resuelve el
+     color-scheme del elemento (ver data-theme al final del archivo). */
+
+  /* Superficies. En oscuro, lo que está más arriba es más claro. */
+  --color-canvas: light-dark(var(--buildon-papel), var(--buildon-noche-50));
+  --color-canvas-raised: light-dark(var(--buildon-blanco), var(--buildon-noche-100));
+  /* Menú, popover, diálogo: en oscuro sube un paso más. */
+  --color-canvas-overlay: light-dark(var(--buildon-blanco), var(--buildon-noche-200));
+  --color-canvas-sunken: light-dark(var(--buildon-hormigon-100), var(--buildon-noche-profunda));
+  --color-canvas-inverse: light-dark(var(--buildon-hormigon-950), var(--buildon-noche-950));
+  /* Pista: fondo de controles segmentados y de barras de avance (#edeef0 en la app). */
+  --color-canvas-track: light-dark(var(--buildon-hormigon-200), var(--buildon-noche-300));
+
+  /* Estados de superficie: un velo de tinta que sirve sobre cualquier superficie y en los dos modos. */
+  --color-surface-hover: color-mix(in srgb, var(--color-ink) 5%, transparent);
+  --color-surface-pressed: color-mix(in srgb, var(--color-ink) 9%, transparent);
+  --color-surface-selected: var(--color-action-soft);
+
+  /* Tinta */
+  --color-ink: light-dark(var(--buildon-hormigon-950), var(--buildon-noche-950));
+  --color-ink-muted: light-dark(var(--buildon-hormigon-600), var(--buildon-noche-900));
+  /* Placeholder e íconos de apoyo. Pasa 4.5:1 igual: un placeholder también se lee. */
+  --color-ink-subtle: light-dark(var(--buildon-hormigon-550), var(--buildon-noche-850));
+  --color-ink-disabled: light-dark(var(--buildon-hormigon-400), var(--buildon-noche-700));
+  --color-ink-inverse: light-dark(var(--buildon-blanco), var(--buildon-noche-50));
+
+  /* Línea */
+  --color-line: light-dark(var(--buildon-hormigon-200), var(--buildon-noche-500));
+  --color-line-strong: light-dark(var(--buildon-hormigon-300), var(--buildon-noche-600));
+
+  /* Acción: en claro, naranja ladrillo con letra blanca (4.7:1, pasa AA); en oscuro, el
+     naranja de marca con tinta oscura (6:1). El naranja de marca (--color-brand) no cambia. */
+  --color-action: light-dark(var(--buildon-ladrillo-650), var(--buildon-ladrillo-500));
+  --color-action-hover: light-dark(var(--buildon-ladrillo-700), var(--buildon-ladrillo-400));
+  --color-action-pressed: light-dark(color-mix(in srgb, var(--buildon-ladrillo-700) 70%, var(--buildon-ladrillo-800)), var(--buildon-ladrillo-300));
+  --color-action-ink: light-dark(var(--buildon-blanco), var(--buildon-ladrillo-950));
+  --color-action-soft: light-dark(var(--buildon-ladrillo-50), color-mix(in srgb, var(--buildon-ladrillo-500) 16%, transparent));
+  --color-action-soft-hover: light-dark(var(--buildon-ladrillo-100), color-mix(in srgb, var(--buildon-ladrillo-500) 24%, transparent));
+  /* Naranja como texto o link: 5.3:1 en claro, 9:1 en oscuro. */
+  --color-action-text: light-dark(var(--buildon-ladrillo-700), var(--buildon-ladrillo-400));
+  --color-brand: var(--buildon-ladrillo-500);
+
+  /* Foco */
+  --color-focus: var(--buildon-ladrillo-500);
+  --color-focus-ring: color-mix(in srgb, var(--buildon-ladrillo-500) 50%, transparent);
+
+  /* Funcionales. Texto, fondo y línea van juntos; el sólido es para botones y badges llenos,
+     con su tinta encima. */
+  /* Texto verde: 800 (7:1 sobre su fondo). El 700 de la app da 4.4:1 sobre el fondo verde. */
+  --color-fn-ok: light-dark(var(--buildon-brote-800), var(--buildon-brote-300));
+  --color-fn-ok-canvas: light-dark(var(--buildon-brote-50), color-mix(in srgb, var(--buildon-brote-500) 16%, transparent));
+  --color-fn-ok-line: light-dark(var(--buildon-brote-200), color-mix(in srgb, var(--buildon-brote-500) 40%, transparent));
+  --color-fn-ok-solid: light-dark(var(--buildon-brote-700), var(--buildon-brote-400));
+  --color-fn-ok-solid-ink: light-dark(var(--buildon-blanco), var(--buildon-brote-950));
+  --color-fn-caution: light-dark(var(--buildon-casco-800), var(--buildon-casco-300));
+  --color-fn-caution-canvas: light-dark(var(--buildon-casco-50), color-mix(in srgb, var(--buildon-casco-500) 16%, transparent));
+  --color-fn-caution-line: light-dark(var(--buildon-casco-200), color-mix(in srgb, var(--buildon-casco-500) 40%, transparent));
+  --color-fn-caution-solid: light-dark(var(--buildon-casco-500), var(--buildon-casco-400));
+  --color-fn-caution-solid-ink: var(--buildon-casco-950);
+  --color-fn-danger: light-dark(var(--buildon-alarma-600), var(--buildon-alarma-300));
+  --color-fn-danger-canvas: light-dark(var(--buildon-alarma-50), color-mix(in srgb, var(--buildon-alarma-500) 16%, transparent));
+  --color-fn-danger-line: light-dark(var(--buildon-alarma-200), color-mix(in srgb, var(--buildon-alarma-500) 40%, transparent));
+  --color-fn-danger-solid: light-dark(var(--buildon-alarma-600), var(--buildon-alarma-400));
+  --color-fn-danger-solid-ink: light-dark(var(--buildon-blanco), var(--buildon-alarma-950));
+  --color-fn-info: light-dark(var(--buildon-plano-700), var(--buildon-plano-300));
+  --color-fn-info-canvas: light-dark(var(--buildon-plano-100), color-mix(in srgb, var(--buildon-plano-500) 16%, transparent));
+  --color-fn-info-line: light-dark(var(--buildon-plano-200), color-mix(in srgb, var(--buildon-plano-500) 40%, transparent));
+  --color-fn-info-solid: light-dark(var(--buildon-plano-700), var(--buildon-plano-400));
+  --color-fn-info-solid-ink: light-dark(var(--buildon-blanco), var(--buildon-plano-950));
+  --color-fn-danger-solid-hover: light-dark(var(--buildon-alarma-700), var(--buildon-alarma-300));
+
+  /* Carga y velo */
+  --color-skeleton: color-mix(in srgb, var(--color-ink) 8%, transparent);
+
+  /* Avance por etapa (la regla de color de hoy en el resumen de la obra).
+     stage: 0–10 tinta · 10–25 · 25–50 · 50–75 · 75–99 en ladrillo creciente · 100 ok.
+     stage-neutral: las unidades, en grises que oscurecen con el avance. */
+  --color-stage-start: var(--color-ink);
+  --color-stage-low: light-dark(var(--buildon-ladrillo-200), var(--buildon-ladrillo-800));
+  --color-stage-mid: var(--buildon-ladrillo-400);
+  --color-stage-high: var(--buildon-ladrillo-500);
+  --color-stage-top: light-dark(var(--buildon-ladrillo-700), var(--buildon-ladrillo-300));
+  --color-stage-done: var(--color-fn-ok-solid);
+  --color-stage-neutral-1: light-dark(var(--buildon-hormigon-400), var(--buildon-noche-600));
+  --color-stage-neutral-2: light-dark(var(--buildon-hormigon-500), var(--buildon-noche-700));
+  --color-stage-neutral-3: light-dark(var(--buildon-hormigon-600), var(--buildon-noche-800));
+  --color-stage-neutral-4: light-dark(var(--buildon-hormigon-700), var(--buildon-noche-850));
+  --color-stage-neutral-5: light-dark(var(--buildon-hormigon-800), var(--buildon-noche-900));
+  --color-stage-neutral-6: light-dark(var(--buildon-hormigon-900), var(--buildon-noche-950));
+  /* Tierra: el fondo marrón del inicio. Igual en los dos modos (es marca, como el naranja).
+     Sobre tierra el texto es blanco: 10:1 sobre el tono claro del degradé. */
+  --color-earth: var(--buildon-tierra);
+  --color-earth-deep: var(--buildon-tierra-honda);
+  --color-earth-strong: var(--buildon-ladrillo-950);
+  --color-earth-strong-hover: var(--buildon-tierra-hover);
+  --color-on-earth: var(--buildon-blanco);
+  --color-on-earth-muted: color-mix(in srgb, var(--buildon-blanco) 72%, transparent);
+  --color-earth-veil: color-mix(in srgb, var(--buildon-blanco) 10%, transparent);
+  /* Velo negro sobre una foto para que el texto se lea (el acceso): de 90% a 70%. */
+  --color-veil-strong: color-mix(in srgb, var(--buildon-negro) 90%, transparent);
+  --color-veil-soft: color-mix(in srgb, var(--buildon-negro) 70%, transparent);
+  --color-scrim: light-dark(color-mix(in srgb, var(--buildon-hormigon-950) 50%, transparent), color-mix(in srgb, var(--buildon-negro) 64%, transparent));
+
+  /* Tonos: categorías y gráficos. Se guarda el nombre del tono, nunca el color. */
+  --color-tono-naranja-fondo: light-dark(var(--buildon-tono-naranja-fondo-claro), var(--buildon-tono-naranja-fondo-oscuro));
+  --color-tono-naranja-tinta: light-dark(var(--buildon-tono-naranja-tinta-claro), var(--buildon-tono-naranja-tinta-oscuro));
+  --color-tono-naranja-solido: light-dark(var(--buildon-tono-naranja-solido-claro), var(--buildon-tono-naranja-solido-oscuro));
+  --color-tono-azul-fondo: light-dark(var(--buildon-tono-azul-fondo-claro), var(--buildon-tono-azul-fondo-oscuro));
+  --color-tono-azul-tinta: light-dark(var(--buildon-tono-azul-tinta-claro), var(--buildon-tono-azul-tinta-oscuro));
+  --color-tono-azul-solido: light-dark(var(--buildon-tono-azul-solido-claro), var(--buildon-tono-azul-solido-oscuro));
+  --color-tono-verde-fondo: light-dark(var(--buildon-tono-verde-fondo-claro), var(--buildon-tono-verde-fondo-oscuro));
+  --color-tono-verde-tinta: light-dark(var(--buildon-tono-verde-tinta-claro), var(--buildon-tono-verde-tinta-oscuro));
+  --color-tono-verde-solido: light-dark(var(--buildon-tono-verde-solido-claro), var(--buildon-tono-verde-solido-oscuro));
+  --color-tono-amarillo-fondo: light-dark(var(--buildon-tono-amarillo-fondo-claro), var(--buildon-tono-amarillo-fondo-oscuro));
+  --color-tono-amarillo-tinta: light-dark(var(--buildon-tono-amarillo-tinta-claro), var(--buildon-tono-amarillo-tinta-oscuro));
+  --color-tono-amarillo-solido: light-dark(var(--buildon-tono-amarillo-solido-claro), var(--buildon-tono-amarillo-solido-oscuro));
+  --color-tono-rojo-fondo: light-dark(var(--buildon-tono-rojo-fondo-claro), var(--buildon-tono-rojo-fondo-oscuro));
+  --color-tono-rojo-tinta: light-dark(var(--buildon-tono-rojo-tinta-claro), var(--buildon-tono-rojo-tinta-oscuro));
+  --color-tono-rojo-solido: light-dark(var(--buildon-tono-rojo-solido-claro), var(--buildon-tono-rojo-solido-oscuro));
+  --color-tono-violeta-fondo: light-dark(var(--buildon-tono-violeta-fondo-claro), var(--buildon-tono-violeta-fondo-oscuro));
+  --color-tono-violeta-tinta: light-dark(var(--buildon-tono-violeta-tinta-claro), var(--buildon-tono-violeta-tinta-oscuro));
+  --color-tono-violeta-solido: light-dark(var(--buildon-tono-violeta-solido-claro), var(--buildon-tono-violeta-solido-oscuro));
+  --color-tono-turquesa-fondo: light-dark(var(--buildon-tono-turquesa-fondo-claro), var(--buildon-tono-turquesa-fondo-oscuro));
+  --color-tono-turquesa-tinta: light-dark(var(--buildon-tono-turquesa-tinta-claro), var(--buildon-tono-turquesa-tinta-oscuro));
+  --color-tono-turquesa-solido: light-dark(var(--buildon-tono-turquesa-solido-claro), var(--buildon-tono-turquesa-solido-oscuro));
+  --color-tono-rosa-fondo: light-dark(var(--buildon-tono-rosa-fondo-claro), var(--buildon-tono-rosa-fondo-oscuro));
+  --color-tono-rosa-tinta: light-dark(var(--buildon-tono-rosa-tinta-claro), var(--buildon-tono-rosa-tinta-oscuro));
+  --color-tono-rosa-solido: light-dark(var(--buildon-tono-rosa-solido-claro), var(--buildon-tono-rosa-solido-oscuro));
+
+  /* ------------------------------------------------------------ Voces */
+  --font-ui: var(--font-google-sans, "Google Sans Flex"), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-recoleta, "Recoleta"), Georgia, serif;
+  /* Códigos y valores técnicos (documentación, ids). */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* Tamaños sueltos fuera: se pide el rol (text-body, text-title). */
+
+  /* ------------------------------------------------------------ Spacing */
+  /* La escala numérica (p-4, w-10) sigue para medidas de layout.
+     El aire entre y dentro de piezas se pide por oficio: p-group, gap-compact. */
+  --spacing-related: var(--space-related);
+  --spacing-compact: var(--space-compact);
+  --spacing-snug: var(--space-snug);
+  --spacing-group: var(--space-group);
+  --spacing-block: var(--space-block);
+  --spacing-chapter: var(--space-chapter);
+  --spacing-stage: var(--space-stage);
+  /* Alturas de control e íconos: h-control, size-icon-sm. */
+  --spacing-control-compact: var(--size-control-height-compact);
+  --spacing-control: var(--size-control-height);
+  --spacing-control-large: var(--size-control-height-large);
+  --spacing-hit: var(--size-hit);
+  --spacing-icon-xs: var(--size-icon-xs);
+  --spacing-icon-sm: var(--size-icon-sm);
+  --spacing-icon-md: var(--size-icon-md);
+  --spacing-icon-lg: var(--size-icon-lg);
+  --spacing-avatar-sm: var(--size-avatar-sm);
+  --spacing-avatar-md: var(--size-avatar-md);
+  --spacing-avatar-lg: var(--size-avatar-lg);
+
+  /* ------------------------------------------------------------ Radio */
+  --radius-box: 4px; /* casilla y radio: lo más chico que se marca */
+  --radius-compact: 6px;
+  --radius-mark: 14px; /* logo de obra o empresa: el cuadrado redondeado de 48 */
+  --radius-control: 10px;
+  --radius-surface: 16px;
+  --radius-panel: 24px; /* panel grande que flota: el menú de la obra */
+  --radius-pill: 9999px;
+
+  /* ------------------------------------------------------------ Elevación */
+  --shadow-hint: var(--elevation-hint);
+  --shadow-near: var(--elevation-near);
+  --shadow-overlay: var(--elevation-overlay);
+  --shadow-modal: var(--elevation-modal);
+  /* Brillo naranja del botón principal (diseño Figma 1127:2891). */
+  --shadow-action: var(--elevation-action);
+  /* Pulgar: el ítem elegido de un segmentado, la perilla del switch. */
+  --shadow-thumb: var(--elevation-thumb);
+  /* Destacada: card del acceso sobre el naranja. */
+  --shadow-lift: var(--elevation-lift);
+  /* Flotante: card de obra sobre el fondo tierra del inicio. */
+  --shadow-float: var(--elevation-float);
+  --shadow-panel: var(--elevation-panel);
+
+  /* ------------------------------------------------------------ Motion */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-enter: enter var(--duration-slow) var(--ease-emphasized) both;
+  --animate-spin: spin 0.8s linear infinite;
+  --animate-shimmer: shimmer 2.6s ease-in-out infinite;
+  --animate-sheet-in: sheet-in var(--duration-slow) var(--ease-emphasized);
+  --animate-accordion-down: accordion-down var(--duration-base) var(--ease-emphasized);
+  --animate-accordion-up: accordion-up var(--duration-base) var(--ease-standard);
+
+  /* ------------------------------------------------------------ Grilla */
+  --container-page: var(--layout-page);
+  --container-reading: var(--layout-reading);
+  --container-dialog-narrow: var(--layout-dialog-narrow);
+  --container-auth: var(--layout-auth);
+  --container-dialog: var(--layout-dialog);
+  --container-dialog-wide: var(--layout-dialog-wide);
+  /* Breakpoints: se quedan los de Tailwind (sm 640, md 768, lg 1024, xl 1280,
+     2xl 1536). La app ya los usa en más de 600 lugares. */
+
+  /* Panel lateral: entra desde su costado (--sheet-from: 100% o -100%). */
+  @keyframes sheet-in {
+    from {
+      transform: translateX(var(--sheet-from, 100%));
+    }
+    to {
+      transform: none;
+    }
+  }
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes shimmer {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(var(--motion-rise-from));
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* ------------------------------------------------------------ Recetas de texto */
+/* Cada rol trae voz, tamaño, interlineado, peso y tracking juntos. */
+@utility text-display {
+  font-family: var(--type-display-font);
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-leading);
+  font-weight: var(--type-display-weight);
+  letter-spacing: var(--type-display-tracking);
+}
+@utility text-title {
+  font-family: var(--type-title-font);
+  font-size: var(--type-title-size);
+  line-height: var(--type-title-leading);
+  font-weight: var(--type-title-weight);
+  letter-spacing: var(--type-title-tracking);
+}
+@utility text-heading {
+  font-family: var(--type-heading-font);
+  font-size: var(--type-heading-size);
+  line-height: var(--type-heading-leading);
+  font-weight: var(--type-heading-weight);
+  letter-spacing: var(--type-heading-tracking);
+}
+@utility text-section {
+  font-family: var(--type-section-font);
+  font-size: var(--type-section-size);
+  line-height: var(--type-section-leading);
+  font-weight: var(--type-section-weight);
+  letter-spacing: var(--type-section-tracking);
+}
+@utility text-reading {
+  font-family: var(--type-reading-font);
+  font-size: var(--type-reading-size);
+  line-height: var(--type-reading-leading);
+  font-weight: var(--type-reading-weight);
+  letter-spacing: var(--type-reading-tracking);
+  max-width: var(--type-reading-measure);
+}
+@utility text-body {
+  font-family: var(--type-body-font);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-leading);
+  font-weight: var(--type-body-weight);
+  letter-spacing: var(--type-body-tracking);
+}
+/* Texto de un campo: el cuerpo de operación (14) en pantallas grandes y 16 en el celular.
+   Con menos de 16 px, Safari del iPhone agranda la pantalla al tocar el campo. */
+@utility text-field {
+  font-family: var(--type-body-font);
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: var(--type-body-weight);
+  @media (width >= 40rem) {
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-leading);
+  }
+}
+/* Apertura grande sobre una foto (el acceso): crece con la pantalla, 34 → 52 → 64. */
+@utility text-hero {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-regular);
+  font-size: 2.125rem;
+  line-height: 1.08;
+  @media (width >= 80rem) {
+    font-size: 3.25rem;
+    line-height: 1.06;
+  }
+  @media (width >= 96rem) {
+    font-size: 4rem;
+    line-height: 1.05;
+  }
+}
+/* La bajada de esa apertura: 16 → 18 → 20. */
+@utility text-hero-lede {
+  font-family: var(--font-ui);
+  font-weight: var(--font-weight-regular);
+  font-size: 1rem;
+  line-height: 1.625rem;
+  @media (width >= 80rem) {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+  @media (width >= 96rem) {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+}
+/* Saludo del inicio: 26 → 32 → 36, en Recoleta. */
+@utility text-welcome {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-regular);
+  font-size: 1.625rem;
+  line-height: 1.15;
+  text-wrap: balance;
+  @media (width >= 40rem) {
+    font-size: 2rem;
+    line-height: 1.2;
+  }
+  @media (width >= 48rem) {
+    font-size: 2.25rem;
+    line-height: 2.7rem;
+  }
+}
+/* La bajada del saludo: 16 → 18 → 20. */
+@utility text-welcome-lede {
+  font-family: var(--font-ui);
+  font-weight: var(--font-weight-regular);
+  font-size: 1rem;
+  line-height: 1.4;
+  text-wrap: balance;
+  @media (width >= 40rem) {
+    font-size: 1.125rem;
+  }
+  @media (width >= 48rem) {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+}
+@utility text-label {
+  font-family: var(--type-label-font);
+  font-size: var(--type-label-size);
+  line-height: var(--type-label-leading);
+  font-weight: var(--type-label-weight);
+  letter-spacing: var(--type-label-tracking);
+}
+@utility text-meta {
+  font-family: var(--type-meta-font);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-leading);
+  font-weight: var(--type-meta-weight);
+  letter-spacing: var(--type-meta-tracking);
+}
+@utility text-micro {
+  font-family: var(--type-micro-font);
+  font-size: var(--type-micro-size);
+  line-height: var(--type-micro-leading);
+  font-weight: var(--type-micro-weight);
+  letter-spacing: var(--type-micro-tracking);
+}
+/* Dígito de un código de verificación (casilleros del CodeField): 20 → 24, monoespaciado. */
+@utility text-code {
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-semibold);
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  @media (width >= 30rem) {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+}
+/* Título de una pantalla de trabajo, en Recoleta: 26 → 30 → 36 (el nombre de la obra). */
+@utility text-headline {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-regular);
+  font-size: 1.625rem;
+  line-height: 1.75rem;
+  text-wrap: balance;
+  @media (width >= 40rem) {
+    font-size: 1.875rem;
+    line-height: 2rem;
+  }
+  @media (width >= 64rem) {
+    font-size: 2.25rem;
+    line-height: 2.375rem;
+  }
+}
+/* Dato de un indicador chico (las cards del resumen): 22 → 28, en Recoleta. */
+@utility text-metric-compact {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-regular);
+  font-size: 1.375rem;
+  line-height: 1.4375rem;
+  font-variant-numeric: tabular-nums;
+  @media (width >= 40rem) {
+    font-size: 1.75rem;
+    line-height: 1.8125rem;
+  }
+}
+@utility text-metric {
+  font-family: var(--type-metric-font);
+  font-size: var(--type-metric-size);
+  line-height: var(--type-metric-leading);
+  font-weight: var(--type-metric-weight);
+  letter-spacing: var(--type-metric-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------ Foco y motion */
+/* El anillo aparece solo con teclado (focus-visible), nunca con el mouse. */
+@utility focus-ring {
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+}
+@utility motion-press {
+  transition: transform var(--duration-fast) var(--ease-standard);
+  &:active {
+    transform: scale(var(--motion-press-to));
+  }
+}
+/* Velo de estado: hover y apretado como una capa de tinta encima del fondo que ya
+   tenga el elemento. Sirve sobre cualquier superficie y en los dos modos
+   (la "state layer" de Material). */
+@utility state-veil {
+  &:hover:not(:disabled, [aria-disabled="true"], [data-disabled]) {
+    background-image: linear-gradient(var(--color-surface-hover), var(--color-surface-hover));
+  }
+  &:active:not(:disabled, [aria-disabled="true"], [data-disabled]) {
+    background-image: linear-gradient(var(--color-surface-pressed), var(--color-surface-pressed));
+  }
+}
+@utility motion-color {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-standard);
+}
+
+/* ------------------------------------------------------------ Modo claro y oscuro */
+/*
+ * Todos los colores son pares light-dark(). El modo lo decide color-scheme:
+ *   sin atributo           → claro (la app hoy)
+ *   data-theme="claro"     → claro
+ *   data-theme="oscuro"    → oscuro
+ *   data-theme="sistema"   → lo que eligió la persona en su equipo
+ * Sirve en <html> o en cualquier contenedor (una isla oscura dentro de una
+ * pantalla clara). color-scheme también cambia los controles nativos del
+ * navegador: scrollbars, calendario, autocompletar.
+ */
+:root,
+[data-theme="claro"] {
+  color-scheme: light;
+}
+[data-theme="oscuro"] {
+  color-scheme: dark;
+}
+[data-theme="sistema"] {
+  color-scheme: light dark;
+}
+
+/* Con mouse o dedo no se pinta el anillo en botones, casillas y similares: ver
+   focus/modality.ts. Los campos de texto lo mantienen siempre: ahí se va a escribir,
+   y el borde naranja solo no llega al contraste 3:1 que pide WCAG para el foco. */
+[data-modality="pointer"] .focus-ring:focus-visible:not(input, textarea) {
+  box-shadow: none;
+}
+

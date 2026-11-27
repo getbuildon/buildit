@@ -1,10 +1,10 @@
 "use client"
 
-import { AccessLoginForm } from "@/components/auth/AccessLoginForm"
+import { Ingresar } from "@/components/acceso/Ingresar"
 import { withGuestAuth } from "@/hoc/withGuestAuth"
 
 function AccesoEquipoPage() {
-  return <AccessLoginForm audience="equipo" />
+  return <Ingresar audience="equipo" />
 }
 
 export default withGuestAuth(AccesoEquipoPage)

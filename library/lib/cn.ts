@@ -6,7 +6,7 @@ import { extendTailwindMerge } from "tailwind-merge"
  * librería. Sin esta configuración, tailwind-merge confunde text-body (tamaño) con
  * text-ink (color) y borra uno de los dos.
  */
-const textRoles = ["display", "title", "heading", "section", "reading", "body", "field", "hero", "hero-lede", "welcome", "welcome-lede", "headline", "label", "meta", "micro", "metric", "metric-compact"]
+const textRoles = ["display", "title", "heading", "section", "reading", "body", "field", "hero", "hero-lede", "welcome", "welcome-lede", "headline", "label", "meta", "micro", "metric", "metric-compact", "code"]
 const spacingRoles = [
   "related",
   "compact",

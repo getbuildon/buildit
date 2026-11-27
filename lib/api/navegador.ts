@@ -89,3 +89,38 @@ export async function pedirALaApi<T>(ruta: string, opciones: { signal?: AbortSig
   if (cuerpo == null) throw new ErrorDeApi(502, "respuesta", "Algo salió mal. Probá de nuevo.")
   return cuerpo
 }
+
+/** Una escritura puede tardar más (fotos, muchas filas): se espera más antes de cortar. */
+const CORTE_DE_ESCRITURA_MS = 30_000
+
+/**
+ * POST al servidor de datos. Las escrituras de la app llevan ids propios: si se corta y se
+ * repite, el servidor no duplica. Sin respuesta: ErrorDeApi con status 0 (reintentar luego).
+ */
+export async function enviarALaApi<T>(ruta: string, cuerpo: unknown): Promise<T> {
+  if (!apiDisponible()) throw new ErrorDeApi(0, "sin_api", "El servidor de datos no está configurado.")
+  const corte = new AbortController()
+  const reloj = setTimeout(() => corte.abort(), CORTE_DE_ESCRITURA_MS)
+  let respuesta: Response
+  try {
+    const token = await tokenDeLaSesion()
+    respuesta = await fetch(`${API_URL}${ruta}`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify(cuerpo),
+      signal: corte.signal,
+      cache: "no-store",
+    })
+  } catch (error) {
+    if (error instanceof ErrorDeApi) throw error
+    throw SIN_SENAL
+  } finally {
+    clearTimeout(reloj)
+  }
+  const datos = (await respuesta.json().catch(() => null)) as (T & { code?: string; message?: string }) | null
+  if (!respuesta.ok) {
+    throw new ErrorDeApi(respuesta.status, datos?.code ?? "error", datos?.message ?? "Algo salió mal. Probá de nuevo.")
+  }
+  if (datos == null) throw new ErrorDeApi(502, "respuesta", "Algo salió mal. Probá de nuevo.")
+  return datos
+}

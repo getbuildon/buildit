@@ -27,7 +27,7 @@ const TEMPLATE_DEFINITIONS = [
   {
     id: "recovery",
     file: "recovery.html",
-    subject: "Restablecé tu contraseña en BuildOn",
+    subject: "{{ .Token }} es tu código para restablecer la contraseña de BuildOn",
     subjectKey: "mailer_subjects_recovery",
     contentKey: "mailer_templates_recovery_content",
   },

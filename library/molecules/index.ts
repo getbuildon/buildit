@@ -20,3 +20,4 @@ export { DateRangePicker, defaultRangePresets, type DateRange, type DateRangePic
 export { FileField, type FileFieldProps, type FileItem } from "./file-field/FileField"
 export { InlineEdit, type InlineEditProps } from "./inline-edit/InlineEdit"
 export { PasswordInput, type PasswordInputProps } from "./password-input/PasswordInput"
+export { CodeField, type CodeFieldProps } from "./code-field/CodeField"

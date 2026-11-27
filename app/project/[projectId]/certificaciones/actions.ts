@@ -1,22 +1,15 @@
 "use server"
 
-import { differenceInDays } from "date-fns"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
-import {
-  formatArgentinaTaskDate,
-  formatArgentinaTaskTime,
-} from "@/lib/datetime/argentinaDateTime"
 import { checkProjectPermission, checkProjectSectionAccess } from "@/lib/project/projectAccess"
 import { revalidateProjectPath } from "@/lib/project/revalidateProjectPath"
 import { hasProjectPermission } from "@/lib/project/projectPermissions"
-import { buildTaskCodeMap, buildTaskLabelMap } from "@/lib/projects/unitDetailTasks"
-import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
-import { getUnitPillLabel } from "@/lib/projects/floorLabels"
 import { loadUnitTaskAssignmentsByUnit } from "@/lib/projects/loadUnitTaskAssignments"
 import { loadLatestProgressEntries } from "@/lib/projects/loadLatestProgressEntries"
 import { loadProjectMemberDisplayNames } from "@/lib/projects/projectMemberFicha"
+import { armarCertificaciones } from "@/lib/projects/armarCertificaciones"
 
 export type CertificacionMember = {
   userId: string
@@ -101,152 +94,38 @@ export async function getCertificacionesData(
     return null
   }
 
-  const floors = floorsResult.data ?? []
-  const units = unitsResult.data ?? []
-  const assignments = { byUnit: assignmentsByUnit }
-  const taskCodeById = buildTaskCodeMap(groupsResult.data ?? [])
-  const taskLabelsById = buildTaskLabelMap(groupsResult.data ?? [])
   const canCertify =
     accessContext != null &&
     hasProjectPermission(accessContext.permissions, "certifyTasks")
 
-  const floorById = new Map(floors.map((floor) => [floor.id, floor.name]))
+  // Certificaciones vigentes de lo ya certificado y nombres de autores y certificadores.
+  const approvedIds = entries.filter((e) => e.status === "approved").map((e) => e.id)
+  const { data: validations } = approvedIds.length
+    ? await supabase
+        .from("progress_validations")
+        .select("progress_entry_id, validated_at, validated_by, comment")
+        .in("progress_entry_id", approvedIds)
+        .eq("decision", "approved")
+        .order("validated_at", { ascending: false })
+    : { data: [] }
+  const personIds = [
+    ...new Set([...entries.map((e) => e.created_by), ...(validations ?? []).map((v) => v.validated_by)]),
+  ]
+  const nameById = await loadProjectMemberDisplayNames(admin, id, personIds)
 
-  const unitsByFloor = new Map<string, typeof units>()
-  for (const unit of units) {
-    const list = unitsByFloor.get(unit.floor_id) ?? []
-    list.push(unit)
-    unitsByFloor.set(unit.floor_id, list)
-  }
-
-  const unitIndexById = new Map<string, { floorName: string; unitLabel: string }>()
-  for (const floor of floors) {
-    const floorUnits = (unitsByFloor.get(floor.id) ?? []).sort(
-      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
-    )
-    floorUnits.forEach((unit, index) => {
-      const unitCode = getUnitPillLabel(
-        { name: floor.name, identifier: floor.identifier },
-        { id: unit.id, code: unit.code },
-        index + 1,
-      )
-      unitIndexById.set(unit.id, {
-        floorName: floor.name,
-        unitLabel: unitCode === "—" ? "—" : `Unidad ${unitCode}`,
-      })
-    })
-  }
-
-  const tasks: CertificacionTask[] = []
-  const authorIds = new Set<string>()
-
-  for (const entry of entries) {
-    if (!entry.unit_id || !entry.task_id) continue
-    if (!isTaskAssignedToUnit(assignments.byUnit, entry.unit_id, entry.task_id)) {
-      continue
-    }
-
-    if (entry.status !== "submitted" && entry.status !== "approved") continue
-    if (entry.status === "submitted" && entry.progress_state !== "completed") continue
-
-    const unitMeta = unitIndexById.get(entry.unit_id)
-    const floorId = entry.floor_id
-    const floorName =
-      unitMeta?.floorName ??
-      (floorId ? floorById.get(floorId) ?? "—" : "—")
-
-    const labels = taskLabelsById.get(entry.task_id)
-    const occurredAt = entry.submitted_at ?? entry.created_at
-    const daysPending = Math.max(0, differenceInDays(new Date(), new Date(occurredAt)))
-
-    authorIds.add(entry.created_by)
-
-    tasks.push({
-      entryId: entry.id,
-      taskCode: taskCodeById.get(entry.task_id) ?? "—",
-      taskName: labels?.taskName ?? "Tarea",
-      rubroName: labels?.rubroName ?? "Rubro",
-      floorName,
-      unitLabel: unitMeta?.unitLabel ?? "—",
-      authorId: entry.created_by,
-      authorName: "",
-      certifiedById: null,
-      certifiedByName: null,
-      occurredAt,
-      certifiedAt: null,
-      formattedDate: formatArgentinaTaskDate(occurredAt),
-      formattedTime: formatArgentinaTaskTime(occurredAt),
-      comment: entry.comment,
-      daysPending,
-      isUrgent: daysPending >= 7,
-      status: entry.status === "approved" ? "certified" : "pending",
-    })
-  }
-
-  const certifiedEntryIds = tasks
-    .filter((task) => task.status === "certified")
-    .map((task) => task.entryId)
-
-  const certifiedAtByEntryId = new Map<string, string>()
-  const certifiedByIdByEntryId = new Map<string, string>()
-  const certificationCommentByEntryId = new Map<string, string | null>()
-
-  if (certifiedEntryIds.length > 0) {
-    const { data: validations } = await supabase
-      .from("progress_validations")
-      .select("progress_entry_id, validated_at, validated_by, comment")
-      .in("progress_entry_id", certifiedEntryIds)
-      .eq("decision", "approved")
-      .order("validated_at", { ascending: false })
-
-    for (const validation of validations ?? []) {
-      if (certifiedAtByEntryId.has(validation.progress_entry_id)) continue
-      certifiedAtByEntryId.set(validation.progress_entry_id, validation.validated_at)
-      certifiedByIdByEntryId.set(validation.progress_entry_id, validation.validated_by)
-      certificationCommentByEntryId.set(
-        validation.progress_entry_id,
-        validation.comment,
-      )
-    }
-  }
-
-  const memberIds = [...new Set([
-    ...authorIds,
-    ...certifiedByIdByEntryId.values(),
-  ])]
-  const nameById = await loadProjectMemberDisplayNames(admin, id, memberIds)
-
-  for (const task of tasks) {
-    task.authorName = nameById.get(task.authorId) ?? "Usuario"
-
-    if (task.status !== "certified") continue
-
-    const certifiedAt =
-      certifiedAtByEntryId.get(task.entryId) ?? task.occurredAt
-    task.certifiedAt = certifiedAt
-    task.formattedDate = formatArgentinaTaskDate(certifiedAt)
-    task.formattedTime = formatArgentinaTaskTime(certifiedAt)
-
-    const certifierId = certifiedByIdByEntryId.get(task.entryId)
-    task.certifiedById = certifierId ?? null
-    task.certifiedByName = certifierId
-      ? (nameById.get(certifierId) ?? "Usuario")
-      : null
-
-    const certificationComment = certificationCommentByEntryId.get(task.entryId)
-    if (certificationComment !== undefined) {
-      task.comment = certificationComment
-    }
-  }
-
-  const members: CertificacionMember[] = memberIds
-    .map((userId) => ({
-      userId,
-      name: nameById.get(userId) ?? "Usuario",
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name, "es"))
-
-  return { tasks, members, canCertify }
+  return armarCertificaciones(
+    {
+      floors: floorsResult.data ?? [],
+      units: unitsResult.data ?? [],
+      rubroGroups: groupsResult.data ?? [],
+      assignmentsByUnit,
+      entries,
+      validations: validations ?? [],
+      nombres: Object.fromEntries(nameById),
+    },
+    canCertify,
+    new Date(),
+  )
 }
 
 export async function certifyProgressEntries(

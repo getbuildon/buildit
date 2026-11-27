@@ -3,8 +3,9 @@
 Design system de BuildOn, alineado al criterio de la librería de Rootsy
 (`rootsy-teams/library`) pero con el stack de esta app: Tailwind 4 y Radix.
 
-**Estado:** las cinco capas: foundations, átomos, moléculas, organismos y estructuras de página. La app todavía no la usa: nada de `app/` ni
-`components/` importa esta carpeta.
+**Estado:** las cinco capas: foundations, átomos, moléculas, organismos y estructuras de página. La app la usa en convivencia desde
+2026-11-25 (paso 1 de "Adoptarla en la app"): `app/globals.css` importa los tokens y `foundations/roles.css`, y las pantallas se pasan
+de a una. Ya pasaron: ingresar (equipo y clientes), recuperar contraseña (`components/acceso/`), inicio (`components/inicio/`) y, en la obra, el marco (menú y barra del celular) y el Dashboard (`components/obra/`).
 
 ## Ver el catálogo
 
@@ -20,7 +21,9 @@ estática en `library/storybook-static/` (ignorada por git).
 ```
 library/
   foundations/
-    theme.css            Tema de Tailwind: roles como utilidades y resets
+    theme.css            Modo estricto (Storybook): tokens + strict.css + roles.css
+    roles.css            Los roles como utilidades; es lo que importa la app en convivencia
+    strict.css           Borra la paleta y las escalas por defecto de Tailwind
     tokens/primitives.css  Rampas crudas (--buildon-<rampa>-<paso>)
     tokens/tokens.css      Tipografía, spacing, size, elevación, motion, z, grilla
     format/format.ts       Plata, números, %, m² y fechas (es-AR, Buenos Aires)

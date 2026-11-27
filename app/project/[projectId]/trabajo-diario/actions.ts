@@ -3,11 +3,6 @@
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull, requireAuthenticatedUser } from "@/lib/authHelpers"
-import {
-  formatArgentinaDateTime,
-  formatArgentinaEntryDate,
-  formatArgentinaLongDate,
-} from "@/lib/datetime/argentinaDateTime"
 import { checkProjectPermission, getProjectAccessContext } from "@/lib/project/projectAccess"
 import { revalidateProjectPath } from "@/lib/project/revalidateProjectPath"
 import { canAccessUnitProgress } from "@/lib/project/projectAccessContext"
@@ -19,17 +14,16 @@ import { isTaskAssignedToUnit } from "@/lib/projects/unitTaskAssignments"
 import {
   getUnitTaskKey,
   isUnitTaskCompletedForLoading,
-  mapDbProgressToCargarAvanceStatus,
   mapTaskStatusToDb,
   type CargarAvanceTaskStatus,
 } from "@/lib/projects/cargarAvance"
-import { getUnitLabelInFloor } from "@/lib/projects/floorLabels"
-import { buildTaskCodeMap, buildTaskLabelMap } from "@/lib/projects/unitDetailTasks"
 import { PROGRESS_PHOTOS_BUCKET } from "@/lib/progress/progressPhotoConfig"
 import { loadUnitTaskAssignmentsByUnit } from "@/lib/projects/loadUnitTaskAssignments"
 import { loadLatestProgressEntries } from "@/lib/projects/loadLatestProgressEntries"
 import { loadProjectMemberDisplayNames } from "@/lib/projects/projectMemberFicha"
 import { getUnitTaskAssignments } from "../configuracion/actions"
+import { armarTrabajoDiario, type FilaDeGrupo } from "@/lib/projects/armarTrabajoDiario"
+import { armarDetalleDeTrabajo } from "@/lib/projects/armarDetalleDeTrabajo"
 
 export type SaveCargarAvanceInput = {
   projectId: string
@@ -166,26 +160,6 @@ export type TrabajoDiarioData = {
   unitTaskStatuses: Record<string, CargarAvanceTaskStatus>
 }
 
-function mapProgressStatus(
-  status: string,
-  progressState: string,
-): TrabajoDiarioTaskStatus {
-  if (status === "rejected") return "Bloqueado"
-  if (status === "approved") return "Certificada"
-  if (progressState === "completed") return "Completado"
-  return "En Proceso"
-}
-
-/** En el historial, el entry certificado sigue siendo el avance “Completado”. */
-function mapHistoryWorkStatus(
-  status: string,
-  progressState: string,
-): Exclude<TrabajoDiarioTaskHistoryStatus, "Certificada"> {
-  if (status === "rejected") return "Bloqueado"
-  if (progressState === "completed" || status === "approved") return "Completado"
-  return "En Proceso"
-}
-
 const CERTIFIED_STATUS_LOCKED_ERROR =
   "No tenés permiso para cambiar el estado de una tarea certificada."
 
@@ -312,124 +286,13 @@ export async function getTrabajoDiarioData(
     return null
   }
 
-  const floors = floorsResult.data ?? []
-  const units = unitsResult.data ?? []
-  const assignments = { byUnit: assignmentsByUnit }
-  const rubroGroupsRaw = rubroGroupsResult.data ?? []
-
-  const floorById = new Map(floors.map((floor) => [floor.id, floor.name]))
-  const unitById = new Map(
-    units.map((unit) => [
-      unit.id,
-      { code: unit.code, name: unit.name, floorId: unit.floor_id },
-    ]),
-  )
-
-  const trabajoFloors: TrabajoDiarioFloor[] = floors.map((floor) => ({
-    id: floor.id,
-    name: floor.name,
-    identifier: floor.identifier ?? null,
-    level: floor.level,
-    units: units
-      .filter((unit) => unit.floor_id === floor.id)
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-      .map((unit) => ({
-        id: unit.id,
-        code: unit.code,
-        name: unit.name,
-      })),
-  }))
-
-  const floorUnitsById = new Map(trabajoFloors.map((floor) => [floor.id, floor.units]))
-
-  const rubroGroups: TrabajoDiarioRubroGroup[] = rubroGroupsRaw.map((group) => ({
-    id: group.id,
-    name: group.name,
-    rubros: ((group.rubros as Array<{
-      id: string
-      name: string
-      sort_order: number
-      rubro_tasks: Array<{
-        id: string
-        name: string
-        sort_order: number
-        weight_percent: number | null
-      }> | null
-    }>) ?? [])
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-      .map((rubro) => ({
-        id: rubro.id,
-        name: rubro.name,
-        tasks: (rubro.rubro_tasks ?? [])
-          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-          .map((task) => ({
-            id: task.id,
-            name: task.name,
-            sortOrder: task.sort_order ?? 0,
-            weightPercent: task.weight_percent ?? null,
-          })),
-      })),
-  }))
-
-  const tasks: TrabajoDiarioTask[] = []
-  const loadedUnitTaskKeys = new Set<string>()
-  const unitTaskStatuses: Record<string, CargarAvanceTaskStatus> = {}
-  const taskCodeById = buildTaskCodeMap(rubroGroupsRaw)
-  const taskLabelsById = buildTaskLabelMap(rubroGroupsRaw)
-
-  for (const entry of entries) {
-    if (!entry.unit_id || !entry.task_id) continue
-
-    const unitTaskKey = getUnitTaskKey(entry.unit_id, entry.task_id)
-    unitTaskStatuses[unitTaskKey] = mapDbProgressToCargarAvanceStatus(
-      entry.status,
-      entry.progress_state,
-    )
-
-    if (isUnitTaskCompletedForLoading(entry.status, entry.progress_state)) {
-      loadedUnitTaskKeys.add(unitTaskKey)
-    }
-
-    if (!isTaskAssignedToUnit(assignments.byUnit, entry.unit_id, entry.task_id)) continue
-
-    const unit = unitById.get(entry.unit_id)
-    if (!unit) continue
-
-    const floorId = entry.floor_id ?? unit.floorId
-    const floorName = floorId ? floorById.get(floorId) ?? "—" : "—"
-    const labels = taskLabelsById.get(entry.task_id)
-    const floorUnits = floorId ? floorUnitsById.get(floorId) ?? [] : []
-
-    tasks.push({
-      id: entry.id,
-      taskCode: taskCodeById.get(entry.task_id) ?? "—",
-      name: labels?.taskName ?? "Tarea",
-      category: labels?.rubroName ?? "Rubro",
-      floorId,
-      floorName,
-      unitId: entry.unit_id,
-      unitLabel: getUnitLabelInFloor(floorUnits, entry.unit_id),
-      unitName: unit.name,
-      occurredAt: entry.submitted_at ?? entry.created_at,
-      date: formatArgentinaEntryDate(entry.submitted_at ?? entry.created_at),
-      status: mapProgressStatus(entry.status, entry.progress_state),
-    })
-  }
-
-  tasks.sort((a, b) => {
-    const aTime = a.occurredAt ? new Date(a.occurredAt).getTime() : 0
-    const bTime = b.occurredAt ? new Date(b.occurredAt).getTime() : 0
-    return bTime - aTime
+  return armarTrabajoDiario({
+    floors: floorsResult.data ?? [],
+    units: unitsResult.data ?? [],
+    rubroGroups: (rubroGroupsResult.data ?? []) as FilaDeGrupo[],
+    assignmentsByUnit,
+    entries,
   })
-
-  return {
-    floors: trabajoFloors,
-    tasks,
-    rubroGroups,
-    assignmentsByUnit: assignments.byUnit,
-    loadedUnitTaskKeys: [...loadedUnitTaskKeys],
-    unitTaskStatuses,
-  }
 }
 
 export async function saveCargarAvance(
@@ -708,33 +571,21 @@ export async function getTrabajoDiarioTaskDetail(
 
   const canViewHistory = hasStrictProjectPermission(accessContext.permissions, "viewAuditLog")
 
-  const floorId = entry.floor_id
-  let unitLabel = "—"
-
-  if (floorId) {
+  let unidadesDelPiso: { id: string; code: string | null }[] | null = null
+  if (entry.floor_id) {
     const { data: floorUnits } = await supabase
       .from("project_units")
       .select("id, code")
       .eq("project_id", id)
-      .eq("floor_id", floorId)
+      .eq("floor_id", entry.floor_id)
       .order("sort_order", { ascending: true })
-
-    const unitCode = getUnitLabelInFloor(floorUnits ?? [], entry.unit_id)
-    unitLabel = unitCode === "—" ? "—" : `Unidad ${unitCode}`
+    unidadesDelPiso = floorUnits ?? []
   }
 
   const { data: historyRows, error: historyError } = canViewHistory
     ? await supabase
         .from("progress_entries")
-        .select(`
-      id,
-      status,
-      progress_state,
-      comment,
-      created_at,
-      submitted_at,
-      created_by
-    `)
+        .select("id, status, progress_state, comment, created_at, submitted_at, created_by")
         .eq("project_id", id)
         .eq("unit_id", entry.unit_id)
         .eq("task_id", entry.task_id)
@@ -763,73 +614,36 @@ export async function getTrabajoDiarioTaskDetail(
     ...validatorIds,
   ])
 
-  const rubro = entry.rubros as { name: string } | { name: string }[] | null
-  const task = entry.rubro_tasks as { name: string } | { name: string }[] | null
-  const floor = entry.project_floors as
-    | { name: string; identifier?: string | null }
-    | Array<{ name: string; identifier?: string | null }>
-    | null
-
-  const rubroName = Array.isArray(rubro) ? rubro[0]?.name : rubro?.name
-  const taskName = Array.isArray(task) ? task[0]?.name : task?.name
-  const floorRow = Array.isArray(floor) ? floor[0] : floor
-  const floorName = floorRow?.name
-  const floorIdentifier = floorRow?.identifier ?? null
-
-  const occurredAt = entry.submitted_at ?? entry.created_at
-
-  const progressHistory: TrabajoDiarioTaskHistoryItem[] = historyRows.map((row) => {
-    const rowOccurredAt = row.submitted_at ?? row.created_at
-    return {
-      id: row.id,
-      status: mapHistoryWorkStatus(row.status, row.progress_state),
-      comment: row.comment,
-      occurredAt: rowOccurredAt,
-      formattedDate: formatArgentinaDateTime(rowOccurredAt),
-      authorName: nameById.get(row.created_by) ?? "Usuario",
-      attachments: attachmentsByEntry.get(row.id) ?? [],
-    }
-  })
-
-  const certificationHistory: TrabajoDiarioTaskHistoryItem[] = (validationRows ?? []).map(
-    (validation) => ({
-      id: `certification-${validation.id}`,
-      status: "Certificada",
-      comment: validation.comment,
-      occurredAt: validation.validated_at,
-      formattedDate: formatArgentinaDateTime(validation.validated_at),
-      authorName: nameById.get(validation.validated_by) ?? "Usuario",
-      attachments: [],
-    }),
+  const uno = <T,>(valor: T | T[] | null): T | null => (Array.isArray(valor) ? (valor[0] ?? null) : valor)
+  const rubro = uno(entry.rubros as { name: string } | { name: string }[] | null)
+  const task = uno(entry.rubro_tasks as { name: string } | { name: string }[] | null)
+  const floor = uno(
+    entry.project_floors as
+      | { name: string; identifier?: string | null }
+      | Array<{ name: string; identifier?: string | null }>
+      | null,
   )
 
-  const history = canViewHistory
-    ? [...progressHistory, ...certificationHistory].sort(
-        (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
-      )
-    : []
-
-  const latestEvent = history[0]
-  const displayOccurredAt = latestEvent?.occurredAt ?? occurredAt
-  const displayComment = latestEvent ? latestEvent.comment : entry.comment
-  const displayAttachments = latestEvent?.attachments ?? []
-  const registeredByName = latestEvent?.authorName ?? "Usuario"
-
-  return {
-    entryId: entry.id,
-    taskName: taskName ?? "Tarea",
-    rubroName: rubroName ?? "Rubro",
-    floorName: floorName ?? "—",
-    floorIdentifier,
-    unitLabel,
-    occurredAt: displayOccurredAt,
-    formattedLongDate: formatArgentinaLongDate(displayOccurredAt),
-    registeredByName,
-    status: mapProgressStatus(entry.status, entry.progress_state),
-    comment: displayComment,
-    attachments: displayAttachments,
-    history: history.slice(1),
-  }
+  return armarDetalleDeTrabajo({
+    avance: {
+      id: entry.id,
+      unit_id: entry.unit_id,
+      status: entry.status,
+      progress_state: entry.progress_state,
+      comment: entry.comment,
+      created_at: entry.created_at,
+      submitted_at: entry.submitted_at,
+      rubro: rubro?.name ?? null,
+      tarea: task?.name ?? null,
+      piso: floor ? { name: floor.name, identifier: floor.identifier ?? null } : null,
+    },
+    unidadesDelPiso,
+    historial: historyRows,
+    validaciones: validationRows ?? [],
+    adjuntos: Object.fromEntries(attachmentsByEntry),
+    nombres: Object.fromEntries(nameById),
+    veHistorial: canViewHistory,
+  })
 }
 
 export async function updateTrabajoDiarioTask(

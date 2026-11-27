@@ -1,6 +1,6 @@
-import { Slot } from "@radix-ui/react-slot"
+import { Slot, Slottable } from "@radix-ui/react-slot"
 import type { LucideIcon } from "lucide-react"
-import type { ComponentProps, ReactNode } from "react"
+import { cloneElement, isValidElement, type ComponentProps, type ReactNode } from "react"
 import { cn } from "../../lib/cn"
 import { Icon } from "../../atoms/icon/Icon"
 
@@ -89,6 +89,13 @@ export type SidebarItemProps = ComponentProps<"a"> & {
  */
 export function SidebarItem({ icon, active = false, count, asChild = false, className, children, ...props }: SidebarItemProps) {
   const Comp = asChild ? Slot : "a"
+  const etiqueta = (contenido: ReactNode) => <span className="min-w-0 flex-1 truncate">{contenido}</span>
+  // Con asChild, Slot exige un único hijo: el link (next/link) pasa a ser el elemento y
+  // adentro van el ícono, el nombre y el contador.
+  const enlace =
+    asChild && isValidElement<{ children?: ReactNode }>(children)
+      ? cloneElement(children, undefined, etiqueta(children.props.children))
+      : null
   return (
     <li>
       <Comp
@@ -101,7 +108,7 @@ export function SidebarItem({ icon, active = false, count, asChild = false, clas
         {...props}
       >
         {icon ? <Icon icon={icon} className={active ? undefined : "text-ink-muted"} /> : null}
-        <span className="min-w-0 flex-1 truncate">{children}</span>
+        {enlace ? <Slottable>{enlace}</Slottable> : etiqueta(children)}
         {count !== undefined && count > 0 ? (
           <span
             className={cn(

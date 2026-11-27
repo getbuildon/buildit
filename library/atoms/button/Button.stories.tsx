@@ -22,7 +22,7 @@ function ButtonDoc() {
       <DocSection title="Variantes">
         <DocExamples
           items={[
-            { name: "action", note: "Acción principal. Naranja con tinta oscura (6:1).", node: <Button>Certificar</Button> },
+            { name: "action", note: "Acción principal. Naranja ladrillo con letra blanca (4.7:1); en oscuro, naranja con tinta oscura.", node: <Button>Certificar</Button> },
             { name: "outline", note: "Acción secundaria.", node: <Button variant="outline">Cancelar</Button> },
             { name: "ghost", note: "Acción terciaria, barras de herramientas.", node: <Button variant="ghost">Ver detalle</Button> },
             {

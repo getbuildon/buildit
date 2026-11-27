@@ -4,26 +4,11 @@ import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getAuthenticatedUserOrNull } from "@/lib/authHelpers"
 import { checkUnitDetailAccess } from "@/lib/project/projectAccess"
-import {
-  calculateUnitProgressPercent,
-  type ProgressEntryRow,
-} from "@/lib/projects/dashboardProgress"
-import { buildRubroProgressContext } from "@/lib/projects/buildRubroProgressContext"
-import { getUnitDisplayCode } from "@/lib/projects/floorLabels"
-import { getUnitDashboardLabel } from "@/lib/projects/unitTypes"
-import {
-  buildLatestEntriesByTask,
-  buildTaskCode,
-  countCompletedTasks,
-  formatUnitTaskMetaDate,
-  getAssignedTaskIds,
-  resolveUnitTaskStatus,
-  type UnitDetailTaskGroup,
-  type UnitDetailTaskItem,
-} from "@/lib/projects/unitDetailTasks"
+import type { UnitDetailTaskGroup } from "@/lib/projects/unitDetailTasks"
 import { loadUnitTaskAssignmentsByUnit } from "@/lib/projects/loadUnitTaskAssignments"
 import { loadLatestProgressEntries } from "@/lib/projects/loadLatestProgressEntries"
 import { loadProjectMemberDisplayNames } from "@/lib/projects/projectMemberFicha"
+import { armarDetalleDeUnidad, type CrudosDelDetalleDeUnidad } from "@/lib/projects/armarDetalleDeUnidad"
 
 export type UnitDetailData = {
   unit: {
@@ -109,188 +94,36 @@ export async function getUnitDetailData(
   const floorRow = Array.isArray(floorRaw) ? floorRaw[0] : floorRaw
   if (!floorRow) return null
 
-  const groupsRaw = groupsResult.data ?? []
-  const assignments = { byUnit: assignmentsByUnit }
+  // Certificaciones vigentes de lo certificado y nombres de autores y certificadores.
+  const aprobados = entries.filter((e) => e.status === "approved").map((e) => e.id)
+  const { data: validations } = aprobados.length
+    ? await supabase
+        .from("progress_validations")
+        .select("progress_entry_id, validated_at, validated_by")
+        .in("progress_entry_id", aprobados)
+        .eq("decision", "approved")
+        .order("validated_at", { ascending: false })
+    : { data: [] }
+  const nameById = await loadProjectMemberDisplayNames(admin, id, [
+    ...entries.map((e) => e.created_by),
+    ...(validations ?? []).map((v) => v.validated_by),
+  ])
 
-  const allTaskIds: string[] = []
-  for (const group of groupsRaw) {
-    for (const rubro of (group.rubros as Array<{ rubro_tasks: Array<{ id: string }> | null }>) ??
-      []) {
-      for (const task of rubro.rubro_tasks ?? []) {
-        allTaskIds.push(task.id)
-      }
-    }
-  }
-
-  const assignedTaskIds = getAssignedTaskIds(
-    assignments.byUnit,
-    selectedUnitId,
-    allTaskIds,
-  )
-  const assignedSet = new Set(assignedTaskIds)
-  const latestByTask = buildLatestEntriesByTask(entries, assignedTaskIds)
-
-  const authorIds = [
-    ...new Set(
-      [...latestByTask.values()]
-        .map((entry) => (entry as { created_by?: string }).created_by)
-        .filter(Boolean),
-    ),
-  ] as string[]
-
-  const nameById = await loadProjectMemberDisplayNames(admin, id, authorIds)
-
-  const rubroRows: Array<{ id: string; weight_percent: number | null }> = []
-  const taskRows: Array<{ id: string; rubro_id: string }> = []
-  const groups: UnitDetailTaskGroup[] = []
-  const certifiedEntryIds: string[] = []
-
-  groupsRaw.forEach((group, groupIndex) => {
-    const rubros = ((group.rubros as Array<{
-      id: string
-      name: string
-      sort_order: number
-      weight_percent: number | null
-      rubro_tasks: Array<{
-        id: string
-        name: string
-        sort_order: number
-        weight_percent: number | null
-      }> | null
-    }>) ?? []).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-
-    const tasks: UnitDetailTaskItem[] = []
-
-    rubros.forEach((rubro, rubroIndex) => {
-      rubroRows.push({ id: rubro.id, weight_percent: rubro.weight_percent ?? null })
-
-      const rubroTasks = (rubro.rubro_tasks ?? []).sort(
-        (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
-      )
-
-      rubroTasks.forEach((task, taskIndex) => {
-        taskRows.push({ id: task.id, rubro_id: rubro.id })
-        if (!assignedSet.has(task.id)) return
-
-        const latest = latestByTask.get(task.id) as
-          | (ProgressEntryRow & { id: string; created_by?: string })
-          | undefined
-        const status = resolveUnitTaskStatus(latest ?? null)
-        const authorId = latest?.created_by
-        const occurredAt = latest?.submitted_at ?? latest?.created_at ?? null
-
-        const entryId = latest?.id ?? null
-        if (status === "certified" && entryId) {
-          certifiedEntryIds.push(entryId)
-        }
-
-        tasks.push({
-          id: task.id,
-          code: buildTaskCode(groupIndex + 1, rubroIndex + 1, taskIndex + 1),
-          name: task.name,
-          rubroName: rubro.name,
-          groupIndex: groupIndex + 1,
-          status,
-          entryId,
-          authorName: authorId ? (nameById.get(authorId) ?? null) : null,
-          occurredAt,
-          formattedMeta: occurredAt ? formatUnitTaskMetaDate(occurredAt) : null,
-        })
-      })
-    })
-
-    if (tasks.length > 0) {
-      groups.push({
-        id: group.id,
-        index: groupIndex + 1,
-        name: group.name,
-        tasks,
-      })
-    }
-  })
-
-  if (certifiedEntryIds.length > 0) {
-    const { data: validations } = await supabase
-      .from("progress_validations")
-      .select("progress_entry_id, validated_at, validated_by")
-      .in("progress_entry_id", certifiedEntryIds)
-      .eq("decision", "approved")
-      .order("validated_at", { ascending: false })
-
-    const certifiedAtByEntryId = new Map<string, string>()
-    const certifiedByIdByEntryId = new Map<string, string>()
-
-    for (const validation of validations ?? []) {
-      if (certifiedAtByEntryId.has(validation.progress_entry_id)) continue
-      certifiedAtByEntryId.set(validation.progress_entry_id, validation.validated_at)
-      certifiedByIdByEntryId.set(validation.progress_entry_id, validation.validated_by)
-    }
-
-    const missingCertifierIds = [...new Set([...certifiedByIdByEntryId.values()])].filter(
-      (userId) => !nameById.has(userId),
-    )
-
-    if (missingCertifierIds.length > 0) {
-      const extraNames = await loadProjectMemberDisplayNames(admin, id, missingCertifierIds)
-      for (const [userId, name] of extraNames) {
-        nameById.set(userId, name)
-      }
-    }
-
-    for (const group of groups) {
-      for (const task of group.tasks) {
-        if (task.status !== "certified" || !task.entryId) continue
-
-        const certifiedAt = certifiedAtByEntryId.get(task.entryId) ?? task.occurredAt
-        const certifierId = certifiedByIdByEntryId.get(task.entryId)
-
-        if (certifiedAt) {
-          task.formattedMeta = formatUnitTaskMetaDate(certifiedAt)
-        }
-
-        if (certifierId) {
-          task.authorName = nameById.get(certifierId) ?? "Usuario"
-        }
-      }
-    }
-  }
-
-  const rubroProgress = buildRubroProgressContext(rubroRows, taskRows)
-
-  const progressPercent = calculateUnitProgressPercent(
-    selectedUnitId,
-    assignedTaskIds,
-    entries,
-    rubroProgress,
-  )
-
-  const unitCode = getUnitDisplayCode({
-    id: unit.id,
-    code: unit.code,
-    name: unit.name,
-  })
-
-  return {
-    unit: {
+  return armarDetalleDeUnidad({
+    unidad: {
       id: unit.id,
-      code: unitCode,
-      displayCode: unitCode === "—" ? "Unidad" : `Unidad ${unitCode}`,
-      typeLabel: getUnitDashboardLabel({
-        unit_type: unit.unit_type,
-        name: unit.name,
-        room_count: unit.room_count,
-      }),
-      planUrl: unit.plan_url ?? null,
-      renderUrl: unit.render_url ?? null,
+      code: unit.code,
+      name: unit.name,
+      unit_type: unit.unit_type,
+      room_count: unit.room_count,
+      plan_url: unit.plan_url ?? null,
+      render_url: unit.render_url ?? null,
     },
-    floor: {
-      id: floorRow.id,
-      name: floorRow.name,
-      identifier: floorRow.identifier ?? null,
-    },
-    progressPercent,
-    completedTasks: countCompletedTasks(assignedTaskIds, latestByTask),
-    totalTasks: assignedTaskIds.length,
-    groups,
-  }
+    piso: { id: floorRow.id, name: floorRow.name, identifier: floorRow.identifier ?? null },
+    grupos: (groupsResult.data ?? []) as CrudosDelDetalleDeUnidad["grupos"],
+    asignaciones: assignmentsByUnit,
+    avances: entries,
+    validaciones: validations ?? [],
+    nombres: Object.fromEntries(nameById),
+  })
 }

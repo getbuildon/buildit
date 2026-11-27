@@ -26,13 +26,20 @@ export function Link({ external = false, tone = "action", asChild = false, class
       {...(external && !asChild ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       {...props}
     >
-      {children}
-      {external ? (
+      {/* Con asChild, Slot exige un único hijo: el link que envuelve (next/link). */}
+      {asChild ? (
+        children
+      ) : (
         <>
-          <ArrowUpRight className="size-icon-xs" style={{ strokeWidth: "var(--icon-stroke)" }} aria-hidden />
-          <span className="sr-only">(se abre en otra pestaña)</span>
+          {children}
+          {external ? (
+            <>
+              <ArrowUpRight className="size-icon-xs" style={{ strokeWidth: "var(--icon-stroke)" }} aria-hidden />
+              <span className="sr-only">(se abre en otra pestaña)</span>
+            </>
+          ) : null}
         </>
-      ) : null}
+      )}
     </Comp>
   )
 }

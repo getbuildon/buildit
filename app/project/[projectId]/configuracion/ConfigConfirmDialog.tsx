@@ -1,6 +1,6 @@
 "use client"
 
-import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog"
+import { ConfirmDialog } from "@/library/molecules"
 
 type ConfigConfirmDialogProps = {
   open: boolean
@@ -9,10 +9,16 @@ type ConfigConfirmDialogProps = {
   description: string
   confirmLabel: string
   cancelLabel?: string
-  loading?: boolean
-  onConfirm: () => void
+  /** "danger" para lo que no se puede deshacer (descartar cambios). */
+  tone?: "action" | "danger"
+  /**
+   * Puede ser async: mientras corre, el botón muestra el spinner y el diálogo no se
+   * cierra. Si tira un error, el diálogo queda abierto para reintentar.
+   */
+  onConfirm: () => void | Promise<void>
 }
 
+/** Confirmación de la pantalla de configuración (guardar o descartar cambios). */
 export function ConfigConfirmDialog(props: ConfigConfirmDialogProps) {
-  return <ConfirmActionDialog {...props} />
+  return <ConfirmDialog {...props} />
 }

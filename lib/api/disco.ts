@@ -7,8 +7,11 @@
  * la app sigue funcionando con la red.
  */
 const BASE = "buildon"
-const VERSION = 1
+const VERSION = 2
 const TIENDA_LECTURA = "lectura"
+/** Lo que se cargó y todavía no llegó al servidor (lib/api/cola.ts). Clave: el id del envío. */
+export const TIENDA_ESCRITURAS = "escrituras"
+type Tienda = typeof TIENDA_LECTURA | typeof TIENDA_ESCRITURAS
 
 /** En iPhone (WebKit) IndexedDB a veces no contesta nunca: no se espera más que esto. */
 const ABRIR_MS = 4_000
@@ -36,6 +39,7 @@ function abrir(): Promise<IDBDatabase> {
     pedido.onupgradeneeded = () => {
       const db = pedido.result
       if (!db.objectStoreNames.contains(TIENDA_LECTURA)) db.createObjectStore(TIENDA_LECTURA)
+      if (!db.objectStoreNames.contains(TIENDA_ESCRITURAS)) db.createObjectStore(TIENDA_ESCRITURAS, { keyPath: "id" })
     }
     pedido.onsuccess = () => {
       const db = pedido.result
@@ -59,15 +63,16 @@ function abrir(): Promise<IDBDatabase> {
   })
 }
 
-function enTienda<T>(
+export function enTienda<T>(
   modo: IDBTransactionMode,
   trabajo: (tienda: IDBObjectStore) => IDBRequest<T>,
+  tienda: Tienda = TIENDA_LECTURA,
 ): Promise<T> {
   return abrir().then(
     (db) =>
       new Promise<T>((resolve, reject) => {
         try {
-          const pedido = trabajo(db.transaction(TIENDA_LECTURA, modo).objectStore(TIENDA_LECTURA))
+          const pedido = trabajo(db.transaction(tienda, modo).objectStore(tienda))
           pedido.onsuccess = () => resolve(pedido.result)
           pedido.onerror = () => reject(pedido.error ?? new Error("Falló el disco local."))
         } catch (error) {
@@ -102,7 +107,11 @@ export async function guardarCopia<T>(userId: string, clave: string, version: st
   }
 }
 
-/** Al cerrar sesión: no queda nada de la persona en el dispositivo. */
+/**
+ * Al cerrar sesión: no queda ninguna copia de la persona en el dispositivo.
+ * Lo cargado sin señal que todavía no se envió NO se borra (perderlo sería peor): queda
+ * a nombre de la persona y se manda cuando vuelva a entrar.
+ */
 export async function borrarCopias(): Promise<void> {
   try {
     await enTienda("readwrite", (t) => t.clear())

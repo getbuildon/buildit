@@ -1,9 +1,11 @@
-import { PerfilView } from "@/components/profile/PerfilView"
+import { MiPerfil } from "@/components/perfil/MiPerfil"
 
 export default function PerfilStandalonePage() {
   return (
-    <div className="min-h-screen bg-[#f8f9fa] px-6 py-10">
-      <PerfilView showBackButton />
+    <div className="min-h-dvh bg-canvas px-(--layout-margin) py-block text-ink">
+      <div className="mx-auto w-full max-w-page">
+        <MiPerfil showBackButton />
+      </div>
     </div>
   )
 }

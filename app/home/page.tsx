@@ -1,17 +1,9 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { ProjectCard } from "@/components/projects/ProjectCard"
-import { ProjectCardSkeleton } from "@/components/projects/ProjectCardSkeleton"
-import { BackofficeAccessCallout } from "@/components/home/BackofficeAccessCallout"
-import { HomePageLayout } from "@/components/home/HomePageLayout"
-import { HomePageSkeleton } from "@/components/home/HomePageSkeleton"
-import { CompanyHomeButton } from "@/components/company/CompanyHomeButton"
-import { HomePortalClientesButton } from "@/components/home/HomePortalClientesButton"
-import { UserMenu } from "@/components/user/UserMenu"
 import { useAuth } from "@/context/AuthContextSupabase"
 import withAuth from "@/hoc/withAuth"
-import { HOME_COLORS, HOME_LAYOUT } from "@/lib/home/designTokens"
+import { EsqueletoDeInicio, PantallaDeInicio } from "@/components/inicio/PantallaDeInicio"
 import {
   HOME_QUERY_STALE_MS,
   homeProgressIdsKey,
@@ -22,116 +14,11 @@ import { claves, FRESCO_MS } from "@/lib/api/claves"
 import { apiDisponible } from "@/lib/api/navegador"
 import type { Arranque, ProgresoDeInicio } from "@/lib/api/tipos"
 import { useLectura } from "@/lib/api/useLectura"
-import type { ProjectHomeProgress } from "@/lib/projects/homeProjectProgress"
 import type { HomeProjectListItem } from "@/lib/projects/types"
 import {
   getHomeProjectsProgress,
   listHomeProjects,
 } from "@/lib/projects/listUserProjects"
-
-const GRID_SKELETON_COUNT = 3
-
-type HomeContenidoProps = {
-  email: string | undefined
-  /** null mientras no hay nada para mostrar (ni del servidor ni guardado). */
-  shell: HomeShellData | null | undefined
-  shellPendiente: boolean
-  projects: HomeProjectListItem[]
-  projectsPendiente: boolean
-  progress: Record<string, ProjectHomeProgress> | undefined
-  /** Aviso bajo las tarjetas (falló el progreso, sin conexión…). */
-  aviso: string | null
-  /** No hay nada para mostrar y falló: se ofrece reintentar. */
-  error: { mensaje: string; reintentar: () => void } | null
-}
-
-function HomeContenido({
-  email,
-  shell,
-  shellPendiente,
-  projects,
-  projectsPendiente,
-  progress,
-  aviso,
-  error,
-}: HomeContenidoProps) {
-  const displayName = shell?.displayName || email?.split("@")[0] || ""
-  const greetingName =
-    shell?.firstName?.trim() || displayName.split(/\s+/)[0] || email?.split("@")[0] || ""
-  const homeCompany = shell?.manageableCompanies[0] ?? shell?.primaryCompany ?? null
-
-  if (error) {
-    return (
-      <HomePageLayout header={null}>
-        <div className="flex flex-col items-center gap-4 py-16 text-center text-white">
-          <p className="text-base">{error.mensaje}</p>
-          <button
-            type="button"
-            onClick={error.reintentar}
-            className="rounded-full bg-white px-5 py-2 text-sm font-medium text-black"
-          >
-            Reintentar
-          </button>
-        </div>
-      </HomePageLayout>
-    )
-  }
-
-  if (shellPendiente) {
-    return <HomePageSkeleton />
-  }
-
-  return (
-    <HomePageLayout
-      header={
-        <>
-          {shell?.hasClientAccess ? <HomePortalClientesButton /> : null}
-          {homeCompany ? (
-            <CompanyHomeButton
-              companyId={homeCompany.id}
-              companyName={homeCompany.name}
-              companies={shell?.manageableCompanies ?? []}
-            />
-          ) : null}
-          <UserMenu
-            displayName={displayName}
-            firstName={shell?.firstName ?? ""}
-            lastName={shell?.lastName ?? ""}
-            email={email}
-            avatarUrl={shell?.avatarUrl ?? null}
-          />
-        </>
-      }
-      footer={shell?.canSeeBackoffice ? <BackofficeAccessCallout canAccess /> : null}
-    >
-      <div className={HOME_LAYOUT.greetingWrap}>
-        <h1 className={HOME_LAYOUT.greeting}>¡Bienvenido, {greetingName}! 👋</h1>
-        {projectsPendiente ? null : projects.length === 0 ? (
-          <p className={HOME_LAYOUT.question} style={{ color: HOME_COLORS.subtitle }}>
-            {shell?.canCreateProjects
-              ? "Creá tu primer proyecto."
-              : "No tenés proyectos asignados."}
-          </p>
-        ) : null}
-      </div>
-
-      <div className={HOME_LAYOUT.projectGrid}>
-        {projectsPendiente
-          ? Array.from({ length: GRID_SKELETON_COUNT }, (_, index) => (
-              <ProjectCardSkeleton key={index} />
-            ))
-          : projects.map((project) => (
-              <ProjectCard
-                key={project.projectId}
-                project={project}
-                progress={progress?.[project.projectId]}
-              />
-            ))}
-      </div>
-      {aviso ? <p className="mt-4 text-center text-sm text-white/80">{aviso}</p> : null}
-    </HomePageLayout>
-  )
-}
 
 /** Camino anterior (server actions de Next). Se usa mientras el ambiente no tenga servidor de datos. */
 function HomeConServerActions() {
@@ -168,7 +55,7 @@ function HomeConServerActions() {
   })
 
   return (
-    <HomeContenido
+    <PantallaDeInicio
       email={user?.email}
       shell={shellQuery.data}
       shellPendiente={shellQuery.isPending}
@@ -255,7 +142,7 @@ function HomeConApi() {
       : null
 
   return (
-    <HomeContenido
+    <PantallaDeInicio
       email={user?.email}
       shell={datos ? shellDesdeArranque(datos, user?.email) : undefined}
       shellPendiente={!datos}
@@ -282,4 +169,4 @@ function HomePage() {
   return apiDisponible() ? <HomeConApi /> : <HomeConServerActions />
 }
 
-export default withAuth(HomePage)
+export default withAuth(HomePage, { cargando: <EsqueletoDeInicio /> })
